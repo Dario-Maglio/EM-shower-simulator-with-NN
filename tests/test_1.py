@@ -6,7 +6,7 @@ import unittest
 class TestCore(unittest.TestCase):
     """Test methods class."""
 
-    def test(self):
+    def test_function(self):
         """Test data format for example."""
         self.assertAlmostEqual(2.,2.)
 

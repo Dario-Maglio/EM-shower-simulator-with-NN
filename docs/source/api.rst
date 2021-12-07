@@ -1,8 +1,8 @@
 Modules' documentation
 ======================
 
-#Module name
-#-----------
-#
-#.. automodule:: directory.Sophia.sophia
-#   :members:
+Test module
+-----------
+
+.. automodule:: tests
+   :members:

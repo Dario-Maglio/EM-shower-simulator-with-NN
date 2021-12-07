@@ -4,5 +4,5 @@ Modules' documentation
 Test module
 -----------
 
-.. automodule:: tests
+.. automodule:: tests.test1
    :members:

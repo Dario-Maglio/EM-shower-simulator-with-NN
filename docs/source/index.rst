@@ -10,8 +10,6 @@ Welcome to Electromagnetic shower simulator with NN's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   source/README.md
-   
    api
 
 

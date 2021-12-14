@@ -19,7 +19,7 @@ class TestCore(unittest.TestCase):
 
     def test_dataset_path(self):
         """Test dataset path."""
-        path=pl.Path('EM_shower_training/Dataset/data_MVA.root')
+        path=pl.Path('Dataset/Filtered_data/data_MVA.root')
         self.assertIsFile(path)
 
 if __name__ == "__main__":

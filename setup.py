@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 
+from EM_shower_simulator import *
 from EM_shower_simulator.__version__ import *
 
 _LICENSE = 'GNU General Public License v3'

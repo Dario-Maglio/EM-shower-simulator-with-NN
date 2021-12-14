@@ -1,14 +1,24 @@
 """Simulation of EM shower with a pre-trained NN"""
 
-from .config import *
-from .__version__ import *
-
 import time
 import logging
 import argparse
 
 from numpy import array
 
+PACKAGE_NAME = 'EM_shower_simulator'
+AUTHOR = 'Dario Cafasso, Daniele Passaro'
+DESCRIPTION = '....description......'
+URL = '....url.....'
+TAG = '1.0.0'
+BUILD_DATE = '14 Dec 2021 18:06:00 +0100'
+n_features = 3
+DEFAULT_FEATURES = [21.2, 34.6, 12.]
+
+"""Problemi: vorrei importare costanti direttamente da init e config.
+   Logger non cancella messaggi debug quando uso pacchetto.
+   Come funziona setup.py?
+"""
 
 def simulate_shower(features, verbose=0):
     """Given the input features as a list of n_features float components,
@@ -38,7 +48,9 @@ def simulate_shower(features, verbose=0):
     #Start operations
     logger.info('Loading model and weights...')
     start_time = time.time()
+
     #Things happen------------------------------------here
+
     time_elapsed = time.time()- start_time
     logger.info(f'Done in {time_elapsed:.3} seconds')
     return 0

@@ -1,0 +1,1 @@
+La simulazione Geant è eseguita da un programma precompilato "gears.exe", il cui repository è al seguente link : https://github.com/jintonic/gears. 

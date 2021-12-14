@@ -1,0 +1,54 @@
+
+# gamma
+/gps/source/intensity 0.34
+/gps/particle gamma
+
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/radius 0.1 cm
+/gps/pos/halfz 0.1 cm
+/gps/pos/centre -20 8 8 cm
+
+/gps/direction 1 0 0 # beam diretto su rivelatore
+
+/gps/ene/type Mono
+/gps/ene/mono 2.0 GeV
+
+#-------------------------------------------------------------------------------
+
+# elettrone
+/gps/source/add 0.33
+/gps/particle e-
+
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/radius 0.1 cm
+/gps/pos/halfz 0.1 cm
+/gps/pos/centre -20 8 8 cm
+
+/gps/direction 1 0 0 # beam diretto su rivelatore
+
+/gps/ene/type Mono
+/gps/ene/mono 2.0 GeV
+
+#-------------------------------------------------------------------------------
+
+# positrone
+/gps/source/add 0.33
+/gps/particle e+
+
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/radius 0.1 cm
+/gps/pos/halfz 0.1 cm
+/gps/pos/centre -20 8 8 cm
+
+/gps/direction 1 0 0 #per beam diretto su bersaglio e rivelatore
+
+/gps/ene/type Mono
+/gps/ene/mono 2.0 GeV
+
+#-------------------------------------------------------------------------------
+
+# list all sources
+/gps/source/list

@@ -4,7 +4,8 @@ import time
 import logging
 import argparse
 
-from numpy import array
+from numpy import array, reshape
+from tensorflow.keras.models import load_model
 
 PACKAGE_NAME = 'EM_shower_simulator'
 AUTHOR = 'Dario Cafasso, Daniele Passaro'
@@ -47,12 +48,15 @@ def simulate_shower(features, verbose=0):
 
     #Start operations
     logger.info('Loading model and weights...')
+    try:
+       model = load_model('EM_shower_network/generator.h5')
+    except:
+       return 1
     start_time = time.time()
-
-    #Things happen------------------------------------here
-
+    model.predict(features)
     time_elapsed = time.time()- start_time
     logger.info(f'Done in {time_elapsed:.3} seconds')
+    #show results
     return 0
 
 
@@ -82,8 +86,6 @@ if __name__ == "__main__":
     #Start simulation
     STATE = simulate_shower(inputs, verbose=ARGS.verbose)
     if STATE == 1:
-        print('A problem occurred in loading weights')
-    elif STATE == 2:
-        print('A problem occurred')
+        print('Error loading the model.')
     else:
         print('The work is done.')

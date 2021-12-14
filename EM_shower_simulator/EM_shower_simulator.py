@@ -1,7 +1,7 @@
 """Simulation of EM shower with a pre-trained NN"""
 
-from config import *
-from __version__ import *
+from .config import *
+from .__version__ import *
 
 import time
 import logging

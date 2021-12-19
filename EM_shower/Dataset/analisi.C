@@ -150,16 +150,22 @@ TH2D *set_hist_layer(const int LAYER, double shower[12][12][12]){
   TH2D *layer_x = new TH2D("",label, 12,-200,200,12,-200,200);
   for(int num_z=0; num_z<12;num_z++){
     for(int num_y=0; num_y<12;num_y++){
+      std::cout<<shower[LAYER-1][num_z][num_y]<<std::endl;
       layer_x->SetBinContent(num_z, num_y, shower[LAYER-1][num_z][num_y]);
     }
   }
   return layer_x;
 }
 
-void event_display(int const evento=0){
+void do_stuff(TCanvas *c, int index, TH2D *hist){
+  c->cd(index);
+  gPad->SetLogz();
+  hist->SetContour(99);
+  hist->SetMaximum(240000); hist->SetMinimum(1);
+  hist->Draw("COLZ");
+}
 
-  TCanvas *c = new TCanvas("","",1200,800);
-  c->Divide(4,3);
+void event_display(int const evento=0, Bool_t show_display = kTRUE){
 
   ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
@@ -168,7 +174,9 @@ void event_display(int const evento=0){
   h->Add(input);
 
   double shower[12][12][12];
-  TBranch *b_shower;
+  TBranch *b_shower, *b_en_in;
+  double en_in, en_misurata=0;
+  h->SetBranchAddress("en_in", &en_in, &b_en_in);
   h->SetBranchAddress("shower", shower, &b_shower);
 
   h->GetEntry(evento);
@@ -183,30 +191,59 @@ void event_display(int const evento=0){
   layer7 = set_hist_layer(7, shower); layer8 = set_hist_layer(8, shower);layer9 = set_hist_layer(9, shower);
   layer10 = set_hist_layer(10, shower); layer11 = set_hist_layer(11, shower);layer12 = set_hist_layer(12, shower);
 
-  gStyle->SetOptStat(kFALSE);
-  c->cd(1);
-  layer1->Draw("zcolor");
-  c->cd(2);
-  layer2->Draw("zcolor");
-  c->cd(3);
-  layer3->Draw("zcolor");
-  c->cd(4);
-  layer4->Draw("zcolor");
-  c->cd(5);
-  layer5->Draw("zcolor");
-  c->cd(6);
-  layer6->Draw("zcolor");
-  c->cd(7);
-  layer7->Draw("zcolor");
-  c->cd(8);
-  layer8->Draw("zcolor");
-  c->cd(9);
-  layer9->Draw("zcolor");
-  c->cd(10);
-  layer10->Draw("zcolor");
-  c->cd(11);
-  layer11->Draw("zcolor");
-  c->cd(12);
-  layer12->Draw("zcolor");
+  if(show_display){
+    TCanvas *c = new TCanvas("","",1200,800);
+    c->Divide(4,3);
+    gStyle->SetOptStat(kFALSE);
+    //gStyle->SetPalette(52, 0);
+    do_stuff(c, 1, layer1);
+    do_stuff(c, 2, layer2);
+    do_stuff(c, 3, layer3);
+    do_stuff(c, 4, layer4);
+    do_stuff(c, 5, layer5);
+    do_stuff(c, 6, layer6);
+    do_stuff(c, 7, layer7);
+    do_stuff(c, 8, layer8);
+    do_stuff(c, 9, layer9);
+    do_stuff(c, 10, layer10);
+    do_stuff(c, 11, layer11);
+    do_stuff(c, 12, layer12);
+
+    /*c->cd(1);
+    layer1->SetContour(13, zcontours); layer1->SetMaximum(240000); layer1->Draw("COL Z CJUST");
+    c->cd(2);
+    layer2->SetMaximum(240000); layer2->Draw("COL Z CJUST");
+    c->cd(3);
+    layer3->SetMaximum(240000); layer3->Draw("COL Z CJUST");
+    c->cd(4);
+    layer4->SetMaximum(240000); layer4->Draw("COL Z CJUST");
+    c->cd(5);
+    layer5->SetMaximum(240000); layer5->Draw("COL Z CJUST");
+    c->cd(6);
+    layer6->SetMaximum(240000); layer6->Draw("COL Z CJUST");
+    c->cd(7);
+    layer7->SetMaximum(240000); layer7->Draw("COL Z CJUST");
+    c->cd(8);
+    layer8->SetMaximum(240000); layer8->Draw("COL Z CJUST");
+    c->cd(9);
+    layer9->SetMaximum(240000); layer9->Draw("COL Z CJUST");
+    c->cd(10);
+    layer10->SetMaximum(240000); layer10->Draw("COL Z CJUST");
+    c->cd(11);
+    layer11->SetMaximum(240000); layer11->Draw("COL Z CJUST");
+    c->cd(12);
+    layer12->SetMaximum(240000); layer12->Draw("COL Z CJUST");*/
+  }
+
+  for(int layers=0; layers<12; layers++){
+    for(int num_z=0; num_z<12;num_z++){
+      for(int num_y=0; num_y<12;num_y++){
+        en_misurata += shower[layers][num_z][num_y] ;
+      }
+    }
+  }
+
+  std::cout<<"Energia iniziale:\t"<<en_in<<"keV"<<std::endl;
+  std::cout<<"Energia misurata:\t"<<en_misurata<<"keV"<<std::endl;
 
 }

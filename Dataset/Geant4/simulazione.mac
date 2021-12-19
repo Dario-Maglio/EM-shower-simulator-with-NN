@@ -1,0 +1,58 @@
+/control/verbose 1
+
+/geometry/source geometria.tg
+
+/physics_lists/select EM
+#/physics_lists/factory/addOptical
+#/physics_lists/factory/addRadioactiveDecay
+#/process/optical/processActivation Scintillation true
+
+/run/useMaximumLogicalCores
+/run/initialize
+
+/geometry/test/run
+
+/vis/viewer/set/background white
+/vis/geometry/list
+/vis/open VRML2FILE
+/vis/drawVolume
+/vis/viewer/flush
+
+/control/execute sorgente.mac                #sorgente vera
+
+/random/setSeeds 17818102 10651093
+
+/vis/scene/add/axes 0 0 0 42 cm
+/vis/scene/add/trajectories
+/vis/scene/endOfEventAction accumulate 1
+
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set e- red
+/vis/modeling/trajectories/drawByParticleID-0/set e+ yellow
+/vis/modeling/trajectories/drawByParticleID-0/set gamma green
+/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton grey #green
+/vis/modeling/trajectories/drawByParticleID-0/set proton cyan
+/vis/modeling/trajectories/drawByParticleID-0/set neutron yellow
+
+/vis/filtering/trajectories/create/particleFilter
+/vis/filtering/trajectories/particleFilter-0/add anti_nu_e
+/vis/filtering/trajectories/particleFilter-0/invert true
+
+/vis/viewer/set/background white
+
+/tracking/verbose 2
+/run/beamOn 1
+
+/vis/disable
+
+# turn off screen printing for fast simulation
+/tracking/verbose 0
+
+# turn on progress report
+/run/verbose 1
+/run/printProgress 100000
+
+# start simulation
+
+/analysis/setFileName shower_prova
+/run/beamOn 1000

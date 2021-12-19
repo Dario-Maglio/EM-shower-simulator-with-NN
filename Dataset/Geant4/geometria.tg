@@ -1,0 +1,30 @@
+:volu world BOX 40*m 40*cm 40*cm G4_AIR
+
+:P X 5*cm //spessore celletta
+:P Y 2.*cm //larghezza celletta
+:P Z 2.*cm //altezza celletta
+:P X_TOT 80*cm // spessore totale
+:P Y_TOT 20*cm // larghezza totale
+:P Z_TOT 20*cm // altezza totale
+
+:rotm r000 0 0 0
+:rotm r090x 90 0 0
+:rotm r090y 0 90 0
+:rotm r090z 0 0 90
+
+:solid lastra0 BOX 0.1*cm $Y_TOT/10*cm $Z_TOT/10*cm
+:solid celletta BOX $X/2 $Y/2 $Z/2
+
+:prop G4_SODIUM_IODIDE
+  SCINTILLATIONYIELD 45./keV
+  RESOLUTIONSCALE 1.
+  FASTTIMECONSTANT 250.*ns
+  YIELDRATIO 1
+
+#include cellette.tg
+
+:volu step0(S) lastra0 G4_AIR
+:place step0(S) 1 world r000 -19*cm 0*cm 0*cm
+:color step0(S) 0. 0. 0.
+
+:vis world OFF

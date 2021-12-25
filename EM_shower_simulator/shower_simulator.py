@@ -12,13 +12,11 @@ AUTHOR = 'Dario Cafasso, Daniele Passaro'
 DESCRIPTION = '....description......'
 URL = '....url.....'
 TAG = '1.0.0'
-BUILD_DATE = '14 Dec 2021 18:06:00 +0100'
 n_features = 3
 DEFAULT_FEATURES = [21.2, 34.6, 12.]
 
-"""Problemi: vorrei importare costanti direttamente da init e config.
-   Logger non cancella messaggi debug quando uso pacchetto.
-   Come funziona setup.py?
+"""Problemi:
+   vorrei importare __version__(TAG) e costanti direttamente da init e config.
 """
 
 def simulate_shower(features, verbose=0):
@@ -33,9 +31,8 @@ def simulate_shower(features, verbose=0):
         e = f'Expected input dimension {n_features}, not {len(features)}.'
         raise TypeError(e)
 
-    #Define the logger handler
+    #Define logger and handler
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     #Define the logger
@@ -45,17 +42,22 @@ def simulate_shower(features, verbose=0):
     if verbose==1:
         logger.setLevel(logging.DEBUG)
         logger.info('Logging level set on DEBUG.')
+    else:
+        logger.setLevel(logging.WARNING)
+        logger.info('Logging level set on WARNING.')
 
     #Start operations
-    logger.info('Loading model and weights...')
+    logger.info('Loading the model...')
+    start_time = time.time()
     try:
-       model = load_model('EM_shower_network/generator.h5')
+       #model = load_model('EM_shower_network/generator.h5')
+       #model.predict(features)
+       logger.info('Missing model')
     except:
        return 1
-    start_time = time.time()
-    model.predict(features)
     time_elapsed = time.time()- start_time
-    logger.info(f'Done in {time_elapsed:.3} seconds')
+    logger.info(f'Done in {time_elapsed:.4} seconds')
+    logger.handlers.clear()
     #show results
     return 0
 
@@ -72,7 +74,7 @@ if __name__ == "__main__":
        nargs='+', default=DEFAULT_FEATURES,
        help="allow the user to insert the shower's features from command line"
            +"\nthe argument must be a list containing the features in the "
-           +"following order: energy momentum angle")
+           +"following order:\n energy momentum angle")
     ARGS = PARSER.parse_args()
 
     #Arguments conversion to float
@@ -86,6 +88,6 @@ if __name__ == "__main__":
     #Start simulation
     STATE = simulate_shower(inputs, verbose=ARGS.verbose)
     if STATE == 1:
-        print('Error loading the model.')
+        print('Error while loading the model.')
     else:
         print('The work is done.')

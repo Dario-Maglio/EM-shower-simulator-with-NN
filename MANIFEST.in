@@ -1,0 +1,2 @@
+include versioneer.py
+include EM_shower_simulator/_version.py

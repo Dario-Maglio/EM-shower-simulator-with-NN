@@ -2,6 +2,6 @@ numpy
 scipy
 matplotlib
 scikit-learn
-tensorflow
+tensorflow-cpu
 keras
 opencv-python

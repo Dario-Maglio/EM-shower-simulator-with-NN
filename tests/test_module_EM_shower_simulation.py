@@ -3,7 +3,7 @@
 import unittest
 
 from EM_shower_simulator.config import DEFAULT_FEATURES
-from EM_shower_simulator.EM_shower_simulator import simulate_shower as simulate
+from EM_shower_simulator.shower_simulator import simulate_shower as simulate
 
 
 class TestCore(unittest.TestCase):

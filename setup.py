@@ -2,11 +2,11 @@
    pip install -e . It allows to use the simulate_shower module in python.
 """
 
+from EM_shower_simulator import PACKAGE_NAME, AUTHOR, AUTHOR_EMAIL, DESCRIPTION, URL
+
 from setuptools import setup, find_packages
 
 import versioneer
-
-from EM_shower_simulator import PACKAGE_NAME, AUTHOR, AUTHOR_EMAIL, DESCRIPTION, URL
 
 
 
@@ -26,7 +26,9 @@ _CLASSIFIERS = [
     'Intended Audience :: Science/Research',
     'Topic :: Scientific computation',
     'Development Status :: Beta']
-_SCRIPTS = []
+_SCRIPTS = [
+    'scripts/simulate_EM_shower'
+]
 _PACKAGES = find_packages(exclude='tests')
 
 _KWARGS = dict(name=PACKAGE_NAME,

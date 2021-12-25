@@ -2,7 +2,6 @@
 
 import unittest
 
-from EM_shower_simulator.config import DEFAULT_FEATURES
 from EM_shower_simulator.shower_simulator import simulate_shower as simulate
 
 
@@ -11,7 +10,7 @@ class TestCore(unittest.TestCase):
 
     def test_simulate(self):
         """Test simulate_shower works correctly on default data."""
-        self.assertEqual(simulate(DEFAULT_FEATURES),0)
+        self.assertEqual(simulate(),0)
 
 if __name__ == "__main__":
     unittest.main()

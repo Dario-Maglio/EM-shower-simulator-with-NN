@@ -1,10 +1,10 @@
 Modules' documentation
 ======================
 
-EM_simulator module
--------------------
+EM shower simulator module
+--------------------------
 
-.. automodule:: EM_shower_simulator.EM_shower_simulator
+.. automodule:: EM_shower_simulator.shower_simulator
    :members:
 
 

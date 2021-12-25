@@ -1,3 +1,7 @@
+"""Install the package in Development mode writing from bash the command
+   pip install -e . It allows to use the simulate_shower module in python.
+"""
+
 from setuptools import setup, find_packages
 
 import versioneer

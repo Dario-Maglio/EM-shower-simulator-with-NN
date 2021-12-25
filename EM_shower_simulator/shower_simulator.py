@@ -15,9 +15,7 @@ TAG = '1.0.0'
 n_features = 3
 DEFAULT_FEATURES = [21.2, 34.6, 12.]
 
-"""Problemi:
-   vorrei importare __version__(TAG) e costanti direttamente da init e config.
-"""
+#Problemi: vorrei importare __version__(TAG) e costanti direttamente da init e config.
 
 def simulate_shower(features, verbose=0):
     """Given the input features as a list of n_features float components,

@@ -1,9 +1,10 @@
 #!
 
-import argparse
 from EM_shower_simulator import PACKAGE_NAME, __version__, DESCRIPTION, URL
-from EM_shower_simulator.config import default_features
 from EM_shower_simulator import simulate_shower as simulate
+from EM_shower_simulator.shower_simulator import n_features, default_features
+
+import argparse
 
 
 

@@ -1,7 +1,6 @@
 """Package information"""
 
 from . import _version
-from .config import n_features, default_features
 from .shower_simulator import simulate_shower
 
 __version__ = _version.get_versions()['version']

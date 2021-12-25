@@ -1,14 +1,13 @@
 """Simulation of EM shower with a pre-trained NN"""
 
-from .config import n_features, default_features
-
 import time
 import logging
 
 from numpy import array, reshape
 from tensorflow.keras.models import load_model
 
-
+n_features = 3
+default_features = [21.2, 34.6, 12.]
 
 def simulate_shower(features=default_features, verbose=0):
     """Given the input features as a list of n_features float components,

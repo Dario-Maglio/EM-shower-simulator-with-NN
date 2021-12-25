@@ -19,8 +19,10 @@ mode writing from bash
 Usage
 -----
 
-After the Installation, in a python environment you can use the module
-simply writing
+If no arguments are passed, the simulation will use random features.
+(not implemented yet -> actually default parameter in use)
+
+In a python environment you can use the module simply writing
 
 .. code-block:: python
 
@@ -29,6 +31,13 @@ simply writing
    #return the error code and show the result
    0
 
+You can also execute the bash script
+
+.. code-block:: bash
+
+   simulate_EM_shower --features 1. 3. 5.
+
+Use --help for more informatioin
 
 API
 ---

@@ -3,7 +3,7 @@
 import unittest
 import pathlib as pl
 
-from EM_shower_simulator.config import n_features, default_features
+from EM_shower_simulator.shower_simulator import n_features, default_features
 
 class TestCore(unittest.TestCase):
     """Test methods class for configuration and dataset."""

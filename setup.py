@@ -1,5 +1,5 @@
-"""Install the package in Development mode writing from bash the command
-   pip install -e . It allows to use the simulate_shower module in python.
+"""Install the package in development mode writing from bash the command:
+   $ pip install -e .
 """
 
 from EM_shower_simulator import PACKAGE_NAME, AUTHOR, AUTHOR_EMAIL, DESCRIPTION, URL
@@ -18,8 +18,7 @@ with open('requirements.txt', 'r') as f:
     _DEPENDENCIES = f.read().splitlines()
 
 _CLASSIFIERS = [
-    'License :: OSI Approved :: '
-    'GNU General Public License v3',
+    'License :: OSI Approved :: ' + _LICENSE,
     'Operating System :: OS Independent',
     "Programming Language :: Python :: 3",
     'Programming Language :: C++',

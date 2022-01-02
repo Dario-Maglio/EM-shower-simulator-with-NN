@@ -7,6 +7,6 @@ __version__ = _version.get_versions()['version']
 
 PACKAGE_NAME = 'EM shower simulator'
 AUTHOR = 'Dario Cafasso, Daniele Passaro'
-AUTHOR_EMAIL = 'cafasso.dario@gmail.com, passaro.?'
+AUTHOR_EMAIL = 'cafasso.dario@gmail.com, danielepassaro2@live.it'
 DESCRIPTION = '....description......'
 URL = '....url.....'

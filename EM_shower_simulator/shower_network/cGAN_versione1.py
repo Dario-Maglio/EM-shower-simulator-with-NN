@@ -1,8 +1,8 @@
-"""
-Esempio di cGAN con i dati reali
-"""
+""" Train the GAN with the Geant generated dataset and save the model """
+
 import os
 import time
+import pathlib
 
 from IPython import display # A command shell for interactive computing in Python.
 from IPython.core.display import Image
@@ -46,6 +46,8 @@ discriminator_optimizer = tf.keras.optimizers.Adam(3e-4)
 
 #-------------------------------------------------------------------------------
 
+#path=pl.Path('Dataset/Filtered_data/data_MVA.root')
+#tpath = pathlib.Path(path).resolve()
 file = up.open("/content/EM-shower-simulator-with-NN/Dataset/Filtered_data/data_MVA.root")
 branches = file['h'].arrays()
 
@@ -356,3 +358,19 @@ if __name__=="__main__":
     cond_gan.compile()
     cond_gan.fit(train_dataset, epochs=EPOCHS)
     #cond_gan.train(train_dataset, EPOCHS)
+
+    """
+    # compile model
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # Fit the model
+    model.fit(X, Y, epochs=150, batch_size=10, verbose=0)
+
+    # evaluate the model
+    scores = model.evaluate(X, Y, verbose=0)
+    print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
+    """
+
+    # save model and architecture to single file
+    cond_gan.save("model.h5")
+    print("Model saved to disk")

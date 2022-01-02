@@ -31,11 +31,11 @@ array<double,2> compute_angles(double x_start, double y_start, double z_start,
   return angles;
 }
 
-void null(double shower[12][12][12]){
+void null(double shower[12][12][12][1]){
   for(int layers=0; layers<12; layers++){
     for(int num_z=0; num_z<12;num_z++){
       for(int num_y=0; num_y<12;num_y++){
-        shower[layers][num_z][num_y] = 0 ;
+        shower[layers][num_z][num_y][0] = 0 ;
       }
     }
   }
@@ -47,8 +47,8 @@ void formattazione_MVA(){
     //--------------------------------------------------------------------------
     ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
-    const char *input = "shower_prova.root";
-    const char *output = "Dataset/dati_MVA.root";
+    const char *input = "/mnt/c/Users/Daniele/Desktop/Magistrale/CMEPDA/shower_prova.root";
+    const char *output = "data_MVA.root";
   // input, which is GEARS output
   	TChain *t = new TChain("t");
   	t->Add(input);
@@ -79,10 +79,10 @@ void formattazione_MVA(){
     tree->Branch("en_in", &en_in, "en_in/D");
     tree->Branch("theta", &theta, "theta/D");
     tree->Branch("phi", &phi, "phi/D");
-    double shower[12][12][12];
+    double shower[12][12][12][1];
     // 3D vector: first index = layer; second index = z-coordinate of unit cell;
     // third index = y-coordinate of unit cell
-    tree->Branch("shower", &shower, "shower[12][12][12]/D");
+    tree->Branch("shower", &shower, "shower[12][12][12][1]/D");
 
     double x_start, y_start, z_start;
     double x_stop, y_stop, z_stop;
@@ -129,8 +129,20 @@ void formattazione_MVA(){
                 }
               }
               if(vlm_->at(i)==(layers)*1000 + j){
-                  shower[layers-1][num_z-1][num_y-1]+=de_->at(i);
+                  shower[layers-1][num_z-1][num_y-1][0]+=de_->at(i);
               }
+            }
+          }
+        }
+      }
+      for(int layers=0; layers<12; layers++){
+        for(int num_z=0; num_z<12;num_z++){
+          for(int num_y=0; num_y<12;num_y++){
+            if(shower[layers][num_z][num_y][0]==0){
+              shower[layers][num_z][num_y][0] =-5.;
+            }
+            else{
+              shower[layers][num_z][num_y][0] = TMath::Log10(shower[layers][num_z][num_y][0]) ;
             }
           }
         }
@@ -143,15 +155,15 @@ void formattazione_MVA(){
     file->Close(); // close output file
 }
 
-TH2D *set_hist_layer(const int LAYER, double shower[12][12][12]){
+TH2D *set_hist_layer(const int LAYER, double shower[12][12][12][1]){
   char label[50];
   sprintf(label, "layer %d;y[mm];z[mm]", LAYER);
 
   TH2D *layer_x = new TH2D("",label, 12,-200,200,12,-200,200);
   for(int num_z=0; num_z<12;num_z++){
     for(int num_y=0; num_y<12;num_y++){
-      std::cout<<shower[LAYER-1][num_z][num_y]<<std::endl;
-      layer_x->SetBinContent(num_z, num_y, shower[LAYER-1][num_z][num_y]);
+      std::cout<<shower[LAYER-1][num_z][num_y][0]<<std::endl;
+      layer_x->SetBinContent(num_z, num_y, shower[LAYER-1][num_z][num_y][0]);
     }
   }
   return layer_x;
@@ -173,7 +185,7 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
   TChain *h = new TChain("h");
   h->Add(input);
 
-  double shower[12][12][12];
+  double shower[12][12][12][1];
   TBranch *b_shower, *b_en_in;
   double en_in, en_misurata=0;
   h->SetBranchAddress("en_in", &en_in, &b_en_in);
@@ -208,37 +220,12 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
     do_stuff(c, 10, layer10);
     do_stuff(c, 11, layer11);
     do_stuff(c, 12, layer12);
-
-    /*c->cd(1);
-    layer1->SetContour(13, zcontours); layer1->SetMaximum(240000); layer1->Draw("COL Z CJUST");
-    c->cd(2);
-    layer2->SetMaximum(240000); layer2->Draw("COL Z CJUST");
-    c->cd(3);
-    layer3->SetMaximum(240000); layer3->Draw("COL Z CJUST");
-    c->cd(4);
-    layer4->SetMaximum(240000); layer4->Draw("COL Z CJUST");
-    c->cd(5);
-    layer5->SetMaximum(240000); layer5->Draw("COL Z CJUST");
-    c->cd(6);
-    layer6->SetMaximum(240000); layer6->Draw("COL Z CJUST");
-    c->cd(7);
-    layer7->SetMaximum(240000); layer7->Draw("COL Z CJUST");
-    c->cd(8);
-    layer8->SetMaximum(240000); layer8->Draw("COL Z CJUST");
-    c->cd(9);
-    layer9->SetMaximum(240000); layer9->Draw("COL Z CJUST");
-    c->cd(10);
-    layer10->SetMaximum(240000); layer10->Draw("COL Z CJUST");
-    c->cd(11);
-    layer11->SetMaximum(240000); layer11->Draw("COL Z CJUST");
-    c->cd(12);
-    layer12->SetMaximum(240000); layer12->Draw("COL Z CJUST");*/
   }
 
   for(int layers=0; layers<12; layers++){
     for(int num_z=0; num_z<12;num_z++){
       for(int num_y=0; num_y<12;num_y++){
-        en_misurata += shower[layers][num_z][num_y] ;
+        en_misurata += shower[layers][num_z][num_y][0] ;
       }
     }
   }

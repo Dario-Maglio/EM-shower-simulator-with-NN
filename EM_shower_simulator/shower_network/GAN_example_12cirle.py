@@ -9,8 +9,8 @@ from tensorflow.keras.layers import (Dense,
                                      BatchNormalization,
                                      LeakyReLU,
                                      Reshape,
-                                     Conv2DTranspose,
-                                     Conv2D,
+                                     Conv3DTranspose,
+                                     Conv3D,
                                      Dropout,
                                      Flatten)
 import tensorflow as tf
@@ -19,14 +19,13 @@ import matplotlib.pyplot as plt
 import cv2
 
 nsamples=50000
-
 #-------------------------------------------------------------------------------
 
 def background():
     """
     Definisce il background e le dimensioni dell'immagine
     """
-    return np.zeros((28,28,1), np.uint8)
+    return np.zeros((12,12,1), np.uint8)
 
 #-------------------------------------------------------------------------------
 
@@ -56,12 +55,11 @@ def genCircle():
     """"
     Genera e disegna un cerchio random
     """
-    return drawCircle( randomColor(), int(np.random.rand()*50)+10,
-                      int(np.random.rand()*50)+10, int(np.random.rand()*6)+3 )
+    return drawCircle( randomColor(), int(np.random.rand()*2)+5,
+                      int(np.random.rand()*2)+5, int(np.random.rand()*2)+2 )
 #-------------------------------------------------------------------------------
 #Genero le immagini
-targets=np.random.rand(nsamples)>=0.
-train_images=np.array( [genCircle()[0]#if targets[x]# else genRectangle()[0]
+train_images=np.array( [[genCircle()[0] for l in range(12)]#if targets[x]# else genRectangle()[0]
                 for x in range(nsamples)] )
 
 #-------------------------------------------------------------------------------
@@ -70,18 +68,20 @@ def debug_circle():
     """
     Genera dei cerchi random e li visualizza
     """
-    print(targets.shape)
     print(train_images.shape)
-    print(targets[:4])
-    for i in range(4):
-        plt.imshow(train_images[i])
-        plt.show()
+    plt.figure(figsize=(20,150))
+    k=0
+    for i in range(1):
+        for j in range(12):
+            k=k+1
+            plt.subplot(1, 12, k)
+            plt.imshow(train_images[i,j,:,:,0], cmap='gray')
+            plt.axis("off")
+    plt.show()
+
 
 #-------------------------------------------------------------------------------
-
-debug_circle()
-# Genera e formatta le immagini per il training
-train_images = (train_images.reshape(train_images.shape[0], 28, 28, 1)
+train_images = (train_images.reshape(train_images.shape[0], 12, 12, 12, 1)
                 .astype('float32'))
 train_images = (train_images -127.5) / 127.5 # Normalize the images to [-1, 1]
 
@@ -89,6 +89,7 @@ train_images = (train_images -127.5) / 127.5 # Normalize the images to [-1, 1]
 
 BUFFER_SIZE = 60000
 BATCH_SIZE = 256
+NOISE_DIM = 1000
 
 # Batch and shuffle the data
 train_dataset = ( tf.data.Dataset.from_tensor_slices(train_images)
@@ -101,26 +102,26 @@ def make_generator_model():
     Definisce il modello del generatore: Sequential con dei layer convolutivi Transpose
     """
     model = tf.keras.Sequential()
-    model.add(Dense(7*7*256, use_bias=False, input_shape=(100,)))
+    model.add(Dense(3*3*3*256, use_bias=False, input_shape=(NOISE_DIM,)))
     model.add(BatchNormalization())
     model.add(LeakyReLU())
 
-    model.add(Reshape((7, 7, 256)))
-    assert model.output_shape == (None, 7, 7, 256) # Note: None is the batch size
+    model.add(Reshape((3, 3, 3, 256)))
+    assert model.output_shape == (None, 3, 3, 3, 256) # Note: None is the batch size
 
-    model.add(Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False))
-    assert model.output_shape == (None, 7, 7, 128)
+    model.add(Conv3DTranspose(128, (5, 5, 5), strides=(1, 1, 1), padding='same', use_bias=False))
+    assert model.output_shape == (None, 3, 3, 3, 128)
     model.add(BatchNormalization())
     model.add(LeakyReLU())
 
-    model.add(Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False))
-    assert model.output_shape == (None, 14, 14, 64)
+    model.add(Conv3DTranspose(64, (5, 5, 5), strides=(2, 2, 2), padding='same', use_bias=False))
+    assert model.output_shape == (None, 6, 6, 6, 64)
     model.add(BatchNormalization())
     model.add(LeakyReLU())
 
-    model.add(Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same',
+    model.add(Conv3DTranspose(1, (5, 5, 5), strides=(2, 2, 2), padding='same',
                               use_bias=False, activation='tanh'))
-    assert model.output_shape == (None, 28, 28, 1)
+    assert model.output_shape == (None, 12, 12, 12, 1)
 
     return model
 
@@ -134,14 +135,17 @@ def debug_generator():
     """
     Create a random noise and generate a sample
     """
-    noise = tf.random.normal([1, 100])
+    noise = tf.random.normal([1, NOISE_DIM])
     generated_image = generator(noise, training=False)
-    # Visualize the generated sample
-    
-    plt.imshow(generated_image[0, :, :, 0], cmap='gray')
+    print(generated_image.shape)
+
+    plt.figure(figsize=(20,150))
+    for j in range(12):
+        plt.subplot(1, 12, j+1)
+        plt.imshow(generated_image[0,j,:,:,0], cmap='gray')
+        plt.axis("off")
     plt.show()
 
-debug_generator()
 #-------------------------------------------------------------------------------
 
 def make_discriminator_model():
@@ -151,11 +155,11 @@ def make_discriminator_model():
 
     model = tf.keras.Sequential()
 
-    model.add(Conv2D(32, (5, 5), strides=(2, 2), padding='same', input_shape=[28, 28, 1]))
+    model.add(Conv3D(32, (5, 5, 5), strides=(2, 2, 2), padding='same', input_shape=[12, 12, 12, 1]))
     model.add(LeakyReLU())
     model.add(Dropout(0.3))
 
-    model.add(Conv2D(64, (5, 5), strides=(2, 2), padding='same'))
+    model.add(Conv3D(64, (5, 5, 5), strides=(2, 2, 2), padding='same'))
     model.add(LeakyReLU())
     model.add(Dropout(0.3))
 
@@ -174,10 +178,10 @@ def debug_discriminator():
     """
     Verifico output del discriminatore sul sample generato random
     """
-    noise = tf.random.normal([1, 100])
+    noise = tf.random.normal([1, NOISE_DIM])
     generated_image = generator(noise, training=False)
     decision = discriminator(generated_image)
-    print (decision)
+    print(decision)
 
 #-------------------------------------------------------------------------------
 
@@ -210,23 +214,6 @@ discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 
 #-------------------------------------------------------------------------------
 
-# creo cartella in cui salvo i risultati del train come checkpoint. Inoltro genero
-# un seed random costante, che riutilizzo dopo
-
-checkpoint_dir = './training_checkpoints'
-checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
-checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
-                                 discriminator_optimizer=discriminator_optimizer,
-                                 generator=generator,
-                                 discriminator=discriminator)
-
-EPOCHS = 30
-num_examples_to_generate = 16
-noise_dim = 100
-seed = tf.random.normal([num_examples_to_generate, noise_dim])
-
-#-------------------------------------------------------------------------------
-
 # tf.function annotation causes the function
 # to be "compiled" as part of the training
 @tf.function
@@ -238,7 +225,7 @@ def train_step(images):
     4 - Process Gradients and Run the Optimizer ;
     """
 
-    noise = tf.random.normal([BATCH_SIZE, noise_dim])
+    noise = tf.random.normal([BATCH_SIZE, NOISE_DIM])
 
     # GradientTape method records operations for automatic differentiation.
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
@@ -283,6 +270,19 @@ def train_step(images):
                                             discriminator.trainable_variables))
 
 #-------------------------------------------------------------------------------
+# creo cartella in cui salvo i risultati del train come checkpoint. Inoltro genero
+# un seed random costante, che riutilizzo dopo
+
+checkpoint_dir = './training_checkpoints'
+checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
+                                 discriminator_optimizer=discriminator_optimizer,
+                                 generator=generator,
+                                 discriminator=discriminator)
+
+EPOCHS = 100
+num_examples_to_generate = 5
+seed = tf.random.normal([num_examples_to_generate, NOISE_DIM])
 
 def generate_and_save_images(model, epoch, test_input):
     """
@@ -293,11 +293,15 @@ def generate_and_save_images(model, epoch, test_input):
     # 1 - Generate images
     predictions = model(test_input, training=False)
     # 2 - Plot the generated images
-    plt.figure(figsize=(4,4))
+    #plt.figure(figsize=(75,75))
+    k=0
     for i in range(predictions.shape[0]):
-        plt.subplot(4, 4, i+1)
-        plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5, cmap='gray')
-        plt.axis('off')
+      for j in range( predictions.shape[1]):
+        k=k+1
+        plt.subplot(num_examples_to_generate, predictions.shape[1], k)
+        plt.imshow(predictions[i,j,:,:,0] * 127.5 + 127.5, cmap='gray')
+        plt.axis("off")
+    plt.show()
     # 3 - Save the generated images
     plt.savefig(f'image_at_epoch_{epoch}.png')
     plt.show()
@@ -336,5 +340,4 @@ def train(dataset, epochs):
 
 #-------------------------------------------------------------------------------
 if __name__=="__main__":
-
     train(train_dataset, EPOCHS)

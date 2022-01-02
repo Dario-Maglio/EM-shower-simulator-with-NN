@@ -46,9 +46,8 @@ discriminator_optimizer = tf.keras.optimizers.Adam(3e-4)
 
 #-------------------------------------------------------------------------------
 
-#path=pl.Path('Dataset/Filtered_data/data_MVA.root')
-#tpath = pathlib.Path(path).resolve()
-file = up.open("/content/EM-shower-simulator-with-NN/Dataset/Filtered_data/data_MVA.root")
+path = pathlib.Path('../../dataset/filtered_data/data_MVA.root').resolve()
+file = up.open(str(path))
 branches = file['h'].arrays()
 
 train_images = np.array(branches["shower"]).astype("float32")

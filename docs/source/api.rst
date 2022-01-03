@@ -11,5 +11,5 @@ EM shower simulator module
 EM shower training module
 -------------------------
 
-.. automodule:: EM_shower_simulator.shower_network.example
+.. automodule:: EM_shower_simulator.shower_network.train_GAN
    :members:

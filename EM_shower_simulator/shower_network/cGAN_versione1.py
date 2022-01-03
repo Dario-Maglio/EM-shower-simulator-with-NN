@@ -1,5 +1,9 @@
 """ Train the GAN with the Geant generated dataset and save the model """
 
+# Examples of conditional GANs from which we built our neural network :
+# https://machinelearningmastery.com/how-to-develop-a-conditional-generative-adversarial-network-from-scratch/
+# https://keras.io/examples/generative/conditional_gan/
+
 import os
 import time
 import pathlib
@@ -20,7 +24,7 @@ from tensorflow.keras.layers import (Input,
                                      Flatten)
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.utils import to_categorical
-import keras
+#import keras
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,8 +38,6 @@ NOISE_DIM = 1000
 N_CLASSES = 1
 
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-# creo cartella in cui salvo i risultati del train come checkpoint. Inoltro genero
-# un seed random costante, che riutilizzo dopo
 
 EPOCHS = 100
 num_examples_to_generate = 5
@@ -46,9 +48,9 @@ discriminator_optimizer = tf.keras.optimizers.Adam(3e-4)
 
 #-------------------------------------------------------------------------------
 
-path = pathlib.Path('../../dataset/filtered_data/data_MVA.root').resolve()
+path = pathlib.Path("../../dataset/filtered_data/data_MVA.root").resolve()
 file = up.open(str(path))
-branches = file['h'].arrays()
+branches = file["h"].arrays()
 
 train_images = np.array(branches["shower"]).astype("float32")
 #images in log10 scale, zeros like pixel are set to -5, maximum of pixel is 2.4E5 keV ≃ 5.4 in log scale
@@ -67,7 +69,7 @@ train_dataset = ( tf.data.Dataset.from_tensor_slices((train_images, train_labels
 
 def debug_shower():
     """
-    Genera dei cerchi random e li visualizza
+    Plot showers from the dataset
     """
     print(train_images.shape)
     #plt.figure(figsize=(20,150))
@@ -77,14 +79,17 @@ def debug_shower():
         for j in range(12):
             k=k+1
             plt.subplot(N_showers, 12, k)
-            plt.imshow(train_images[i, j, :, :, 0], cmap='gray')
+            plt.imshow(train_images[i, j, :, :, 0], cmap="gray")
             plt.axis("off")
     plt.show()
 #-------------------------------------------------------------------------------
 
 def make_generator_model():
     """
-    Definisce il modello del generatore: Sequential con dei layer convolutivi Transpose
+    Define generator model:
+    Input 1) Labels(energy, particle, ecc) to be passed to the network;
+    Input 2) Random noise from which the network creates a vector of images,
+            associated to the given labels.
     """
     # label input
     in_label = Input(shape=(1,))
@@ -108,18 +113,18 @@ def make_generator_model():
     # merge image gen and label input
     merge = Concatenate()([gen, li])
 
-    gen = Conv3DTranspose(128, (5, 5, 5), strides=(1, 1, 1), padding='same', use_bias=False)(merge)
+    gen = Conv3DTranspose(128, (5, 5, 5), strides=(1, 1, 1), padding="same", use_bias=False)(merge)
     #assert gen.shape == (None, 3, 3, 3, 128)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(64, (5, 5, 5), strides=(2, 2, 2), padding='same', use_bias=False)(gen)
+    gen = Conv3DTranspose(64, (5, 5, 5), strides=(2, 2, 2), padding="same", use_bias=False)(gen)
     #assert gen.shape == (None, 6, 6, 6, 64)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    output = (Conv3DTranspose(1, (5, 5, 5), strides=(2, 2, 2), padding='same',
-                              use_bias=False, activation='tanh')(gen))
+    output = (Conv3DTranspose(1, (5, 5, 5), strides=(2, 2, 2), padding="same",
+                              use_bias=False, activation="tanh")(gen))
     #assert output.shape == (None, 12, 12, 12, 1)
 
     model = Model([in_lat, in_label], output)
@@ -128,18 +133,18 @@ def make_generator_model():
 
 def generator_loss(fake_output):
     """
-    Definisce la loss del generatore: tengo conto dei successi sugli esempi fake(generatore)
+    Definie generator loss: successes on fake samples (from generator)
     """
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
 generator = make_generator_model()
-plot_model(generator, to_file='generator.png')
+plot_model(generator, to_file="generator.png", show_shapes=True)
 Image("generator.png")
 #-------------------------------------------------------------------------------
 
 def debug_generator():
     """
-    Create a random noise and generate a sample
+    Creates a random noise and labels and generate a sample
     """
     generator = make_generator_model()
     noise = tf.random.normal([1, NOISE_DIM])
@@ -150,7 +155,7 @@ def debug_generator():
     plt.figure(figsize=(20,150))
     for j in range(12):
         plt.subplot(1, 12, j+1)
-        plt.imshow(generated_image[0,j,:,:,0], cmap='gray')
+        plt.imshow(generated_image[0,j,:,:,0], cmap="gray")
         plt.axis("off")
     plt.show()
 
@@ -158,7 +163,9 @@ def debug_generator():
 
 def make_discriminator_model():
     """
-    Definisce il modello del discriminator: Sequential con dei layer convolutivi
+    Define discriminator model :
+    Input 1) Labels(energy, particle, ecc) to be passed to the network;
+    Input 2) Vector of images associated to the given labels.
     """
     in_label = Input(shape=(1,))
     # embedding for categorical input
@@ -174,11 +181,11 @@ def make_discriminator_model():
     merge = Concatenate()([in_image, li])
     # downsample
 
-    discr = Conv3D(32, (5, 5, 5), strides=(2, 2, 2), padding='same')(merge)
+    discr = Conv3D(32, (5, 5, 5), strides=(2, 2, 2), padding="same")(merge)
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(64, (5, 5, 5), strides=(2, 2, 2), padding='same')(discr)
+    discr = Conv3D(64, (5, 5, 5), strides=(2, 2, 2), padding="same")(discr)
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
@@ -190,8 +197,8 @@ def make_discriminator_model():
 
 def discriminator_loss(real_output, fake_output):
     """
-    Definisce la loss del discrimatore: tengo conto dei fail sugli esempi fake(generatore)
-    e dei successi sugli esempi veri
+    Define discriminator loss : fails on fake samples(from generator)
+    and successes on real samples.
     """
     real_loss = cross_entropy(tf.ones_like(real_output), real_output)
     fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
@@ -199,13 +206,13 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 discriminator = make_discriminator_model()
-plot_model(discriminator, to_file='discriminator.png')
+plot_model(discriminator, to_file="discriminator.png", show_shapes=True)
 Image("discriminator.png")
 #-------------------------------------------------------------------------------
 
 def debug_discriminator():
     """
-    Verifico output del discriminatore sul sample generato random
+    Checks discriminator output on a random sample generated by the generator
     """
     discriminator = make_discriminator_model()
     noise = tf.random.normal([1, NOISE_DIM])
@@ -217,8 +224,10 @@ def debug_discriminator():
     print(decision)
 
 #-------------------------------------------------------------------------------
+# Create a folder where it saves rusults from training in form of chechpoints. Also,
+# create a random seed, to be used during the evaluation of the cGAN
 
-checkpoint_dir = './training_checkpoints'
+checkpoint_dir = "./training_checkpoints"
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                                  discriminator_optimizer=discriminator_optimizer,
@@ -227,7 +236,10 @@ checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
 
 def generate_and_save_images(model, epoch, test_input):
     """
-    Genera e salva immagini ad ogni epoca
+    Creates and saves images at each epoch. Arguments:
+    -) model: model (cGAN) to be evaluated;
+    -) epoch: epoch whose predictions are to be saved;
+    -) test_input: constant input to the model in order to evaluate performances.
     """
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
@@ -240,30 +252,47 @@ def generate_and_save_images(model, epoch, test_input):
       for j in range( predictions.shape[1]):
         k=k+1
         plt.subplot(num_examples_to_generate, predictions.shape[1], k)
-        plt.imshow(predictions[i,j,:,:,0] * 127.5 + 127.5, cmap='gray')
+        plt.imshow(predictions[i,j,:,:,0] * 127.5 + 127.5, cmap="gray")
         plt.axis("off")
     plt.show()
     # 3 - Save the generated images
-    plt.savefig(f'image_at_epoch_{epoch}.png')
+    plt.savefig(f"image_at_epoch_{epoch}.png")
     plt.show()
 
 #-------------------------------------------------------------------------------
 
-class ConditionalGAN(keras.Model):
+class ConditionalGAN(tf.keras.Model):
+    """
+    Class for a conditional GAN. It inherits keras.Model properties and functions.
+    """
     def __init__(self, discriminator, generator, latent_dim):
+        """
+        Constructor.
+        Inputs:
+        discriminator = discriminator network;
+        generator = generator network;
+        latent_dim = dimensionality of the space from which the noise is randomly
+                     produced.
+        """
         super(ConditionalGAN, self).__init__()
         self.discriminator = discriminator
         self.generator = generator
         self.generator_optimizer = tf.keras.optimizers.Adam(3e-4)
         self.discriminator_optimizer = tf.keras.optimizers.Adam(3e-4)
-        self.gen_loss_tracker = keras.metrics.Mean(name="generator_loss")
-        self.discr_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
+        self.gen_loss_tracker = tf.keras.metrics.Mean(name="generator_loss")
+        self.discr_loss_tracker = tf.keras.metrics.Mean(name="discriminator_loss")
 
     @property
     def metrics(self):
+        """
+        Metrics of the network.
+        """
         return [self.gen_loss_tracker, self.discr_loss_tracker]
 
     def compile(self):
+        """
+        Compile method for the network.
+        """
         super(ConditionalGAN, self).compile()
 
     # tf.function annotation causes the function
@@ -271,8 +300,12 @@ class ConditionalGAN(keras.Model):
 
     def train_step(self, dataset):
         """
-        1 - Create a random noise to feed it into the model for the image generation ;
-        2 - Generate images and calculate loss values ;
+        Train step of the cGAN.
+        Input: dataset = combined images vector and labels upon which the network
+                         trained.
+        Description:
+        1 - Create a random noise to feed it into the model for the images generation ;
+        2 - Generate images and calculate loss values using real images and labels ;
         3 - Calculate gradients using loss values and model variables;
         4 - Process Gradients and Run the Optimizer ;
         """
@@ -318,9 +351,13 @@ class ConditionalGAN(keras.Model):
 
     def train(self, dataset, epochs):
       """
-      Definisce la funzione vera e propria di train della rete GAN :
+      Define the training function of the cGAN.
+      Inputs:
+      dataset = combined real images vectors and labels;
+      epochs = number of epochs for the training.
+
       For each epoch:
-      -) For each batch of the epoch, run the custom "train_step" function;
+      -) For each batch of the dataset, run the custom "train_step" function;
       -) Produce images;
       -) Save the model every 5 epochs as a checkpoint;
       -) Print out the completed epoch no. and the time spent;
@@ -339,7 +376,7 @@ class ConditionalGAN(keras.Model):
         if (epoch + 1) % 5 == 0:
             checkpoint.save(file_prefix = checkpoint_prefix)
 
-        print (f'Time for epoch {epoch + 1} is {time.time()-start} sec')
+        print (f"Time for epoch {epoch + 1} is {time.time()-start} sec")
 
       display.clear_output(wait=True)
       generate_and_save_images(self.generator,
@@ -348,19 +385,19 @@ class ConditionalGAN(keras.Model):
 
 #-------------------------------------------------------------------------------
 if __name__=="__main__":
-    debug_shower()
-    debug_generator();
-    debug_discriminator();
+    #debug_shower()
+    #debug_generator();
+    #debug_discriminator();
 
     cond_gan = ConditionalGAN(
     discriminator=discriminator, generator=generator, latent_dim=NOISE_DIM)
-    cond_gan.compile()
-    cond_gan.fit(train_dataset, epochs=EPOCHS)
+    #cond_gan.compile()
+    #cond_gan.fit(train_dataset, epochs=EPOCHS)
     #cond_gan.train(train_dataset, EPOCHS)
 
     """
     # compile model
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
 
     # Fit the model
     model.fit(X, Y, epochs=150, batch_size=10, verbose=0)

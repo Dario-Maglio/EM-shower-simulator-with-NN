@@ -4,8 +4,7 @@ import time
 import logging
 import argparse
 
-from numpy import array#, reshape
-#from tensorflow.keras.models import load_model
+from numpy import array, random
 
 DESCRIPTION = """
 This command allows the user to generate a shower simulation from command line.
@@ -15,44 +14,12 @@ It gives an error if a different input size or type is passed."""
 DESCRIPTION_F = """insert the shower's features from command line"""
 
 n_features = 3
-default_features = [21.2, 34.6, 12.]
-
-
-
-def main():
-    """Main program for the command line execution."""
-
-    PARSER = argparse.ArgumentParser(
-       prog='simulate-EM-shower',
-       formatter_class=argparse.RawTextHelpFormatter,
-       description='Simulate EM shower\n' + DESCRIPTION,
-       epilog="Further information in package's documentation")
-    PARSER.add_argument('-v', '--verbose', action='store_true', help='DEBUG')
-    PARSER.add_argument('-f', '--features', metavar='feature', action='store',
-       nargs='+', default=default_features, help=DESCRIPTION_F)
-    ARGS = PARSER.parse_args()
-
-    #Arguments conversion to float
-    inputs = []
-    for item in ARGS.features:
-        try:
-           inputs.append(float(item))
-        except:
-           print(f'Unexpected value {item}.')
-
-    #Start simulation
-    STATE = simulate_shower(inputs, verbose=ARGS.verbose)
-    if STATE == 1:
-        print('Error while loading the model.')
-    else:
-        print('The work is done.')
-
-
+default_features = random.rand(n_features)
 
 def simulate_shower(features=default_features, verbose=0):
     """Given the input features as a list of n_features float components,
-       it generates the corresponding shower simulation."""
-
+       it generates the corresponding shower simulation.
+    """
     #Check the input format
     features = array(features)
     if not(features.dtype=='float64'):
@@ -61,14 +28,13 @@ def simulate_shower(features=default_features, verbose=0):
         e = f'Expected input dimension {n_features}, not {len(features)}.'
         raise TypeError(e)
 
-    #print shower's features
+    #Print shower's features
     print(f'simulating event with features {features}')
 
     #Define logger and handler
     ch = logging.StreamHandler()
     formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
-    #Define the logger
     logger = logging.getLogger("simulationLogger")
     logger.addHandler(ch)
     #Set the logger level to debug
@@ -95,6 +61,33 @@ def simulate_shower(features=default_features, verbose=0):
     return 0
 
 
+def cli():
+    """Command line interface (CLI) of the shpwer simulator."""
+    PARSER = argparse.ArgumentParser(
+       prog='simulate-EM-shower',
+       formatter_class=argparse.RawTextHelpFormatter,
+       description='Simulate EM shower\n' + DESCRIPTION,
+       epilog="Further information in package's documentation")
+    PARSER.add_argument('-v', '--verbose', action='store_true', help='DEBUG')
+    PARSER.add_argument('-f', '--features', metavar='feature', action='store',
+       nargs='+', default=default_features, help=DESCRIPTION_F)
+    ARGS = PARSER.parse_args()
+
+    #Arguments conversion to float
+    inputs = []
+    for item in ARGS.features:
+        try:
+           inputs.append(float(item))
+        except:
+           print(f'Unexpected value {item}.')
+
+    #Start simulation
+    STATE = simulate_shower(inputs, verbose=ARGS.verbose)
+    if STATE == 1:
+        print('Error while loading the model.')
+    else:
+        print('The work is done.')
+
 
 if __name__ == "__main__":
-    main()
+    cli()

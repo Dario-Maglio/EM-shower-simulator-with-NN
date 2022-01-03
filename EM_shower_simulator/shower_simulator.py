@@ -2,12 +2,52 @@
 
 import time
 import logging
+import argparse
 
-from numpy import array, reshape
-from tensorflow.keras.models import load_model
+from numpy import array#, reshape
+#from tensorflow.keras.models import load_model
+
+DESCRIPTION = """
+This command allows the user to generate a shower simulation from command line.
+Furthermore, it allows to pass the shower's features as float arguments in the
+order: energy momentum angle
+It gives an error if a different input size or type is passed."""
+DESCRIPTION_F = """insert the shower's features from command line"""
 
 n_features = 3
 default_features = [21.2, 34.6, 12.]
+
+
+
+def main():
+    """Main program for the command line execution."""
+
+    PARSER = argparse.ArgumentParser(
+       prog='simulate-EM-shower',
+       formatter_class=argparse.RawTextHelpFormatter,
+       description='Simulate EM shower\n' + DESCRIPTION,
+       epilog="Further information in package's documentation")
+    PARSER.add_argument('-v', '--verbose', action='store_true', help='DEBUG')
+    PARSER.add_argument('-f', '--features', metavar='feature', action='store',
+       nargs='+', default=default_features, help=DESCRIPTION_F)
+    ARGS = PARSER.parse_args()
+
+    #Arguments conversion to float
+    inputs = []
+    for item in ARGS.features:
+        try:
+           inputs.append(float(item))
+        except:
+           print(f'Unexpected value {item}.')
+
+    #Start simulation
+    STATE = simulate_shower(inputs, verbose=ARGS.verbose)
+    if STATE == 1:
+        print('Error while loading the model.')
+    else:
+        print('The work is done.')
+
+
 
 def simulate_shower(features=default_features, verbose=0):
     """Given the input features as a list of n_features float components,
@@ -21,6 +61,7 @@ def simulate_shower(features=default_features, verbose=0):
         e = f'Expected input dimension {n_features}, not {len(features)}.'
         raise TypeError(e)
 
+    #print shower's features
     print(f'simulating event with features {features}')
 
     #Define logger and handler
@@ -54,5 +95,6 @@ def simulate_shower(features=default_features, verbose=0):
     return 0
 
 
+
 if __name__ == "__main__":
-    simulate_shower()
+    main()

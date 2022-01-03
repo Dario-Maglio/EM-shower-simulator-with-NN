@@ -1,16 +1,12 @@
-"""Tests that the configuration and dataset files exists."""
+"""Test configuration and dataset files exist."""
 
 import unittest
 import pathlib as pl
 
-from EM_shower_simulator.shower_simulator import n_features, default_features
+
 
 class TestCore(unittest.TestCase):
     """Test methods class for configuration and dataset."""
-
-    def test_config(self):
-        """Test default data format."""
-        self.assertEqual(len(default_features), n_features)
 
     def assertIsFile(self, path):
         tpath = pl.Path(path).resolve()

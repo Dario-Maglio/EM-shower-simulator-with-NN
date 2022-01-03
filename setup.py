@@ -1,51 +1,30 @@
-"""Install the package in development mode writing from bash the command:
-   $ pip install -e .
+#!/usr/bin/env python
+
+"""
+   Installing from local source in Development Mode, i.e. in such a way that the
+   project appears to be installed, but yet is still editable from the src tree:
+
+      $ git clone https://github.com/Dario-Caf/EM-shower-simulator-with-NN.git
+      $ cd EM-shower-simulator-with-NN
+      $ python3 -m pip install -e .
+
+   All of the package's informations are stored in setup.cfg and are passed as
+   arguments to setuptools.setup() when it is executed through pip install.
 """
 
-from EM_shower_simulator import PACKAGE_NAME, AUTHOR, AUTHOR_EMAIL, DESCRIPTION, URL
+from pkg_resources import parse_version
+import setuptools
 
-from setuptools import setup, find_packages
+#requirement to use the setup.cfg file during the setup
+setuptools_version = parse_version(setuptools.__version__)
+if setuptools_version < parse_version('39.2'):
+    raise SystemExit('Please upgrade setuptools')
 
-import versioneer
-
-
-
-with open("README.md", "r") as f:
-    _LONG_DESCRIPTION = f.read()
-with open("LICENSE", "r") as f:
-    _LICENSE = f.readline().strip()
 with open('requirements.txt', 'r') as f:
     _DEPENDENCIES = f.read().splitlines()
 
-_CLASSIFIERS = [
-    'License :: OSI Approved :: ' + _LICENSE,
-    'Operating System :: OS Independent',
-    "Programming Language :: Python :: 3",
-    'Programming Language :: C++',
-    'Intended Audience :: Science/Research',
-    'Topic :: Scientific computation',
-    'Development Status :: Beta']
-_SCRIPTS = [
-    'scripts/simulate_EM_shower'
-]
-_PACKAGES = find_packages(exclude='tests')
+_PACKAGES = setuptools.find_packages(exclude='tests')
 
-_KWARGS = dict(name=PACKAGE_NAME,
-               version=versioneer.get_version(),
-               cmdclass=versioneer.get_cmdclass(),
-               author=AUTHOR,
-               author_email=AUTHOR_EMAIL,
-               description=DESCRIPTION,
-               long_description=_LONG_DESCRIPTION,
-               long_description_content_type="text/markdown",
-               license=_LICENSE,
-               url=URL,
-               classifiers=_CLASSIFIERS,
-               python_requires='>=3.7',
-               install_requires=_DEPENDENCIES,
-               scripts=_SCRIPTS,
-               packages=_PACKAGES,
-               include_package_data=True)
-
-
-setup(**_KWARGS)
+setuptools.setup(
+   install_requires=_DEPENDENCIES,
+   packages=_PACKAGES)

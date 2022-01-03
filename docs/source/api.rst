@@ -8,11 +8,8 @@ EM shower simulator module
    :members:
 
 
-Test module
------------
+EM shower training module
+-------------------------
 
-.. automodule:: tests.test_configuration_and_data_path
-   :members:
-
-.. automodule:: tests.test_module_EM_shower_simulation
+.. automodule:: EM_shower_simulator.shower_network.example
    :members:

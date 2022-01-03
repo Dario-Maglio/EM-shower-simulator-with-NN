@@ -1,2 +1,12 @@
+#This file contains instructions about the files to import or exclude in setup
+
 include versioneer.py
 include EM_shower_simulator/_version.py
+
+include README.rst
+include setup.cfg
+include requirements.txt
+include LICENSE
+
+prune docs
+prune slides

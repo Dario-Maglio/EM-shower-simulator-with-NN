@@ -49,7 +49,7 @@ def simulate_shower(features=default_features, verbose=0):
     logger.info('Loading the model...')
     start_time = time.time()
     try:
-       #model = load_model('EM_shower_network/generator.h5')
+       #model = load_model( os.path.join("EM_shower_network","generator.h5") )
        #model.predict(features)
        logger.info('Missing model')
     except:

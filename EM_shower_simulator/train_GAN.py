@@ -34,7 +34,7 @@ from IPython.core.display import Image
 BUFFER_SIZE = 1000
 BATCH_SIZE = 100
 NOISE_DIM = 1000
-N_CLASSES_EN = 100
+N_CLASSES_EN = 100 + 1
 N_CLASSES_PID = 3
 EMBED_DIM = 50
 L_RATE = 3e-4
@@ -42,6 +42,8 @@ EPOCHS = 100
 num_examples_to_generate = 5
 # Create a random seed, to be used during the evaluation of the cGAN.
 seed = tf.random.normal([num_examples_to_generate, NOISE_DIM])
+seed_en = tf.random.normal([num_examples_to_generate, 1])
+seed_pid = tf.random.normal([num_examples_to_generate, 1])
 
 DEFAULT_D_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
@@ -50,25 +52,25 @@ DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 
 def data_pull():
    """Reshape and organize data."""
-   #path = Path("../dataset/filtered_data/data_MVA.root").resolve()
+   #path = Path( os.path.join("..","dataset","filtered_data","data_MVA.root") ).resolve()
    path = "data_MVA.root" #in colab after uploading data_MVA.root in cloab
    file = up.open(path)
    branches = file["h"].arrays()
 
    train_images = np.array(branches["shower"]).astype("float32")
    #images in log10 scale, zeros like pixel are set to -5,
-   #maximum of pixel is 2.4E5 keV ≃ 5.4 in log scale
-   train_images = (train_images -0.2) / 5.2 # Normalize the images to [-1, 1]
-   train_images = np.reshape(train_images, (-1, 12, 12, 12, 1))
+   #maximum of pixel is 2.4E5 keV => maximum<7 in log scale
+   train_images = (train_images - 1.) / 6. # Normalize the images to [-1, 1]
+   train_images = np.reshape(train_images, (train_images.shape[0], 12, 12, 12, 1))
 
    #np.zeros(1000).astype("float32")#
-   en_labels = np.array(branches["en_in"]).astype("float32")/2000000.0
+   en_labels = np.array(branches["en_in"]).astype("float32")/1000000.0
    en_labels = np.transpose(en_labels)
-   en_labels = np.reshape(en_labels, (1000,1))
+   en_labels = np.reshape(en_labels, (en_labels.shape[0],1))
 
    pid_labels = np.array(branches["primary"])+1
    pid_labels = np.transpose(pid_labels)
-   pid_labels = np.reshape(pid_labels, (1000,1))
+   pid_labels = np.reshape(pid_labels, (pid_labels.shape[0],1))
 
    # Batch and shuffle the data
    train_dataset = (tf.data.Dataset.from_tensor_slices((train_images, en_labels,
@@ -81,10 +83,10 @@ def debug_shower(data):
     #voglio che stampi un evento per chiamata
     #voglio passargli un intero evento (data) e lui si prende le immagini in train_images!
     train_images = data
-    print(train_images.shape)
+    print(f"Shape of training images: {train_images.shape}")
     #plt.figure(figsize=(20,150))
     k=0
-    N_showers = 10
+    N_showers = 1
     for i in range(N_showers):
         for j in range(12):
             k=k+1
@@ -167,7 +169,7 @@ def debug_generator():
     """Creates a random noise and labels and generate a sample"""
     generator = make_generator_model()
     noise = tf.random.normal([1, NOISE_DIM])
-    en_labels = np.random.rand(1)*99
+    en_labels = np.random.rand(1)*100
     pid_labels = np.random.rand(1)*2
     generated_image = generator([noise, en_labels, pid_labels], training=False)
     print(generated_image.shape)
@@ -246,7 +248,7 @@ def debug_discriminator():
     """
     discriminator = make_discriminator_model()
     noise = tf.random.normal([1, NOISE_DIM])
-    en_labels = np.random.rand(1)*99
+    en_labels = np.random.rand(1)*100
     pid_labels = np.random.rand(1)*2
     generator = make_generator_model()
     generated_image = generator([noise,en_labels,pid_labels], training=False)
@@ -368,7 +370,7 @@ class ConditionalGAN(tf.keras.Model):
         display.clear_output(wait=True)
         generate_and_save_images(self.generator,
                                 epoch + 1,
-                                seed)
+                                seed, seed_en, seed_pid)
 
         if (epoch + 1) % 5 == 0:
             checkpoint.save(file_prefix = checkpoint_prefix)
@@ -378,12 +380,12 @@ class ConditionalGAN(tf.keras.Model):
       display.clear_output(wait=True)
       generate_and_save_images(self.generator,
                              epochs,
-                             seed)
+                             seed, seed_en, seed_pid)
 
 
 #-------------------------------------------------------------------------------
 
-def generate_and_save_images(model, epoch, test_input):
+def generate_and_save_images(model, epoch, test_input, test_en_label, test_pid_label):
     """Creates and saves images at each epoch. Arguments:
     -) model: model (cGAN) to be evaluated;
     -) epoch: epoch whose predictions are to be saved;
@@ -392,7 +394,7 @@ def generate_and_save_images(model, epoch, test_input):
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
     # 1 - Generate images
-    predictions = model(test_input, training=False)
+    predictions = model([test_input, test_en_label, test_pid_label], training=False)
     # 2 - Plot the generated images
     #plt.figure(figsize=(75,75))
     k=0
@@ -406,6 +408,7 @@ def generate_and_save_images(model, epoch, test_input):
     # 3 - Save the generated images
     plt.savefig(f"image_at_epoch_{epoch}.png")
     plt.show()
+
 
 #-------------------------------------------------------------------------------
 
@@ -437,7 +440,7 @@ if __name__=="__main__":
                                      generator_optimizer=cond_gan.generator_optimizer,
                                      discriminator_optimizer=cond_gan.discriminator_optimizer)
 
-    #cond_gan.train(train_dataset, EPOCHS)
+    cond_gan.train(train_dataset, EPOCHS)
 
     """
     # evaluate the model

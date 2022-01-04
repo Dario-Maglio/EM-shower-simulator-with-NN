@@ -32,7 +32,7 @@
 /vis/modeling/trajectories/drawByParticleID-0/set gamma green
 /vis/modeling/trajectories/drawByParticleID-0/set opticalphoton grey #green
 /vis/modeling/trajectories/drawByParticleID-0/set proton cyan
-/vis/modeling/trajectories/drawByParticleID-0/set neutron yellow
+/vis/modeling/trajectories/drawByParticleID-0/set neutron white
 
 /vis/filtering/trajectories/create/particleFilter
 /vis/filtering/trajectories/particleFilter-0/add anti_nu_e
@@ -50,9 +50,9 @@
 
 # turn on progress report
 /run/verbose 1
-/run/printProgress 100000
+/run/printProgress 1000
 
 # start simulation
 
 /analysis/setFileName shower_prova
-/run/beamOn 1000
+/run/beamOn 10000

@@ -47,7 +47,7 @@ void formattazione_MVA(){
     //--------------------------------------------------------------------------
     ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
-    const char *input = "/mnt/c/Users/Daniele/Desktop/Magistrale/CMEPDA/shower_prova.root";
+    const char *input = "/mnt/d/Users/Daniele/EM_shower/shower_prova.root";
     const char *output = "data_MVA.root";
   // input, which is GEARS output
   	TChain *t = new TChain("t");
@@ -144,6 +144,8 @@ void formattazione_MVA(){
             else{
               shower[layers][num_z][num_y][0] = TMath::Log10(shower[layers][num_z][num_y][0]) ;
             }
+            //std::cout<< shower[layers][num_z][num_y] <<std::endl;
+
           }
         }
       }
@@ -159,11 +161,11 @@ TH2D *set_hist_layer(const int LAYER, double shower[12][12][12][1]){
   char label[50];
   sprintf(label, "layer %d;y[mm];z[mm]", LAYER);
 
-  TH2D *layer_x = new TH2D("",label, 12,-200,200,12,-200,200);
+  TH2D *layer_x = new TH2D("",label, 11,-200,200,11,-200,200);
   for(int num_z=0; num_z<12;num_z++){
     for(int num_y=0; num_y<12;num_y++){
-      std::cout<<shower[LAYER-1][num_z][num_y][0]<<std::endl;
       layer_x->SetBinContent(num_z, num_y, shower[LAYER-1][num_z][num_y][0]);
+      std::cout<< LAYER-1 <<"\t"<< num_z <<"\t"<< num_y <<"\t"<< layer_x->GetBinContent(num_z, num_y)<<std::endl;
     }
   }
   return layer_x;
@@ -171,9 +173,9 @@ TH2D *set_hist_layer(const int LAYER, double shower[12][12][12][1]){
 
 void do_stuff(TCanvas *c, int index, TH2D *hist){
   c->cd(index);
-  gPad->SetLogz();
+  //gPad->SetLogz();
   hist->SetContour(99);
-  hist->SetMaximum(240000); hist->SetMinimum(1);
+  hist->SetMaximum(7); hist->SetMinimum(-5);
   hist->Draw("COLZ");
 }
 
@@ -181,7 +183,7 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
 
   ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
-  const char *input="dati_MVA.root";
+  const char *input="data_MVA.root";
   TChain *h = new TChain("h");
   h->Add(input);
 
@@ -192,7 +194,13 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
   h->SetBranchAddress("shower", shower, &b_shower);
 
   h->GetEntry(evento);
-
+  /*for(int layers=0; layers<12; layers++){
+    for(int num_z=0; num_z<12;num_z++){
+      for(int num_y=0; num_y<12;num_y++){
+        std::cout<< shower[layers][num_z][num_y]<<std::endl;
+      }
+    }
+  }*/
   TH2D *layer1 = new TH2D(); TH2D *layer2 = new TH2D(); TH2D *layer3 = new TH2D();
   TH2D *layer4 = new TH2D(); TH2D *layer5 = new TH2D(); TH2D *layer6 = new TH2D();
   TH2D *layer7 = new TH2D(); TH2D *layer8 = new TH2D(); TH2D *layer9 = new TH2D();
@@ -225,7 +233,12 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
   for(int layers=0; layers<12; layers++){
     for(int num_z=0; num_z<12;num_z++){
       for(int num_y=0; num_y<12;num_y++){
-        en_misurata += shower[layers][num_z][num_y][0] ;
+        if(shower[layers][num_z][num_y][0]==-5){
+          en_misurata += 0;
+        }
+        else{
+          en_misurata += TMath::Power(10,shower[layers][num_z][num_y][0]);
+        }
       }
     }
   }

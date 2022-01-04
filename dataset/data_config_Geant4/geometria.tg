@@ -15,7 +15,7 @@
 :solid lastra0 BOX 0.1*cm $Y_TOT/10*cm $Z_TOT/10*cm
 :solid celletta BOX $X/2 $Y/2 $Z/2
 
-:prop G4_SODIUM_IODIDE
+:prop G4_CESIUM_IODIDE
   SCINTILLATIONYIELD 45./keV
   RESOLUTIONSCALE 1.
   FASTTIMECONSTANT 250.*ns

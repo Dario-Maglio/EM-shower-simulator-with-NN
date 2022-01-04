@@ -5,14 +5,20 @@
 
 /gps/pos/type Volume
 /gps/pos/shape Cylinder
-/gps/pos/radius 0.1 cm
-/gps/pos/halfz 0.1 cm
-/gps/pos/centre -20 8 8 cm
+/gps/pos/radius 0.01 cm
+/gps/pos/halfz 0.01 cm
+/gps/pos/centre -20 11 11 cm
 
 /gps/direction 1 0 0 # beam diretto su rivelatore
 
-/gps/ene/type Mono
-/gps/ene/mono 2.0 GeV
+#/gps/ene/type Mono
+#/gps/ene/mono 2.0 GeV
+
+/gps/ene/type Lin
+/gps/ene/gradient 0
+/gps/ene/intercept 1
+/gps/ene/min 1 GeV
+/gps/ene/max 100 GeV
 
 #-------------------------------------------------------------------------------
 
@@ -22,15 +28,20 @@
 
 /gps/pos/type Volume
 /gps/pos/shape Cylinder
-/gps/pos/radius 0.1 cm
-/gps/pos/halfz 0.1 cm
-/gps/pos/centre -20 8 8 cm
+/gps/pos/radius 0.01 cm
+/gps/pos/halfz 0.01 cm
+/gps/pos/centre -20 11 11 cm
 
 /gps/direction 1 0 0 # beam diretto su rivelatore
 
-/gps/ene/type Mono
-/gps/ene/mono 2.0 GeV
+#/gps/ene/type Mono
+#/gps/ene/mono 2.0 GeV
 
+/gps/ene/type Lin
+/gps/ene/gradient 0
+/gps/ene/intercept 1
+/gps/ene/min 1 GeV
+/gps/ene/max 100 GeV
 #-------------------------------------------------------------------------------
 
 # positrone
@@ -39,15 +50,20 @@
 
 /gps/pos/type Volume
 /gps/pos/shape Cylinder
-/gps/pos/radius 0.1 cm
-/gps/pos/halfz 0.1 cm
-/gps/pos/centre -20 8 8 cm
+/gps/pos/radius 0.01 cm
+/gps/pos/halfz 0.01 cm
+/gps/pos/centre -20 11 11 cm
 
 /gps/direction 1 0 0 #per beam diretto su bersaglio e rivelatore
 
-/gps/ene/type Mono
-/gps/ene/mono 2.0 GeV
+#/gps/ene/type Mono
+#/gps/ene/mono 2.0 GeV
 
+/gps/ene/type Lin
+/gps/ene/gradient 0
+/gps/ene/intercept 1
+/gps/ene/min 1 GeV
+/gps/ene/max 100 GeV
 #-------------------------------------------------------------------------------
 
 # list all sources

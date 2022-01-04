@@ -34,7 +34,7 @@ import uproot as up
 BUFFER_SIZE = 1000
 BATCH_SIZE = 100
 NOISE_DIM = 1000
-N_CLASSES_EN = 100
+N_CLASSES_EN = 100 + 1
 N_CLASSES_PID = 3
 EMBED_DIM = 50
 
@@ -54,11 +54,11 @@ file = up.open(path)#v"/content/EM-shower-simulator-with-NN/dataset/filtered_dat
 branches = file["h"].arrays()
 
 train_images = np.array(branches["shower"]).astype("float32")
-#images in log10 scale, zeros like pixel are set to -5, maximum of pixel is 2.4E5 keV ≃ 5.4 in log scale
-train_images = (train_images -0.2) / 5.2 # Normalize the images to [-1, 1]
+#images in log10 scale, zeros like pixel are set to -5, maximum of pixel is sim E6 keV => maz = 7 in log scale
+train_images = (train_images - 1) / 6 # Normalize the images to [-1, 1]
 train_images = np.reshape(train_images, (-1, 12, 12, 12, 1))
 
-en_labels = np.array(branches["en_in"]).astype("float32")/2000000.0 #np.zeros(1000).astype("float32")#
+en_labels = np.array(branches["en_in"]).astype("float32")/1000000.0 #np.zeros(1000).astype("float32")#
 en_labels = np.transpose(en_labels)
 en_labels = np.reshape(en_labels, (1000,1))
 
@@ -161,7 +161,7 @@ def debug_generator():
     """Creates a random noise and labels and generate a sample"""
     generator = make_generator_model()
     noise = tf.random.normal([1, NOISE_DIM])
-    en_labels = np.random.rand(1)*99
+    en_labels = np.random.rand(1)*100
     pid_labels = np.random.rand(1)*2
     generated_image = generator([noise, en_labels, pid_labels], training=False)
     print(generated_image.shape)
@@ -243,7 +243,7 @@ def debug_discriminator():
     """
     discriminator = make_discriminator_model()
     noise = tf.random.normal([1, NOISE_DIM])
-    en_labels = np.random.rand(1)*99
+    en_labels = np.random.rand(1)*100
     pid_labels = np.random.rand(1)*2
     generator = make_generator_model()
     generated_image = generator([noise,en_labels,pid_labels], training=False)

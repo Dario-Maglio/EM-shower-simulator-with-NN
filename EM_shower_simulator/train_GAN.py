@@ -7,6 +7,7 @@
 import os
 import time
 import logging
+from sys import exit
 from pathlib import Path
 
 import numpy as np
@@ -448,15 +449,6 @@ class ConditionalGAN(tf.keras.Model):
 
 if __name__=="__main__":
 
-    try:
-        train_images = debug_data_pull(dpath)
-    except AssertionError as e:
-        print(f"An error occurred while loading the dataset: \n{e}")
-        raise e
-    except Exception as e:
-        print("Error: Invalid path or corrupted file.")
-        raise e
-
     #Define logger and handler
     ch = logging.StreamHandler()
     formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
@@ -468,13 +460,24 @@ if __name__=="__main__":
         #Set the logger level to debug
         logger.setLevel(logging.DEBUG)
         logger.info('Logging level set on DEBUG.')
+    else:
+        logger.setLevel(logging.WARNING)
+        logger.info('Logging level set on WARNING.')
+
+    try:
+        train_images = debug_data_pull(dpath)
+    except AssertionError as e:
+        print(f"An error occurred while loading the dataset: \n{e}")
+        exit()
+    except Exception as e:
+        print(f"Error: Invalid path or corrupted file. \n{e}")
+        exit()
+
+    if VERBOSE :
         #Execute debug subroutines
         debug_shower(train_images)
         debug_generator(test_noise)
         debug_discriminator(train_images)
-    else:
-        logger.setLevel(logging.WARNING)
-        logger.info('Logging level set on WARNING.')
 
     logger.info("Starting training operations.")
     train_dataset = data_pull(dpath)

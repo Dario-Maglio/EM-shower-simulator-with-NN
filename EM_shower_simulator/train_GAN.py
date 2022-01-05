@@ -30,7 +30,7 @@ from tensorflow.keras.layers import (Input,
 from IPython import display
 from IPython.core.display import Image
 
-
+GEOMETRY = [12, 12, 12, 1]
 BUFFER_SIZE = 1000
 BATCH_SIZE = 100
 NOISE_DIM = 1000
@@ -52,47 +52,65 @@ DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 
 #-------------------------------------------------------------------------------
 
-def data_pull():
+def data_pull(path):
    """Reshape and organize data.
-   Daniele a te l'onore...........................................................
+   Daniele a te l'onore...............................................................
    """
-   #In colab after uploading data_MVA.root
-   #with up.open("data_MVA.root") as file:
-   #   branches = file["h"].arrays()
-
-   #In the project folder
-   path = Path(os.path.join("..","dataset","filtered_data","data_MVA.root"))
-   with up.open(path.resolve()) as file:
+   with up.open(Path(path).resolve()) as file:
       branches = file["h"].arrays()
 
    train_images = np.array(branches["shower"]).astype("float32")
    #images in log10 scale, zeros like pixel are set to -5,
    #maximum of pixel is 2.4E5 keV => maximum<7 in log scale
-   train_images = (train_images - 1.) / 6. # Normalize the images to [-1, 1]
-   train_images = np.reshape(train_images, (train_images.shape[0], 12, 12, 12, 1))
+   N_EVENT = train_images.shape[0]
+   # Normalize the images to [-1, 1] and reshape
+   train_images = np.reshape((train_images - 1.)/6., (N_EVENT, *GEOMETRY))
 
-   #np.zeros(1000).astype("float32")#
+   #np.zeros(1000).astype("float32")
    en_labels = np.array(branches["en_in"]).astype("float32")/1000000.0
    en_labels = np.transpose(en_labels)
-   en_labels = np.reshape(en_labels, (en_labels.shape[0],1))
+   en_labels = np.reshape(en_labels, (N_EVENT, 1))
 
-   pid_labels = np.array(branches["primary"])+1
+   pid_labels = np.array(branches["primary"]) + 1
    pid_labels = np.transpose(pid_labels)
-   pid_labels = np.reshape(pid_labels, (pid_labels.shape[0],1))
+   pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
 
    # Batch and shuffle the data
-   train_dataset = (tf.data.Dataset.from_tensor_slices((train_images, en_labels,
-                    pid_labels)).shuffle(BUFFER_SIZE).batch(BATCH_SIZE))
-   return train_images, train_dataset
+   train_dataset = (train_images, en_labels, pid_labels)
+   train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
+   return train_dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+
+def debug_data_pull(path):
+   """Import data images from the dataset and test shapes."""
+   with up.open(Path(path).resolve()) as file:
+      branches = file["h"].arrays()
+
+   train_images = np.array(branches["shower"]).astype("float32")
+   #images in log10 scale, zeros like pixel are set to -5,
+   #maximum of pixel is 2.4E5 keV => maximum<7 in log scale
+   N_EVENT = train_images.shape[0]
+   # Normalize the images to [-1, 1] and reshape
+   train_images = np.reshape((train_images - 1.)/6., (N_EVENT, *GEOMETRY))
+
+   #np.zeros(1000).astype("float32")
+   en_labels = np.array(branches["en_in"]).astype("float32")
+   en_labels = np.transpose(en_labels)
+   assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
+
+   pid_labels = np.array(branches["primary"]) + 1
+   pid_labels = np.transpose(pid_labels)
+   assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
+
+   return train_images
 
 def debug_shower(train_images):
-    """Plot showers from the dataset"""
-    print(f"Shape of training images: {train_images.shape}")
+    """Plot showers from the dataset."""
+    print(f"\nShape of training images: {train_images.shape}")
     k=0
     for i in range(num_examples_to_generate):
-        for j in range(train_images.shape[1]):
+        for j in range(GEOMETRY[0]):
             k=k+1
-            plt.subplot(num_examples_to_generate, train_images.shape[1], k)
+            plt.subplot(num_examples_to_generate, GEOMETRY[0], k)
             plt.imshow(train_images[i, j, :, :, 0], cmap="gray")
             plt.axis("off")
     plt.show()
@@ -110,7 +128,7 @@ def make_generator_model():
     categorizes the labels in N_CLASSES_* classes.
     """
     # Image generator input
-    in_lat = Input(shape=(NOISE_DIM,))
+    in_lat = Input(shape=(NOISE_DIM,), name="Latent input")
     # foundation for 12x12x12 image
     n_nodes = 256 * 3 * 3 * 3
     gen = Dense(n_nodes, use_bias=False)(in_lat)
@@ -120,7 +138,7 @@ def make_generator_model():
     assert gen.get_shape().as_list() == [None, 3, 3, 3, 256] # Note: None is the batch size
 
     # Energy label input
-    en_label = Input(shape=(1,))
+    en_label = Input(shape=(1,), name="Energy input")
     # embedding for categorical input
     li_en = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
     # linear multiplication
@@ -131,7 +149,7 @@ def make_generator_model():
     assert li_en.get_shape().as_list() == [None, 3, 3, 3, 1]
 
     # ParticleID label input
-    pid_label = Input(shape=(1,))
+    pid_label = Input(shape=(1,), name="ParticleID input")
     # embedding for categorical input
     li_pid = Embedding(N_CLASSES_PID, EMBED_DIM)(pid_label)
     # linear multiplication
@@ -154,8 +172,8 @@ def make_generator_model():
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    output = (Conv3DTranspose(1, (5, 5, 5), strides=(2, 2, 2), padding="same",
-                              use_bias=False, activation="tanh")(gen))
+    output = (Conv3DTranspose(1, (5, 5, 5), strides=(2, 2, 2), use_bias=False,
+                    padding="same", activation="tanh", name="Fake_image")(gen))
     assert output.get_shape().as_list() == [None, 12, 12, 12, 1]
 
     model = Model([in_lat, en_label, pid_label], output, name='generator')
@@ -169,19 +187,43 @@ def generator_loss(fake_output):
     cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
-def debug_generator():
-    """Uses the random seeds to generate fake samples."""
-    generator = make_generator_model()
-    predictions = generator([seed, seed_en, seed_pid], training=False)
-    print(f"Shape of generated images: {predictions.shape}")
+def generate_and_save_images(model, epoch, noise):
+    """Creates and saves images at each epoch. Arguments:
+    -) model: model (cGAN) to be evaluated;
+    -) epoch: epoch whose predictions are to be saved;
+    -) noise: constant input to the model in order to evaluate performances.
+    """
+    # Notice `training` is set to False.
+    # This is so all layers run in inference mode (batchnorm).
+    # 1 - Generate images
+    predictions = model(noise, training=False)
+    print(f"\nShape of generated images: {predictions.shape}")
+    # 2 - Plot the generated images
+    #plt.figure(figsize=(75,75))
     k=0
     for i in range(predictions.shape[0]):
-      for j in range(predictions.shape[1]):
+      for j in range( predictions.shape[1]):
         k=k+1
         plt.subplot(num_examples_to_generate, predictions.shape[1], k)
-        plt.imshow(predictions[i,j,:,:,0], cmap="gray")
+        plt.imshow(predictions[i,j,:,:,0] * 127.5 + 127.5, cmap="gray")
         plt.axis("off")
     plt.show()
+    # 3 - Save the generated images
+    save_path = Path('training_results').resolve()
+    file_name = f"image_at_epoch_{epoch}.png"
+
+    if not os.path.isdir(save_path):
+        os.makedirs(save_path)
+
+    plt.savefig(os.path.join(save_path, file_name))
+    plt.show()
+
+def debug_generator(test_noise):
+    """Uses the random seeds to generate fake samples and plots them using the
+    generate_and_save_images subroutine.
+    """
+    generator = make_generator_model()
+    generate_and_save_images(generator, 0, test_noise)
 
 #-------------------------------------------------------------------------------
 
@@ -250,7 +292,7 @@ def debug_discriminator(images):
     discriminator = make_discriminator_model()
     images = images[0:num_examples_to_generate]
     decision = discriminator([images, seed_en, seed_pid])
-    print(f"Decision per raw: {decision[:]}")
+    print(f"\nDecision per raw:\n {decision}")
 
 #-------------------------------------------------------------------------------
 
@@ -287,7 +329,9 @@ class ConditionalGAN(tf.keras.Model):
 
     def summary(self):
         """Summary method for both the generator and discriminator."""
+        print("\n\n Conditional GAN model summary:\n")
         self.generator.summary()
+        print("\n")
         self.discriminator.summary()
 
     # tf.function annotation causes the function
@@ -376,60 +420,39 @@ class ConditionalGAN(tf.keras.Model):
 
       display.clear_output(wait=True)
       generate_and_save_images(self.generator,
-                             epochs,
-                             seed, seed_en, seed_pid)
-
-
-#-------------------------------------------------------------------------------
-
-def generate_and_save_images(model, epoch, test_input, test_en_label, test_pid_label):
-    """Creates and saves images at each epoch. Arguments:
-    -) model: model (cGAN) to be evaluated;
-    -) epoch: epoch whose predictions are to be saved;
-    -) test_input: constant input to the model in order to evaluate performances.
-    """
-    # Notice `training` is set to False.
-    # This is so all layers run in inference mode (batchnorm).
-    # 1 - Generate images
-    predictions = model([test_input, test_en_label, test_pid_label], training=False)
-    # 2 - Plot the generated images
-    #plt.figure(figsize=(75,75))
-    k=0
-    for i in range(predictions.shape[0]):
-      for j in range( predictions.shape[1]):
-        k=k+1
-        plt.subplot(num_examples_to_generate, predictions.shape[1], k)
-        plt.imshow(predictions[i,j,:,:,0] * 127.5 + 127.5, cmap="gray")
-        plt.axis("off")
-    plt.show()
-    # 3 - Save the generated images
-    plt.savefig(f"image_at_epoch_{epoch}.png")
-    plt.show()
-
+                               epochs,
+                               seed, seed_en, seed_pid)
 
 #-------------------------------------------------------------------------------
 
 if __name__=="__main__":
 
-    train_images, train_dataset = data_pull()
+    #In colab after uploading data_MVA.root
+    #path = "data_MVA.root"
 
+    #In the project folder
+    path = os.path.join("..","dataset","filtered_data","data_MVA.root")
+
+    train_images = debug_data_pull(path)
     debug_shower(train_images)
-    debug_generator()
-    debug_discriminator(train_images)
+    test_noise = [seed, seed_en, seed_pid]
+    #debug_generator(test_noise)
+    #debug_discriminator(train_images)
 
+    train_dataset = data_pull(path)
     generator = make_generator_model()
-    plot_model(generator, to_file="net-generator.png", show_shapes=True)
+    plot_model(generator, to_file="cgan-generator.png", show_shapes=True)
 
     discriminator = make_discriminator_model()
-    plot_model(discriminator, to_file="net-discriminator.png", show_shapes=True)
-
+    plot_model(discriminator, to_file="cgan-discriminator.png", show_shapes=True)
 
     cond_gan = ConditionalGAN(discriminator, generator, NOISE_DIM,
                               DEFAULT_D_OPTIM, DEFAULT_G_OPTIM)
 
-    cond_gan.compile() #how does it compile?
+    cond_gan.compile()
     #cond_gan.summary()
 
+    """
     # Create a folder to save rusults from training in form of checkpoints.
     checkpoint_dir = "./training_checkpoints"
     checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
@@ -441,7 +464,6 @@ if __name__=="__main__":
 
     #cond_gan.train(train_dataset, EPOCHS)
 
-    """
     # evaluate the model
     scores = model.evaluate(X, Y, verbose=0)
     print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))

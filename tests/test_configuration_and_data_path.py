@@ -1,7 +1,7 @@
 """Test configuration and dataset files exist."""
 
-import unittest
 import os
+import unittest
 from pathlib import Path
 
 
@@ -18,6 +18,11 @@ class TestCore(unittest.TestCase):
         """Test dataset path."""
         path=Path(os.path.join('dataset','filtered_data','data_MVA.root'))
         self.assertIsFile(path)
+
+    def test_model_checkpoint_path(self):
+        """Test model checkpoints path for the weights upload."""
+        path=os.path.join('EM_shower_simulator','training_checkpoints','checkpoint')
+        self.assertIsFile(Path(path))
 
 if __name__ == "__main__":
     unittest.main()

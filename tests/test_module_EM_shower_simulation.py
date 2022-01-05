@@ -13,5 +13,14 @@ class TestCore(unittest.TestCase):
         """Test that simulate_shower works correctly on default data."""
         self.assertEqual(EM.simulate(),0)
 
+    def test_debug_train(self):
+        """Test that the debug subroutins run without exceptions."""
+        train_images = EM.debug_data_pull(EM.data_path)
+        EM.debug_shower(train_images)
+        EM.debug_generator(EM.test_noise)
+        EM.debug_discriminator(train_images)
+        train_images = train_images[0, :, :, :, :]
+        self.assertEqual(train_images.shape , (*EM.GEOMETRY,))
+
 if __name__ == "__main__":
     unittest.main()

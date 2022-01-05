@@ -1,1 +1,0 @@
-Online è presente il file non scremato derivante da Geant, mentre è stato solo caricato il file di dati già formattato in modo ideale per l'analisi con la rete neurale.

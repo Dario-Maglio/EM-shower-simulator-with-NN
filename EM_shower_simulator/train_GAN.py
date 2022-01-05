@@ -6,6 +6,8 @@
 
 import os
 import time
+import logging
+from sys import exit
 from pathlib import Path
 
 import numpy as np
@@ -30,7 +32,14 @@ from tensorflow.keras.layers import (Input,
 from IPython import display
 from IPython.core.display import Image
 
+#In colab after uploading data_MVA.root
+dpath = "EM-shower-simulator-with-NN/dataset/filtered_data/data_MVA.root"
+#In the project folder
+#dpath = os.path.join("..","dataset","filtered_data","data_MVA.root")
+
+VERBOSE = True
 GEOMETRY = [12, 12, 12, 1]
+
 BUFFER_SIZE = 1000
 BATCH_SIZE = 100
 NOISE_DIM = 1000
@@ -38,26 +47,31 @@ N_CLASSES_EN = 100 + 1
 N_CLASSES_PID = 3
 EMBED_DIM = 50
 L_RATE = 3e-4
-EPOCHS = 100
-
-#Create a random seed, to be used during the evaluation of the cGAN.
-num_examples_to_generate = 5
-tf.random.set_seed(42)
-seed = tf.random.normal([num_examples_to_generate, NOISE_DIM])
-seed_en = tf.random.normal([num_examples_to_generate, 1])
-seed_pid = tf.random.normal([num_examples_to_generate, 1])
-
+EPOCHS = 5
 DEFAULT_D_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
+
+#Create a random seed, to be used during the evaluation of the cGAN.
+tf.random.set_seed(42)
+num_examples_to_generate = 5
+test_noise = [tf.random.normal([num_examples_to_generate, NOISE_DIM]),
+              tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
+                                maxval=N_CLASSES_EN),
+              tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
+                                maxval=N_CLASSES_PID) ]
+
 
 #-------------------------------------------------------------------------------
 
 def data_pull(path):
-   """Reshape and organize data.
-   Daniele a te l'onore...............................................................
-   """
-   with up.open(Path(path).resolve()) as file:
-      branches = file["h"].arrays()
+   """Organize and reshape the dataset for the cGan training."""
+   logger.info("Loading the training dataset.")
+   try:
+       with up.open(Path(path).resolve()) as file:
+           branches = file["h"].arrays()
+   except Exception as e:
+       print("Error: Invalid path or corrupted file.")
+       raise e
 
    train_images = np.array(branches["shower"]).astype("float32")
    #images in log10 scale, zeros like pixel are set to -5,
@@ -69,10 +83,13 @@ def data_pull(path):
    #np.zeros(1000).astype("float32")
    en_labels = np.array(branches["en_in"]).astype("float32")/1000000.0
    en_labels = np.transpose(en_labels)
+   assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
    en_labels = np.reshape(en_labels, (N_EVENT, 1))
 
+   # particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer
    pid_labels = np.array(branches["primary"]) + 1
    pid_labels = np.transpose(pid_labels)
+   assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
    pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
 
    # Batch and shuffle the data
@@ -82,8 +99,9 @@ def data_pull(path):
 
 def debug_data_pull(path):
    """Import data images from the dataset and test shapes."""
+   logger.info("Start debugging the dataset loading subroutines.")
    with up.open(Path(path).resolve()) as file:
-      branches = file["h"].arrays()
+       branches = file["h"].arrays()
 
    train_images = np.array(branches["shower"]).astype("float32")
    #images in log10 scale, zeros like pixel are set to -5,
@@ -100,12 +118,13 @@ def debug_data_pull(path):
    pid_labels = np.array(branches["primary"]) + 1
    pid_labels = np.transpose(pid_labels)
    assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
-
+   logger.info("Debug of the loading subroutines finished.")
    return train_images
 
 def debug_shower(train_images):
     """Plot showers from the dataset."""
-    print(f"\nShape of training images: {train_images.shape}")
+    logger.info("Start debugging train_images features.")
+    logger.info(f"Shape of training images: {train_images.shape}")
     k=0
     for i in range(num_examples_to_generate):
         for j in range(GEOMETRY[0]):
@@ -114,6 +133,44 @@ def debug_shower(train_images):
             plt.imshow(train_images[i, j, :, :, 0], cmap="gray")
             plt.axis("off")
     plt.show()
+    logger.info("Debug of train_images features finished.")
+
+#-------------------------------------------------------------------------------
+
+def generate_and_save_images(model, epoch, noise, verbose=False):
+    """Creates and saves images at each epoch. Arguments:
+    -) model: model (cGAN) to be evaluated;
+    -) epoch: epoch whose predictions are to be saved;
+    -) noise: constant input to the model in order to evaluate performances;
+    -) verbose: for debug_generator model only.
+    """
+    # Notice `training` is set to False.
+    # This is so all layers run in inference mode (batchnorm).
+    # 1 - Generate images
+    predictions = model(noise, training=False)
+    logger.info(f"Shape of generated images: {predictions.shape}")
+    # 2 - Plot the generated images
+    #plt.figure(figsize=(75,75))
+    k=0
+    for i in range(predictions.shape[0]):
+      for j in range( predictions.shape[1]):
+        k=k+1
+        plt.subplot(num_examples_to_generate, predictions.shape[1], k)
+        plt.imshow(predictions[i,j,:,:,0] * 127.5 + 127.5, cmap="gray")
+        plt.axis("off")
+    plt.show()
+
+    # 3 - Save the generated images
+    if not verbose:
+       save_path = Path('training_results').resolve()
+       file_name = f"image_at_epoch_{epoch}.png"
+
+       if not os.path.isdir(save_path):
+          os.makedirs(save_path)
+
+       plt.savefig(os.path.join(save_path, file_name))
+    else:
+       logger.info("Images not saved.")
 
 #-------------------------------------------------------------------------------
 
@@ -187,44 +244,14 @@ def generator_loss(fake_output):
     cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
-def generate_and_save_images(model, epoch, noise, en_label, pid_label):
-    """Creates and saves images at each epoch. Arguments:
-    -) model: model (cGAN) to be evaluated;
-    -) epoch: epoch whose predictions are to be saved;
-    -) noise: constant input to the model in order to evaluate performances.
-    """
-    # Notice `training` is set to False.
-    # This is so all layers run in inference mode (batchnorm).
-    # 1 - Generate images
-    predictions = model([noise,en_label,pid_label], training=False)
-    print(f"\nShape of generated images: {predictions.shape}")
-    # 2 - Plot the generated images
-    #plt.figure(figsize=(75,75))
-    k=0
-    for i in range(predictions.shape[0]):
-      for j in range( predictions.shape[1]):
-        k=k+1
-        plt.subplot(num_examples_to_generate, predictions.shape[1], k)
-        plt.imshow(predictions[i,j,:,:,0] * 127.5 + 127.5, cmap="gray")
-        plt.axis("off")
-    plt.show()
-    # 3 - Save the generated images
-    save_path = Path('training_results').resolve()
-    file_name = f"image_at_epoch_{epoch}.png"
-
-    if not os.path.isdir(save_path):
-        os.makedirs(save_path)
-
-    plt.savefig(os.path.join(save_path, file_name))
-    plt.show()
-
-def debug_generator(test_noise):
+def debug_generator(noise):
     """Uses the random seeds to generate fake samples and plots them using the
     generate_and_save_images subroutine.
     """
-    noise, en_label, pid_label = test_noise
+    logger.info("Start debugging the generator model.")
     generator = make_generator_model()
-    generate_and_save_images(generator, 0, noise, en_label, pid_label)
+    generate_and_save_images(generator, 0, noise, verbose=True)
+    logger.info("Debug of the generator model finished.")
 
 #-------------------------------------------------------------------------------
 
@@ -290,10 +317,16 @@ def discriminator_loss(real_output, fake_output):
 
 def debug_discriminator(images):
     """Uses images from the sample to test discriminator model."""
+    logger.info("Start debugging discriminator model.")
     discriminator = make_discriminator_model()
     images = images[0:num_examples_to_generate]
-    decision = discriminator([images, seed_en, seed_pid])
-    print(f"\nDecision per raw:\n {decision}")
+    en_label = tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
+                                maxval=N_CLASSES_EN),
+    pid_label = tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
+                                maxval=N_CLASSES_PID)
+    decision = discriminator([images, en_label, pid_label])
+    logger.info(f"\nDecision per raw:\n {decision}")
+    logger.info("Debug finished.")
 
 #-------------------------------------------------------------------------------
 
@@ -403,44 +436,69 @@ class ConditionalGAN(tf.keras.Model):
       -) Print out the completed epoch no. and the time spent;
       Then generate a final image after the training is completed.
       """
-      for epoch in range(epochs):
-        print(f"EPOCH = {epoch}")
-        start = time.time()
-        for image_batch in dataset:
-            self.train_step(image_batch)
 
-        display.clear_output(wait=True)
-        generate_and_save_images(self.generator,
-                                epoch + 1,
-                                seed, seed_en, seed_pid)
-
-        if (epoch + 1) % 5 == 0:
-            checkpoint.save(file_prefix = checkpoint_prefix)
-
-        print (f"Time for epoch {epoch + 1} is {time.time()-start} sec")
+    # Create a folder to save rusults from training in form of checkpoints.
+      checkpoint_dir = "./training_checkpoints"
+      checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+      checkpoint = tf.train.Checkpoint(
+                   generator=cond_gan.generator,
+                   discriminator=cond_gan.discriminator,
+                   generator_optimizer=cond_gan.generator_optimizer,
+                   discriminator_optimizer=cond_gan.discriminator_optimizer)
 
       display.clear_output(wait=True)
-      generate_and_save_images(self.generator,
-                               epochs,
-                               seed, seed_en, seed_pid)
+      for epoch in range(epochs):
+         print(f"Running EPOCH = {epoch + 1}")
+         start = time.time()
+
+         for image_batch in dataset:
+            self.train_step(image_batch)
+
+         display.clear_output(wait=True)
+         print(f"EPOCH = {epoch + 1}")
+         print (f"Time for epoch {epoch + 1} is {time.time()-start} sec")
+         generate_and_save_images(self.generator, epoch + 1, test_noise)
+
+         #if (epoch + 1) % 5 == 0:
+         checkpoint.save(file_prefix = checkpoint_prefix)
+          #  pass
 
 #-------------------------------------------------------------------------------
 
 if __name__=="__main__":
 
-    #In colab after uploading data_MVA.root
-    path = "EM-shower-simulator-with-NN/dataset/filtered_data/data_MVA.root"
+    #Define logger and handler
+    ch = logging.StreamHandler()
+    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logger = logging.getLogger("trainLogger")
+    logger.addHandler(ch)
 
-    #In the project folder
-    #path = os.path.join("..","dataset","filtered_data","data_MVA.root")
+    if VERBOSE :
+        #Set the logger level to debug
+        logger.setLevel(logging.DEBUG)
+        logger.info('Logging level set on DEBUG.')
+    else:
+        logger.setLevel(logging.WARNING)
+        logger.info('Logging level set on WARNING.')
 
-    train_images = debug_data_pull(path)
-    debug_shower(train_images)
-    test_noise = [seed, seed_en, seed_pid]
-    debug_generator(test_noise)
-    debug_discriminator(train_images)
+    try:
+        train_images = debug_data_pull(dpath)
+    except AssertionError as e:
+        print(f"An error occurred while loading the dataset: \n{e}")
+        exit()
+    except Exception as e:
+        print(f"Error: Invalid path or corrupted file. \n{e}")
+        exit()
 
-    train_dataset = data_pull(path)
+    if VERBOSE :
+        #Execute debug subroutines
+        debug_shower(train_images)
+        debug_generator(test_noise)
+        debug_discriminator(train_images)
+
+    logger.info("Starting training operations.")
+    train_dataset = data_pull(dpath)
     generator = make_generator_model()
     plot_model(generator, to_file="cgan-generator.png", show_shapes=True)
 
@@ -450,25 +508,17 @@ if __name__=="__main__":
     cond_gan = ConditionalGAN(discriminator, generator, NOISE_DIM,
                               DEFAULT_D_OPTIM, DEFAULT_G_OPTIM)
 
-    #cond_gan.compile()
+    cond_gan.compile()
     #cond_gan.summary()
-    #cond_gan.train(train_dataset, EPOCHS)
+    logger.info("The cGAN model has been compiled correctly.")
+
+    cond_gan.train(train_dataset, EPOCHS)
 
     """
-    # Create a folder to save rusults from training in form of checkpoints.
-    checkpoint_dir = "./training_checkpoints"
-    checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
-    checkpoint = tf.train.Checkpoint(
-                   generator=cond_gan.generator,
-                   discriminator=cond_gan.discriminator,
-                   generator_optimizer=cond_gan.generator_optimizer,
-                   discriminator_optimizer=cond_gan.discriminator_optimizer)
-
-    #cond_gan.train(train_dataset, EPOCHS)
-
     # evaluate the model
     scores = model.evaluate(X, Y, verbose=0)
     print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
     """
 
-    print("Model saved to disk")
+    logger.info("Model saved to disk")
+    logger.handlers.clear()

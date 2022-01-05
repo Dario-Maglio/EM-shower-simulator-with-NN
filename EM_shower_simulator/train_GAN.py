@@ -128,7 +128,7 @@ def make_generator_model():
     categorizes the labels in N_CLASSES_* classes.
     """
     # Image generator input
-    in_lat = Input(shape=(NOISE_DIM,), name="Latent input")
+    in_lat = Input(shape=(NOISE_DIM,), name="Latent_input")
     # foundation for 12x12x12 image
     n_nodes = 256 * 3 * 3 * 3
     gen = Dense(n_nodes, use_bias=False)(in_lat)
@@ -138,7 +138,7 @@ def make_generator_model():
     assert gen.get_shape().as_list() == [None, 3, 3, 3, 256] # Note: None is the batch size
 
     # Energy label input
-    en_label = Input(shape=(1,), name="Energy input")
+    en_label = Input(shape=(1,), name="Energy_input")
     # embedding for categorical input
     li_en = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
     # linear multiplication
@@ -149,7 +149,7 @@ def make_generator_model():
     assert li_en.get_shape().as_list() == [None, 3, 3, 3, 1]
 
     # ParticleID label input
-    pid_label = Input(shape=(1,), name="ParticleID input")
+    pid_label = Input(shape=(1,), name="ParticleID_input")
     # embedding for categorical input
     li_pid = Embedding(N_CLASSES_PID, EMBED_DIM)(pid_label)
     # linear multiplication
@@ -187,7 +187,7 @@ def generator_loss(fake_output):
     cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
-def generate_and_save_images(model, epoch, noise):
+def generate_and_save_images(model, epoch, noise, en_label, pid_label):
     """Creates and saves images at each epoch. Arguments:
     -) model: model (cGAN) to be evaluated;
     -) epoch: epoch whose predictions are to be saved;
@@ -196,7 +196,7 @@ def generate_and_save_images(model, epoch, noise):
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
     # 1 - Generate images
-    predictions = model(noise, training=False)
+    predictions = model([noise,en_label,pid_label], training=False)
     print(f"\nShape of generated images: {predictions.shape}")
     # 2 - Plot the generated images
     #plt.figure(figsize=(75,75))
@@ -222,8 +222,9 @@ def debug_generator(test_noise):
     """Uses the random seeds to generate fake samples and plots them using the
     generate_and_save_images subroutine.
     """
+    noise, en_label, pid_label = test_noise
     generator = make_generator_model()
-    generate_and_save_images(generator, 0, test_noise)
+    generate_and_save_images(generator, 0, noise, en_label, pid_label)
 
 #-------------------------------------------------------------------------------
 
@@ -238,10 +239,10 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES_* classes.
     """
     # image input
-    in_image = Input(shape=(12,12,12,1))
+    in_image = Input(shape=(12,12,12,1), name="Input_image")
 
     # en label input
-    en_label = Input(shape=(1,))
+    en_label = Input(shape=(1,), name="Energy_input")
     # embedding for categorical input
     li_en = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
     # scale up to image dimensions with linear activation
@@ -251,7 +252,7 @@ def make_discriminator_model():
     li_en = Reshape((12,12,12, 1))(li_en)
 
     # pid label input
-    pid_label = Input(shape=(1,))
+    pid_label = Input(shape=(1,), name="ParticleID_input")
     # embedding for categorical input
     li_pid = Embedding(N_CLASSES_PID, EMBED_DIM)(pid_label)
     # scale up to image dimensions with linear activation
@@ -272,7 +273,7 @@ def make_discriminator_model():
     discr = Dropout(0.3)(discr)
 
     discr = Flatten()(discr)
-    output = Dense(1, activation="sigmoid")(discr)
+    output = Dense(1, activation="sigmoid", name="Decision")(discr)
 
     model = Model([in_image, en_label, pid_label], output, name='discriminator')
     return model
@@ -325,7 +326,7 @@ class ConditionalGAN(tf.keras.Model):
 
     def compile(self):
         """Compile method for the network."""
-        super(ConditionalGAN, self).compile()
+        super(ConditionalGAN, self).compile(optimizer = 'adam')
 
     def summary(self):
         """Summary method for both the generator and discriminator."""
@@ -428,16 +429,16 @@ class ConditionalGAN(tf.keras.Model):
 if __name__=="__main__":
 
     #In colab after uploading data_MVA.root
-    #path = "data_MVA.root"
+    path = "EM-shower-simulator-with-NN/dataset/filtered_data/data_MVA.root"
 
     #In the project folder
-    path = os.path.join("..","dataset","filtered_data","data_MVA.root")
+    #path = os.path.join("..","dataset","filtered_data","data_MVA.root")
 
     train_images = debug_data_pull(path)
     debug_shower(train_images)
     test_noise = [seed, seed_en, seed_pid]
-    #debug_generator(test_noise)
-    #debug_discriminator(train_images)
+    debug_generator(test_noise)
+    debug_discriminator(train_images)
 
     train_dataset = data_pull(path)
     generator = make_generator_model()
@@ -449,8 +450,9 @@ if __name__=="__main__":
     cond_gan = ConditionalGAN(discriminator, generator, NOISE_DIM,
                               DEFAULT_D_OPTIM, DEFAULT_G_OPTIM)
 
-    cond_gan.compile()
+    #cond_gan.compile()
     #cond_gan.summary()
+    #cond_gan.train(train_dataset, EPOCHS)
 
     """
     # Create a folder to save rusults from training in form of checkpoints.

@@ -26,8 +26,8 @@ from tensorflow.keras.layers import (Input,
                                      Dropout,
                                      Flatten)
 
-
-from IPython import display # A command shell for interactive computing in Python.
+#A command shell for interactive computing in Python.
+from IPython import display
 from IPython.core.display import Image
 
 
@@ -39,8 +39,10 @@ N_CLASSES_PID = 3
 EMBED_DIM = 50
 L_RATE = 3e-4
 EPOCHS = 100
+
+#Create a random seed, to be used during the evaluation of the cGAN.
 num_examples_to_generate = 5
-# Create a random seed, to be used during the evaluation of the cGAN.
+tf.random.set_seed(42)
 seed = tf.random.normal([num_examples_to_generate, NOISE_DIM])
 seed_en = tf.random.normal([num_examples_to_generate, 1])
 seed_pid = tf.random.normal([num_examples_to_generate, 1])
@@ -51,11 +53,17 @@ DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 #-------------------------------------------------------------------------------
 
 def data_pull():
-   """Reshape and organize data."""
-   #path = Path( os.path.join("..","dataset","filtered_data","data_MVA.root") ).resolve()
-   path = "data_MVA.root" #in colab after uploading data_MVA.root in cloab
-   file = up.open(path)
-   branches = file["h"].arrays()
+   """Reshape and organize data.
+   Daniele a te l'onore...........................................................
+   """
+   #In colab after uploading data_MVA.root
+   #with up.open("data_MVA.root") as file:
+   #   branches = file["h"].arrays()
+
+   #In the project folder
+   path = Path(os.path.join("..","dataset","filtered_data","data_MVA.root"))
+   with up.open(path.resolve()) as file:
+      branches = file["h"].arrays()
 
    train_images = np.array(branches["shower"]).astype("float32")
    #images in log10 scale, zeros like pixel are set to -5,
@@ -74,23 +82,17 @@ def data_pull():
 
    # Batch and shuffle the data
    train_dataset = (tf.data.Dataset.from_tensor_slices((train_images, en_labels,
-                    pid_labels)).shuffle(BUFFER_SIZE).batch(BATCH_SIZE) )
-   return train_dataset
+                    pid_labels)).shuffle(BUFFER_SIZE).batch(BATCH_SIZE))
+   return train_images, train_dataset
 
-def debug_shower(data):
+def debug_shower(train_images):
     """Plot showers from the dataset"""
-    #devo aggiustare
-    #voglio che stampi un evento per chiamata
-    #voglio passargli un intero evento (data) e lui si prende le immagini in train_images!
-    train_images = data
     print(f"Shape of training images: {train_images.shape}")
-    #plt.figure(figsize=(20,150))
     k=0
-    N_showers = 1
-    for i in range(N_showers):
-        for j in range(12):
+    for i in range(num_examples_to_generate):
+        for j in range(train_images.shape[1]):
             k=k+1
-            plt.subplot(N_showers, 12, k)
+            plt.subplot(num_examples_to_generate, train_images.shape[1], k)
             plt.imshow(train_images[i, j, :, :, 0], cmap="gray")
             plt.axis("off")
     plt.show()
@@ -99,16 +101,25 @@ def debug_shower(data):
 
 def make_generator_model():
     """Define generator model:
-    Input 1) Energy label to be passed to the network;
-    Input 2) ParticleID label to be passed to the network;
-    Input 3) Random noise from which the network creates a vector of images,
-            associated to the given labels.
+    Input 1) Random noise from which the network creates a vector of images;
+    Input 2) Energy label to be passed to the network;
+    Input 3) ParticleID label to be passed to the network.
 
     Labels are given as scalars in input; then they are passed to an embedding
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    # en label input
+    # Image generator input
+    in_lat = Input(shape=(NOISE_DIM,))
+    # foundation for 12x12x12 image
+    n_nodes = 256 * 3 * 3 * 3
+    gen = Dense(n_nodes, use_bias=False)(in_lat)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+    gen = Reshape((3, 3, 3, 256))(gen)
+    assert gen.get_shape().as_list() == [None, 3, 3, 3, 256] # Note: None is the batch size
+
+    # Energy label input
     en_label = Input(shape=(1,))
     # embedding for categorical input
     li_en = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
@@ -119,7 +130,7 @@ def make_generator_model():
     li_en = Reshape((3, 3, 3, 1))(li_en)
     assert li_en.get_shape().as_list() == [None, 3, 3, 3, 1]
 
-    # pid label input
+    # ParticleID label input
     pid_label = Input(shape=(1,))
     # embedding for categorical input
     li_pid = Embedding(N_CLASSES_PID, EMBED_DIM)(pid_label)
@@ -129,16 +140,6 @@ def make_generator_model():
     # reshape to additional channel
     li_pid = Reshape((3, 3, 3, 1))(li_pid)
     assert li_pid.get_shape().as_list() == [None, 3, 3, 3, 1]
-
-    # image generator input
-    in_lat = Input(shape=(NOISE_DIM,))
-    # foundation for 12x12x12 image
-    n_nodes = 256 * 3 * 3 * 3
-    gen = Dense(n_nodes, use_bias=False)(in_lat)
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-    gen = Reshape((3, 3, 3, 256))(gen)
-    assert gen.get_shape().as_list() == [None, 3, 3, 3, 256] # Note: None is the batch size
 
     # merge image gen and label input
     merge = Concatenate()([gen, li_en, li_pid])
@@ -161,23 +162,24 @@ def make_generator_model():
     return model
 
 def generator_loss(fake_output):
-    """Definie generator loss: successes on fake samples (from generator)"""
+    """Definie generator loss:
+    successes on fake samples from the generator valued as true samples by
+    the discriminator fake_output.
+    """
     cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
 def debug_generator():
-    """Creates a random noise and labels and generate a sample"""
+    """Uses the random seeds to generate fake samples."""
     generator = make_generator_model()
-    noise = tf.random.normal([1, NOISE_DIM])
-    en_labels = np.random.rand(1)*100
-    pid_labels = np.random.rand(1)*2
-    generated_image = generator([noise, en_labels, pid_labels], training=False)
-    print(generated_image.shape)
-
-    plt.figure(figsize=(20,150))
-    for j in range(12):
-        plt.subplot(1, 12, j+1)
-        plt.imshow(generated_image[0,j,:,:,0], cmap="gray")
+    predictions = generator([seed, seed_en, seed_pid], training=False)
+    print(f"Shape of generated images: {predictions.shape}")
+    k=0
+    for i in range(predictions.shape[0]):
+      for j in range(predictions.shape[1]):
+        k=k+1
+        plt.subplot(num_examples_to_generate, predictions.shape[1], k)
+        plt.imshow(predictions[i,j,:,:,0], cmap="gray")
         plt.axis("off")
     plt.show()
 
@@ -185,14 +187,17 @@ def debug_generator():
 
 def make_discriminator_model():
     """Define discriminator model :
-    Input 1) Energy label to be passed to the network;
-    Input 2) ParticleID label to be passed to the network;
-    Input 3) Vector of images associated to the given labels.
+    Input 1) Vector of images associated to the given labels;
+    Input 2) Energy label to be passed to the network;
+    Input 3) ParticleID label to be passed to the network.
 
     Labels are given as scalars in input; then they are passed to an embedding
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
+    # image input
+    in_image = Input(shape=(12,12,12,1))
+
     # en label input
     en_label = Input(shape=(1,))
     # embedding for categorical input
@@ -213,12 +218,9 @@ def make_discriminator_model():
     # reshape to additional channel
     li_pid = Reshape((12,12,12, 1))(li_pid)
 
-    # image input
-    in_image = Input(shape=(12,12,12,1))
     # concat label as a channel
     merge = Concatenate()([in_image, li_en, li_pid])
     # downsample
-
     discr = Conv3D(32, (5, 5, 5), strides=(2, 2, 2), padding="same")(merge)
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
@@ -234,8 +236,8 @@ def make_discriminator_model():
     return model
 
 def discriminator_loss(real_output, fake_output):
-    """Define discriminator loss :
-    fails on fake samples(from generator) and successes on real samples.
+    """Define discriminator loss:
+    fails on fake samples (from generator) and successes on real samples.
     """
     cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
     real_loss = cross_entropy(tf.ones_like(real_output), real_output)
@@ -243,17 +245,12 @@ def discriminator_loss(real_output, fake_output):
     total_loss = real_loss + fake_loss
     return total_loss
 
-def debug_discriminator():
-    """Checks discriminator output on a random sample generated by the generator
-    """
+def debug_discriminator(images):
+    """Uses images from the sample to test discriminator model."""
     discriminator = make_discriminator_model()
-    noise = tf.random.normal([1, NOISE_DIM])
-    en_labels = np.random.rand(1)*100
-    pid_labels = np.random.rand(1)*2
-    generator = make_generator_model()
-    generated_image = generator([noise,en_labels,pid_labels], training=False)
-    decision = discriminator( [generated_image,en_labels,pid_labels] )
-    print(decision)
+    images = images[0:num_examples_to_generate]
+    decision = discriminator([images, seed_en, seed_pid])
+    print(f"Decision per raw: {decision[:]}")
 
 #-------------------------------------------------------------------------------
 
@@ -414,11 +411,11 @@ def generate_and_save_images(model, epoch, test_input, test_en_label, test_pid_l
 
 if __name__=="__main__":
 
-    train_dataset = data_pull()
+    train_images, train_dataset = data_pull()
 
-    #debug_shower(train_dataset[?])
+    debug_shower(train_images)
     debug_generator()
-    debug_discriminator()
+    debug_discriminator(train_images)
 
     generator = make_generator_model()
     plot_model(generator, to_file="net-generator.png", show_shapes=True)
@@ -427,20 +424,22 @@ if __name__=="__main__":
     plot_model(discriminator, to_file="net-discriminator.png", show_shapes=True)
 
 
-    cond_gan = ConditionalGAN(discriminator, generator, NOISE_DIM, DEFAULT_D_OPTIM, DEFAULT_G_OPTIM)
+    cond_gan = ConditionalGAN(discriminator, generator, NOISE_DIM,
+                              DEFAULT_D_OPTIM, DEFAULT_G_OPTIM)
 
     cond_gan.compile() #how does it compile?
-    cond_gan.summary()
+    #cond_gan.summary()
 
     # Create a folder to save rusults from training in form of checkpoints.
     checkpoint_dir = "./training_checkpoints"
     checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
-    checkpoint = tf.train.Checkpoint(generator=cond_gan.generator,
-                                     discriminator=cond_gan.discriminator,
-                                     generator_optimizer=cond_gan.generator_optimizer,
-                                     discriminator_optimizer=cond_gan.discriminator_optimizer)
+    checkpoint = tf.train.Checkpoint(
+                   generator=cond_gan.generator,
+                   discriminator=cond_gan.discriminator,
+                   generator_optimizer=cond_gan.generator_optimizer,
+                   discriminator_optimizer=cond_gan.discriminator_optimizer)
 
-    cond_gan.train(train_dataset, EPOCHS)
+    #cond_gan.train(train_dataset, EPOCHS)
 
     """
     # evaluate the model

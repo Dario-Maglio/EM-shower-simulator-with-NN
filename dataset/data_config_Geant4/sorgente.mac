@@ -18,7 +18,7 @@
 /gps/ene/gradient 0
 /gps/ene/intercept 1
 /gps/ene/min 1 GeV
-/gps/ene/max 100 GeV
+/gps/ene/max 30 GeV
 
 #-------------------------------------------------------------------------------
 
@@ -41,7 +41,7 @@
 /gps/ene/gradient 0
 /gps/ene/intercept 1
 /gps/ene/min 1 GeV
-/gps/ene/max 100 GeV
+/gps/ene/max 30 GeV
 #-------------------------------------------------------------------------------
 
 # positrone
@@ -63,7 +63,7 @@
 /gps/ene/gradient 0
 /gps/ene/intercept 1
 /gps/ene/min 1 GeV
-/gps/ene/max 100 GeV
+/gps/ene/max 30 GeV
 #-------------------------------------------------------------------------------
 
 # list all sources

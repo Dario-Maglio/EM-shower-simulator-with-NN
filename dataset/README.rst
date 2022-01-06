@@ -1,4 +1,9 @@
-Titolino folder README
+Dataset folder
 ----------------------
 
-Folder contenente simulazioni e dati adattati all'analisi con MVA.
+In this folder:
+
+* data_config_Geant4 : contains configuration files to produce the simulation ;
+* data_visualization : contains some example of showers in our detector geometry;
+* filtered_data : contains analysis file to format the Geant4 output file to a 
+  suitable form for the multivariate analysis.

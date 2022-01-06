@@ -1,10 +1,14 @@
-spazio = 0.0
+#Geometry parameters
+spazio = 0.0 #cm
 n_layers = 13
 n_z = 13
 n_y = 13
-X_DIM = 5.
-Y_DIM = 2.
-Z_DIM = 2.
+X_DIM = 5. #cm
+Y_DIM = 2. #cm
+Z_DIM = 2. #cm
+
+#write to file positioning and color information
+
 with open("cellette.tg", "w", encoding = 'utf-8') as file:
     for layers in range(1,n_layers):
         i = 0

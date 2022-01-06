@@ -1,27 +1,30 @@
 /control/verbose 1
 
+# selects the geometry of the detector
 /geometry/source geometria.tg
 
+# loads the physics library
 /physics_lists/select EM
-#/physics_lists/factory/addOptical
-#/physics_lists/factory/addRadioactiveDecay
-#/process/optical/processActivation Scintillation true
 
 /run/useMaximumLogicalCores
 /run/initialize
 
+# verifys if the geometry is ok
 /geometry/test/run
 
+# diplays the detector
 /vis/viewer/set/background white
 /vis/geometry/list
 /vis/open VRML2FILE
 /vis/drawVolume
 /vis/viewer/flush
 
+# loads primary particle informations
 /control/execute sorgente.mac                #sorgente vera
 
 /random/setSeeds 17818102 10651093
 
+# adds visualization properties
 /vis/scene/add/axes 0 0 0 42 cm
 /vis/scene/add/trajectories
 /vis/scene/endOfEventAction accumulate 1
@@ -40,6 +43,7 @@
 
 /vis/viewer/set/background white
 
+# displays one event
 /tracking/verbose 2
 /run/beamOn 1
 
@@ -53,6 +57,5 @@
 /run/printProgress 1000
 
 # start simulation
-
-/analysis/setFileName shower_prova
+/analysis/setFileName shower
 /run/beamOn 10000

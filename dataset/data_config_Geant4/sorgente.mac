@@ -9,7 +9,7 @@
 /gps/pos/halfz 0.01 cm
 /gps/pos/centre -20 11 11 cm
 
-/gps/direction 1 0 0 # beam diretto su rivelatore
+/gps/direction 1 0 0 # beam normal to the detector plane
 
 #/gps/ene/type Mono
 #/gps/ene/mono 2.0 GeV
@@ -32,7 +32,7 @@
 /gps/pos/halfz 0.01 cm
 /gps/pos/centre -20 11 11 cm
 
-/gps/direction 1 0 0 # beam diretto su rivelatore
+/gps/direction 1 0 0 # beam normal to the detector plane
 
 #/gps/ene/type Mono
 #/gps/ene/mono 2.0 GeV
@@ -54,7 +54,7 @@
 /gps/pos/halfz 0.01 cm
 /gps/pos/centre -20 11 11 cm
 
-/gps/direction 1 0 0 #per beam diretto su bersaglio e rivelatore
+/gps/direction 1 0 0 # beam normal to the detector plane
 
 #/gps/ene/type Mono
 #/gps/ene/mono 2.0 GeV

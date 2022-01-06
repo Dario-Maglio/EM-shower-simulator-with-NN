@@ -1,6 +1,6 @@
-Titolino folder README
+Visualization examples
 ----------------------
 
-Le visualizzazioni degli eventi è possibile aprendo i file .wrl con il programma
-FreeWRL.
-Scaricabile presso http://freewrl.sourceforge.net/
+Created with our detector geometry.
+![Visualization](https://github.com/[dpassaro]/[EM-shower-simulator-with-NN]/blob/[main]/esempio_sciame.png?raw=true)
+3D visualization files (.wrl) are to be opened with FreeWRL (http://freewrl.sourceforge.net/)

@@ -1,26 +1,28 @@
+//define world
 :volu world BOX 40*m 40*cm 40*cm G4_AIR
 
-:P X 5*cm //spessore celletta
-:P Y 2.*cm //larghezza celletta
-:P Z 2.*cm //altezza celletta
-:P X_TOT 80*cm // spessore totale
-:P Y_TOT 20*cm // larghezza totale
-:P Z_TOT 20*cm // altezza totale
+// geometry parameters
+:P X 5*cm //pixel lenght
+:P Y 2.*cm //pixel width
+:P Z 2.*cm //pixel height
+:P X_TOT 80*cm // total lenght
+:P Y_TOT 20*cm // total width
+:P Z_TOT 20*cm // total height
 
 :rotm r000 0 0 0
-:rotm r090x 90 0 0
-:rotm r090y 0 90 0
-:rotm r090z 0 0 90
 
+// define geometry of the pixels
 :solid lastra0 BOX 0.1*cm $Y_TOT/10*cm $Z_TOT/10*cm
 :solid celletta BOX $X/2 $Y/2 $Z/2
 
+// define material of the calorimeter
 :prop G4_CESIUM_IODIDE
   SCINTILLATIONYIELD 45./keV
   RESOLUTIONSCALE 1.
   FASTTIMECONSTANT 250.*ns
   YIELDRATIO 1
 
+// load positioning and colors of the pixels
 #include cellette.tg
 
 :volu step0(S) lastra0 G4_AIR

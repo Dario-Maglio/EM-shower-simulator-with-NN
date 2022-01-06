@@ -1,4 +1,4 @@
-Titolino folder README
+Geant4 simulation configuration
 ----------------------
 
 Geant4 simulation is executed by "gears.exe" programm, which is a precompiled
@@ -9,7 +9,12 @@ https://github.com/jintonic/gears
 
 In order to modify the simulation:
 
-* Manage simulation geometry in "geometria.tg" and in "file.py" ;
+* Manage simulation geometry in "geometria.tg" and in "file.py" ; then run:
+
+.. code-block:: bash
+
+   python file.py
+
 * Manage particle source and energy in "sorgente.mac" ;
 * Manage overall settings (output file name, number of events to generate, ...) ;
 * To launch the simulation, type in cmd (in Windows) opened in this folder :
@@ -48,4 +53,5 @@ Branches inside the tree:
 
 This file is then processed with "dataset/filtered_data/analisi.C", in order to
 create a .root file with an appropriate format for the multivariate analysis.
-The analysis file needs to be compiled and executed by ROOT (https://root.cern/install/).
+The analysis file needs to be compiled and executed with ROOT package
+(https://root.cern/install/).

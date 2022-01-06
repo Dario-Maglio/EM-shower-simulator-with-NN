@@ -138,7 +138,7 @@ void MVA_processing(){
           x_start = x_->at(step_point); y_start = y_->at(step_point); z_start = z_->at(step_point);
           check_start = kTRUE;
         }
-        if(pid_->at(step_point)==0 && x_->at(step_point)>-30 ){//&& x_->at(i)<-5
+        if( (pid_->at(step_point)==0 || pid_->at(step_point)==1)&& x_->at(step_point)>-30 ){//|| pid_->at(step_point)==1)
           x_stop = x_->at(step_point); y_stop = y_->at(step_point); z_stop = z_->at(step_point);
           check_stop = kTRUE;
           angles = compute_angles(x_start,y_start,z_start,x_stop,y_stop,z_stop);
@@ -230,7 +230,7 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
   int pid;
   h->SetBranchAddress("primary", &pid, &b_pid);
   h->SetBranchAddress("en_in", &en_in, &b_en_in);
-  //h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
+  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
   h->SetBranchAddress("shower", shower, &b_shower);
 
   h->GetEntry(evento);
@@ -242,8 +242,11 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
 
   if(show_display){
     TCanvas *c = new TCanvas("","",1200,800);
-    c->Divide(int(TMath::Sqrt(NUMBER_OF_LAYERS))+1,
-              int(TMath::Sqrt(NUMBER_OF_LAYERS))+1);
+    int x_div = int(TMath::Sqrt(NUMBER_OF_LAYERS))+1;
+    int y_div;
+    if(x_div*(x_div-1)==NUMBER_OF_LAYERS){y_div=x_div-1;}
+    else {y_div = x_div;}
+    c->Divide(x_div,y_div);
     gStyle->SetOptStat(kFALSE);
     for(int i=0; i<NUMBER_OF_LAYERS; i++){
       do_stuff(c, i+1, layer[i]);

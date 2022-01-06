@@ -1,4 +1,4 @@
-Titolino folder README
+Prepocessing of the simulation data
 ----------------------
 
 Structure of data_MVA.root:
@@ -13,16 +13,35 @@ Branches inside "h":
 
 * "en_in"   : energy of the particle generating the shower (in keV);
 
+* "en_mis"   : deposited energy inside the detector (in keV);
+
 * "theta"   : theta angle of incidence of the primary particle;
 
 * "phi"     : phi angle of incidence of the primary particle;
 
-* "shower"  : 4D array of dimensions (layers=12,pixel_x=12,pixely=12,1) containing the log10-values of the energy deposited by the primary particle in each pixel of the detector.
-
+* "shower"  : 4D array of dimensions (layers=12,pixel_x=12,pixely=12,1)
+  containing the log10-values of the energy deposited by the primary particle in
+  each pixel of the detector.
 
 The structure of the branch "shower" is specific for our simulation geometry,
 defined in "dataset/data_config_Geant4/geometria.tg".
 
 If you want to change the geometry of the simulation, please see
-"dataset/data_config_Geant4/README.rst" and then modify "analisi.C" file in this
+"dataset/data_config_Geant4/README.rst" and then modify "MVA_processing.C" file in this
 folder.
+The analysis file needs to be compiled and executed with ROOT package
+(https://root.cern/install/)
+
+In order to process the simulation file from Geant4:
+
+* if you already installed ROOT, run in your terminal:
+
+.. code-block bash
+
+  root MVA_processing.C
+
+* alternatively, there will be a .py processing file, so that you'll only need to run:
+
+.. code-block bash
+
+  python MVA_processing.py

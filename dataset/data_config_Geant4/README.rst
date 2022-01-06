@@ -50,8 +50,7 @@ Branches inside the tree:
 * Kinetic energy of the particle [keV] (k in short) ;
 * Momentum of the particle [keV] (p in short) ;
 * Charges (q in short) .
+* Total energy deposited in a sensitive volume [keV] (et in short)
 
-This file is then processed with "dataset/filtered_data/analisi.C", in order to
+This file is then processed with "dataset/filtered_data/MVA_processing.C", in order to
 create a .root file with an appropriate format for the multivariate analysis.
-The analysis file needs to be compiled and executed with ROOT package
-(https://root.cern/install/).

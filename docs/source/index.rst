@@ -34,10 +34,11 @@ Data structure and dataset informations
 .. include:: ../../dataset/filtered_data/README.rst
 
 
+.. include:: ../../dataset/data_visualization/README.rst
+
+
 .. include:: ../../dataset/data_config_Geant4/README.rst
 
-
-.. include:: ../../dataset/data_visualization/README.rst
 
 
 Indices and tables

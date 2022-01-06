@@ -20,7 +20,7 @@ class TestCore(unittest.TestCase):
         EM.debug_generator(EM.test_noise)
         EM.debug_discriminator(train_images)
         train_images = train_images[0, :, :, :, :]
-        self.assertEqual(train_images.shape , (*EM.GEOMETRY,))
+        self.assertEqual(train_images.shape , EM.GEOMETRY)
 
 if __name__ == "__main__":
     unittest.main()

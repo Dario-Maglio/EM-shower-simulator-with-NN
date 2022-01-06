@@ -1,4 +1,9 @@
-Geant4 simulation is executed by "gears.exe" programm, which is a precompiled version of Geant4, compatible with Windows and Linux. For more informations and installation guide:
+Titolino folder README
+----------------------
+
+Geant4 simulation is executed by "gears.exe" programm, which is a precompiled
+version of Geant4, compatible with Windows and Linux. For more informations and
+installation guide:
 
 https://github.com/jintonic/gears
 
@@ -6,14 +11,14 @@ In order to modify the simulation:
 
 * Manage simulation geometry in "geometria.tg" and in "file.py" ;
 * Manage particle source and energy in "sorgente.mac" ;
-* Manage overall settings (output file name, number of events to be generate, ...) ;
-* To launch the simulation, type in cmd (in Windows) opened in this folder : 
+* Manage overall settings (output file name, number of events to generate, ...) ;
+* To launch the simulation, type in cmd (in Windows) opened in this folder :
+
 .. code-block:: bash
 
    gears.exe simulazione.mac
 
-------------------------------------------------------------
- 
+
 Output file shower.root from Geat4 simulation contains:
 
 * Main tree "t" ;
@@ -40,5 +45,7 @@ Branches inside the tree:
 * Kinetic energy of the particle [keV] (k in short) ;
 * Momentum of the particle [keV] (p in short) ;
 * Charges (q in short) .
-  
-This file is then processed with "dataset/filtered_data/analisi.C", in order to create a .root file with an appropriate format for the multivariate analysis. The analysis file needs to be compiled and executed by ROOT (https://root.cern/install/).
+
+This file is then processed with "dataset/filtered_data/analisi.C", in order to
+create a .root file with an appropriate format for the multivariate analysis.
+The analysis file needs to be compiled and executed by ROOT (https://root.cern/install/).

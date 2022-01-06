@@ -72,7 +72,6 @@ test_noise = [tf.random.normal([num_examples_to_generate, NOISE_DIM]),
                                 maxval=N_CLASSES_PID)]
 
 #-------------------------------------------------------------------------------
-"""Subroutins for the tratment of images and dataset."""
 
 def data_pull(path):
    """Organize and reshape the dataset for the cGan training.
@@ -397,8 +396,7 @@ class ConditionalGAN(tf.keras.Model):
 
     def train_step(self, dataset):
         """Train step of the cGAN.
-        Input: dataset = combined images vector and labels upon which the network
-                         trained.
+        Input: dataset = combined images vector and labels upon which the network trained.
         Description:
         1 - Create a random noise to feed it into the model for the images generation ;
         2 - Generate images and calculate loss values using real images and labels ;

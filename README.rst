@@ -35,7 +35,6 @@ Usage
 -----
 
 If no arguments are passed, the simulation will use random features as input.
-(not implemented yet -> actually default parameter in use)
 
 In python you can import the module simply writing
 

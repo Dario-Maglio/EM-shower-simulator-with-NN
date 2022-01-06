@@ -41,8 +41,8 @@ data_path = os.path.join("dataset","filtered_data","data_MVA.root")
 #In this folder
 dpath = os.path.join("..", data_path)
 
-VERBOSE = False
-GEOMETRY = [12, 12, 12, 1]
+VERBOSE = True
+GEOMETRY = (12, 12, 12, 1)
 
 BUFFER_SIZE = 1000
 BATCH_SIZE = 100
@@ -74,72 +74,72 @@ test_noise = [tf.random.normal([num_examples_to_generate, NOISE_DIM]),
 #-------------------------------------------------------------------------------
 
 def data_pull(path):
-   """Organize and reshape the dataset for the cGan training.
-   Take in input a path to the dataset and return tf iterator that can be used
-   to train the cGAN using the method train.
-   """
-   logger.info("Loading the training dataset.")
-   try:
+    """Organize and reshape the dataset for the cGan training.
+    Take in input a path to the dataset and return tf iterator that can be used
+    to train the cGAN using the method train.
+    """
+    logger.info("Loading the training dataset.")
+    try:
        with up.open(Path(path).resolve()) as file:
            branches = file["h"].arrays()
-   except Exception as e:
+    except Exception as e:
        print("Error: Invalid path or corrupted file.")
        raise e
 
-   train_images = np.array(branches["shower"]).astype("float32")
-   #images in log10 scale, zeros like pixel are set to -5,
-   #maximum of pixel is 2.4E5 keV => maximum<7 in log scale
-   N_EVENT = train_images.shape[0]
-   # Normalize the images to [-1, 1] and reshape
-   train_images = np.reshape((train_images - 1.)/6., (N_EVENT, *GEOMETRY))
+    train_images = np.array(branches["shower"]).astype("float32")
+    #images in log10 scale, zeros like pixel are set to -5,
+    #maximum of pixel is 2.4E5 keV => maximum<7 in log scale
+    N_EVENT = train_images.shape[0]
+    # Normalize the images to [-1, 1] and reshape
+    train_images = np.reshape((train_images - 1.)/6., (N_EVENT, *GEOMETRY))
 
-   #np.zeros(1000).astype("float32")
-   en_labels = np.array(branches["en_in"]).astype("float32")/1000000.0
-   en_labels = np.transpose(en_labels)
-   assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
-   en_labels = np.reshape(en_labels, (N_EVENT, 1))
+    #np.zeros(1000).astype("float32")
+    en_labels = np.array(branches["en_in"]).astype("float32")/1000000.0
+    en_labels = np.transpose(en_labels)
+    assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
+    en_labels = np.reshape(en_labels, (N_EVENT, 1))
 
-   # particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer
-   pid_labels = np.array(branches["primary"]) + 1
-   pid_labels = np.transpose(pid_labels)
-   assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
-   pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
+    # particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer
+    pid_labels = np.array(branches["primary"]) + 1
+    pid_labels = np.transpose(pid_labels)
+    assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
+    pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
 
-   # Batch and shuffle the data
-   train_dataset = (train_images, en_labels, pid_labels)
-   train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
-   return train_dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+    # Batch and shuffle the data
+    train_dataset = (train_images, en_labels, pid_labels)
+    train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
+    return train_dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 
 def debug_data_pull(path):
-   """Import data images from the dataset and test shapes.
-   Take in input a path to the dataset and return train_images from the dataset
-   that can be plotted with debug_shower.
-   """
-   logger.info("Start debugging the dataset loading subroutines.")
-   try:
+    """Import data images from the dataset and test shapes.
+    Take in input a path to the dataset and return train_images from the dataset
+    that can be plotted with debug_shower.
+    """
+    logger.info("Start debugging the dataset loading subroutines.")
+    try:
        with up.open(Path(path).resolve()) as file:
            branches = file["h"].arrays()
-   except Exception as e:
+    except Exception as e:
        print("Error: Invalid path or corrupted file.")
        raise e
 
-   train_images = np.array(branches["shower"]).astype("float32")
-   #images in log10 scale, zeros like pixel are set to -5,
-   #maximum of pixel is 2.4E5 keV => maximum<7 in log scale
-   N_EVENT = train_images.shape[0]
-   # Normalize the images to [-1, 1] and reshape
-   train_images = np.reshape((train_images - 1.)/6., (N_EVENT, *GEOMETRY))
+    train_images = np.array(branches["shower"]).astype("float32")
+    #images in log10 scale, zeros like pixel are set to -5,
+    #maximum of pixel is 2.4E5 keV => maximum<7 in log scale
+    N_EVENT = train_images.shape[0]
+    # Normalize the images to [-1, 1] and reshape
+    train_images = np.reshape((train_images - 1.)/6., (N_EVENT, *GEOMETRY))
 
-   #np.zeros(1000).astype("float32")
-   en_labels = np.array(branches["en_in"]).astype("float32")
-   en_labels = np.transpose(en_labels)
-   assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
+    #np.zeros(1000).astype("float32")
+    en_labels = np.array(branches["en_in"]).astype("float32")
+    en_labels = np.transpose(en_labels)
+    assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
 
-   pid_labels = np.array(branches["primary"]) + 1
-   pid_labels = np.transpose(pid_labels)
-   assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
-   logger.info("Debug of the loading subroutines finished.")
-   return train_images
+    pid_labels = np.array(branches["primary"]) + 1
+    pid_labels = np.transpose(pid_labels)
+    assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
+    logger.info("Debug of the loading subroutines finished.")
+    return train_images
 
 def debug_shower(train_images, num_examples=1):
     """Show num_examples images from train_images."""
@@ -148,7 +148,7 @@ def debug_shower(train_images, num_examples=1):
     k=0
     plt.figure("Showers from data")
     for i in range(num_examples):
-        for j in range(GEOMETRY[0]):
+       for j in range(GEOMETRY[0]):
             k=k+1
             plt.subplot(num_examples, GEOMETRY[0], k)
             plt.imshow(train_images[i, j, :, :, 0], cmap="gray")
@@ -173,11 +173,11 @@ def generate_and_save_images(model, noise, epoch=0, verbose=False):
     plt.figure("Generated shower's")
     k=0
     for i in range(predictions.shape[0]):
-      for j in range( predictions.shape[1]):
-        k=k+1
-        plt.subplot(num_examples_to_generate, predictions.shape[1], k)
-        plt.imshow(predictions[i,j,:,:,0], cmap="gray")
-        plt.axis("off")
+       for j in range( predictions.shape[1]):
+          k=k+1
+          plt.subplot(num_examples_to_generate, predictions.shape[1], k)
+          plt.imshow(predictions[i,j,:,:,0], cmap="gray")
+          plt.axis("off")
     plt.show()
 
     # 3 - Save the generated images
@@ -446,44 +446,43 @@ class ConditionalGAN(tf.keras.Model):
         }
 
     def train(self, dataset, epochs):
-      """Define the training function of the cGAN.
-      Inputs:
-      dataset = combined real images vectors and labels;
-      epochs = number of epochs for the training.
+        """Define the training function of the cGAN.
+        Inputs:
+        dataset = combined real images vectors and labels;
+        epochs = number of epochs for the training.
 
-      For each epoch:
-      -) For each batch of the dataset, run the custom "train_step" function;
-      -) Produce images;
-      -) Save the model every 5 epochs as a checkpoint;
-      -) Print out the completed epoch no. and the time spent;
-      Then generate a final image after the training is completed.
-      """
+        For each epoch:
+        -) For each batch of the dataset, run the custom "train_step" function;
+        -) Produce images;
+        -) Save the model every 5 epochs as a checkpoint;
+        -) Print out the completed epoch no. and the time spent;
+        Then generate a final image after the training is completed.
+        """
 
-    # Create a folder to save rusults from training in form of checkpoints.
-      checkpoint_dir = "./training_checkpoints"
-      checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
-      checkpoint = tf.train.Checkpoint(
+        # Create a folder to save rusults from training in form of checkpoints.
+        checkpoint_dir = "./training_checkpoints"
+        checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+        checkpoint = tf.train.Checkpoint(
                    generator=cond_gan.generator,
                    discriminator=cond_gan.discriminator,
                    generator_optimizer=cond_gan.generator_optimizer,
                    discriminator_optimizer=cond_gan.discriminator_optimizer)
 
-      display.clear_output(wait=True)
-      for epoch in range(epochs):
-         print(f"Running EPOCH = {epoch + 1}")
-         start = time.time()
+        display.clear_output(wait=True)
+        for epoch in range(epochs):
+           print(f"Running EPOCH = {epoch + 1}")
+           start = time.time()
 
-         for image_batch in dataset:
-            self.train_step(image_batch)
+           for image_batch in dataset:
+              self.train_step(image_batch)
 
-         display.clear_output(wait=True)
-         print(f"EPOCH = {epoch + 1}")
-         print (f"Time for epoch {epoch + 1} is {time.time()-start} sec")
-         generate_and_save_images(self.generator, epoch + 1, test_noise)
+           display.clear_output(wait=True)
+           print(f"EPOCH = {epoch + 1}")
+           print (f"Time for epoch {epoch + 1} is {time.time()-start} sec")
+           generate_and_save_images(self.generator, epoch + 1, test_noise)
 
-         #if (epoch + 1) % 5 == 0:
-         checkpoint.save(file_prefix = checkpoint_prefix)
-          #  pass
+           #if (epoch + 1) % 5 == 0:
+           checkpoint.save(file_prefix = checkpoint_prefix)
 
 #-------------------------------------------------------------------------------
 

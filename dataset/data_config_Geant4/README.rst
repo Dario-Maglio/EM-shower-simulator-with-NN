@@ -1,5 +1,5 @@
 Geant4 simulation configuration
-----------------------
+-------------------------------
 
 Geant4 simulation is executed by "gears.exe" programm, which is a precompiled
 version of Geant4, compatible with Windows and Linux. For more informations and

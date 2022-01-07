@@ -26,10 +26,12 @@ from tensorflow.keras.layers import (Input,
                                      Conv3DTranspose,
                                      Conv3D,
                                      Dropout,
+                                     AveragePooling3D,
                                      Flatten)
 
 from IPython import display
 from IPython.core.display import Image
+from custom_minibatch import minibatch_stddev_layer
 
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
@@ -45,6 +47,8 @@ data_path = os.path.join("dataset","filtered_data","data_MVA.root")
 DPATH = os.path.join("..", data_path)
 
 #Configuration of the dataset structure
+MBSTD_GROUP_SIZE = 4                      #minibatch dimension
+                                          #for minibatch discrimination
 BATCH_SIZE = 100
 BUFFER_SIZE = 1000
 N_CLASSES_PID = 3
@@ -208,14 +212,6 @@ def make_generator_model():
     for cell in GEOMETRY:
         n_nodes = n_nodes * cell
 
-    # Image generator input
-    in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
-    gen = Dense(n_nodes, use_bias=False)(in_lat)
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-    gen = Reshape((3, 3, 3, 256))(gen)
-    assert gen.get_shape().as_list() == [None, 3, 3, 3, 256]
-
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
     # embedding for categorical input
@@ -226,6 +222,14 @@ def make_generator_model():
     # reshape to additional channel
     li_en = Reshape((3, 3, 3, 1))(li_en)
     assert li_en.get_shape().as_list() == [None, 3, 3, 3, 1]
+
+    # Image generator input
+    in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
+    gen = Dense(n_nodes, use_bias=False)(in_lat)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+    gen = Reshape((3, 3, 3, 256))(gen)
+    assert gen.get_shape().as_list() == [None, 3, 3, 3, 256]
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particleID_input")
@@ -328,6 +332,12 @@ def make_discriminator_model():
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
+
+    #===========================================================================
+    #minibatch discrimination layer : important to avoid mode collapse
+    minibatch = minibatch_stddev_layer(discr, MBSTD_GROUP_SIZE)
+    discr = Conv3D(64, (4, 3, 3), strides=(2, 2, 2), padding="valid")(minibatch)
+    #===========================================================================
 
     discr = Flatten()(discr)
     output = Dense(1, activation="sigmoid", name="decision")(discr)

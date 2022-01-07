@@ -153,15 +153,15 @@ void MVA_processing(){
         for(int num_z=1; num_z<NUMBER_OF_PIXEL_Z+1;num_z++){
           for(int num_y=1; num_y<NUMBER_OF_PIXEL_Y+1;num_y++){
             j++;
-            if(et_[0][layers*1000+j]==0){
+            if( layers*1000+j>=et_[0].size() || et_[0][layers*1000+j]==0){
               shower[layers-1][num_z-1][num_y-1][0]=-5;
             }
             else{
               shower[layers-1][num_z-1][num_y-1][0]=TMath::Log10(et_[0][layers*1000+j]);
             }
-            }
           }
         }
+      }
       if(evt%50==0){
         end = std::chrono::steady_clock::now();
         cout <<"time per event:\t"<<

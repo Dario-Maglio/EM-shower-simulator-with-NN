@@ -63,7 +63,7 @@ logger = logging.getLogger("trainLogger")
 logger.addHandler(ch)
 
 #Create a random seed, to be used during the evaluation of the cGAN.
-tf.random.set_seed(42)
+#tf.random.set_seed(42)
 num_examples_to_generate = 5
 test_noise = [tf.random.normal([num_examples_to_generate, NOISE_DIM]),
               tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
@@ -508,8 +508,8 @@ if __name__=="__main__":
     if VERBOSE :
         #Execute debug subroutines
         debug_shower(train_images, num_examples_to_generate)
-        debug_generator(test_noise)
-        debug_discriminator(train_images)
+        #debug_generator(test_noise)
+        #debug_discriminator(train_images)
 
     logger.info("Starting training operations.")
     train_dataset = data_pull(dpath)

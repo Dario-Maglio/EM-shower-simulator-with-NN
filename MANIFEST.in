@@ -3,10 +3,13 @@
 include versioneer.py
 include EM_shower_simulator/_version.py
 
-include README.rst
+global-include *README.rst
+global-include *.png
+
+include LICENSE
 include setup.cfg
 include requirements.txt
-include LICENSE
+include dataset/filtered_data/data_MVA.root
 
 prune docs
 prune slides

@@ -31,7 +31,6 @@ from tensorflow.keras.layers import (Input,
 
 from IPython import display
 from IPython.core.display import Image
-from custom_minibatch import minibatch_stddev_layer
 
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
@@ -47,7 +46,7 @@ data_path = os.path.join("dataset","filtered_data","data_MVA.root")
 DPATH = os.path.join("..", data_path)
 
 #Configuration of the dataset structure
-MBSTD_GROUP_SIZE = 4                           #minibatch dimension
+MBSTD_GROUP_SIZE = 10                        #minibatch dimension
 BATCH_SIZE = 100
 BUFFER_SIZE = 10000
 N_CLASSES_PID = 3
@@ -63,7 +62,7 @@ DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 
 #Create a random seed, to be used during the evaluation of the cGAN.
 #tf.random.set_seed(42)
-num_examples_to_generate = 8
+num_examples_to_generate = 5                 #multiple or minor of minibatch
 test_noise = [tf.random.normal([num_examples_to_generate, NOISE_DIM]),
               tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
                                 maxval=N_CLASSES_EN),
@@ -288,6 +287,33 @@ def debug_generator(noise):
 #-------------------------------------------------------------------------------
 """Subroutines for the discriminator network."""
 
+# Minibatch standard deviation.
+def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
+    """Minibatch discrimination layer is important to avoid mode collapse."""
+    with tf.compat.v1.variable_scope('MinibatchStddev'):
+        # Minibatch must be divisible by (or smaller than) group_size.
+        group_size = tf.minimum(group_size, tf.shape(discr)[0])
+        # [NCHW]  Input shape.
+        s = discr.shape
+        # [GMCHW] Split minibatch into M groups of size G.
+        y = tf.reshape(discr, [group_size, -1, s[1], s[2], s[3], s[4]])
+        # [GMCHW] Cast to FP32.
+        y = tf.cast(y, tf.float32)
+        # [GMCHW] Subtract mean over group.
+        y -= tf.reduce_mean(y, axis=0, keepdims=True)
+        # [MCHW]  Calc variance over group.
+        y = tf.reduce_mean(tf.square(y), axis=0)
+         # [MCHW]  Calc stddev over group.
+        y = tf.sqrt(y + 1e-8)
+        # [M111]  Take average over fmaps and pixels.
+        y = tf.reduce_mean(y, axis=[1,2,3,4], keepdims=True)
+        # [M111]  Cast back to original data type.
+        y = tf.cast(y, discr.dtype)
+        # [N1HW]  Replicate over group and pixels.
+        y = tf.tile(y, [group_size, 1, s[2], s[3],s[4]])
+        # [NCHW]  Append as new fmap.
+        return tf.concat([discr, y], axis=1)
+
 def make_discriminator_model():
     """Define discriminator model :
     Input 1) Vector of images associated to the given labels;
@@ -344,13 +370,10 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    #===========================================================================
-    #minibatch discrimination layer : important to avoid mode collapse
-    minibatch = Lambda(minibatch_stddev_layer)(discr)
-    logger.info(minibatch.get_shape())
-    discr = Conv3D(2 * N_FILTER, (4, 3, 3), strides=(2, 2, 2))(minibatch)
-    logger.info(discr.get_shape())
-    #===========================================================================
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    discr = Conv3D(2 * N_FILTER, KERNEL)(minibatch)
+    logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
 
     discr = Flatten()(discr)
     output = Dense(1, activation="sigmoid", name="decision")(discr)

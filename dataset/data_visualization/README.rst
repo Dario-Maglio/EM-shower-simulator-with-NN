@@ -7,7 +7,7 @@ The geometry is :
 
 
   .. image:: https://raw.githubusercontent.com/Dario-Caf/EM-shower-simulator-with-NN/main/dataset/data_visualization/geometry.png
-    :width: 400
+    :width: 800
     :alt: Alternative text
 
 
@@ -15,7 +15,7 @@ In the following example, the shower produced by an electron of 2 GeV is shown.
 
 
   .. image:: https://raw.githubusercontent.com/Dario-Caf/EM-shower-simulator-with-NN/main/dataset/data_visualization/esempio_sciame.png
-    :width: 400
+    :width: 800
     :alt: Alternative text
 
 

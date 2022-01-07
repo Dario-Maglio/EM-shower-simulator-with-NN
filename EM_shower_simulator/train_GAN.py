@@ -26,7 +26,7 @@ from tensorflow.keras.layers import (Input,
                                      Conv3DTranspose,
                                      Conv3D,
                                      Dropout,
-                                     AveragePooling3D,
+                                     Lambda,
                                      Flatten)
 
 from IPython import display
@@ -47,8 +47,9 @@ data_path = os.path.join("dataset","filtered_data","data_MVA.root")
 DPATH = os.path.join("..", data_path)
 
 #Configuration of the dataset structure
+MBSTD_GROUP_SIZE = 4                           #minibatch dimension
 BATCH_SIZE = 100
-BUFFER_SIZE = 1000
+BUFFER_SIZE = 10000
 N_CLASSES_PID = 3
 N_CLASSES_EN = 100 + 1
 GEOMETRY = (12, 12, 12, 1)
@@ -62,7 +63,7 @@ DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 
 #Create a random seed, to be used during the evaluation of the cGAN.
 #tf.random.set_seed(42)
-num_examples_to_generate = 5
+num_examples_to_generate = 8
 test_noise = [tf.random.normal([num_examples_to_generate, NOISE_DIM]),
               tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
                                 maxval=N_CLASSES_EN),
@@ -300,8 +301,7 @@ def make_discriminator_model():
     N_FILTER = 32
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
-    MBSTD_GROUP_SIZE = 4                      #minibatch dimension
-                                              #for minibatch discrimination
+
     n_nodes = 1
     for cell in GEOMETRY:
         n_nodes = n_nodes * cell
@@ -334,22 +334,22 @@ def make_discriminator_model():
     #padding="same" add a 0 to left and right, "valid" use only available data
     #output of convolution = (input+2padding-kernel)/strides + 1
 
-    discr = Conv3D(N_FILTER, KERNEL, strides=(1, 1, 1))(merge)
+    discr = Conv3D(N_FILTER, KERNEL)(merge)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(2 * N_FILTER, KERNEL, strides=(2, 2, 2))(discr)
+    discr = Conv3D(2 * N_FILTER, KERNEL)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
     #===========================================================================
     #minibatch discrimination layer : important to avoid mode collapse
-    #minibatch = minibatch_stddev_layer(discr, MBSTD_GROUP_SIZE)
-    #logger.info(minibatch.get_shape())
-    #discr = Conv3D(2 * N_FILTER, (4, 3, 3), strides=(2, 2, 2))(minibatch)
-    #logger.info(discr.get_shape())
+    minibatch = Lambda(minibatch_stddev_layer)(discr)
+    logger.info(minibatch.get_shape())
+    discr = Conv3D(2 * N_FILTER, (4, 3, 3), strides=(2, 2, 2))(minibatch)
+    logger.info(discr.get_shape())
     #===========================================================================
 
     discr = Flatten()(discr)

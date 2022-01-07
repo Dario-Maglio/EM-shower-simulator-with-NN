@@ -47,8 +47,6 @@ data_path = os.path.join("dataset","filtered_data","data_MVA.root")
 DPATH = os.path.join("..", data_path)
 
 #Configuration of the dataset structure
-MBSTD_GROUP_SIZE = 4                      #minibatch dimension
-                                          #for minibatch discrimination
 BATCH_SIZE = 100
 BUFFER_SIZE = 1000
 N_CLASSES_PID = 3
@@ -58,7 +56,6 @@ GEOMETRY = (12, 12, 12, 1)
 #Configuration of the cGAN structure
 EPOCHS = 1
 L_RATE = 3e-4
-EMBED_DIM = 50
 NOISE_DIM = 1000
 DEFAULT_D_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
@@ -208,8 +205,15 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    n_nodes = 4
-    for cell in GEOMETRY:
+    N_FILTER = 64
+    EMBED_DIM = 50
+    KERNEL = (5, 5, 5)
+    input_shape = (4, 4, 4, 1)
+    image_shape = (4, 4, 4, 4*N_FILTER)
+    #Note 4 + (KERNEL-1)*3 = GEOMETRY!
+
+    n_nodes = 1
+    for cell in input_shape:
         n_nodes = n_nodes * cell
 
     # Energy label input
@@ -217,47 +221,48 @@ def make_generator_model():
     # embedding for categorical input
     li_en = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
     # linear multiplication
-    n_nodes = 3 * 3 * 3
     li_en = Dense(n_nodes)(li_en)
     # reshape to additional channel
-    li_en = Reshape((3, 3, 3, 1))(li_en)
-    assert li_en.get_shape().as_list() == [None, 3, 3, 3, 1]
-
-    # Image generator input
-    in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
-    gen = Dense(n_nodes, use_bias=False)(in_lat)
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-    gen = Reshape((3, 3, 3, 256))(gen)
-    assert gen.get_shape().as_list() == [None, 3, 3, 3, 256]
+    li_en = Reshape(input_shape)(li_en)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particleID_input")
     # embedding for categorical input
     li_pid = Embedding(N_CLASSES_PID, EMBED_DIM)(pid_label)
     # linear multiplication
-    n_nodes = 3 * 3 * 3
     li_pid = Dense(n_nodes)(li_pid)
     # reshape to additional channel
-    li_pid = Reshape((3, 3, 3, 1))(li_pid)
-    assert li_pid.get_shape().as_list() == [None, 3, 3, 3, 1]
+    li_pid = Reshape(input_shape)(li_pid)
+
+    n_nodes = 1
+    for cell in image_shape:
+        n_nodes = n_nodes * cell
+
+    # Image generator input
+    in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
+    gen = Dense(n_nodes, use_bias=False)(in_lat)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+    gen = Reshape(image_shape)(gen)
 
     # merge image gen and label input
     merge = Concatenate()([gen, li_en, li_pid])
 
-    gen = Conv3DTranspose(128, (5, 5, 5), strides=(1, 1, 1), padding="same", use_bias=False)(merge)
-    assert gen.get_shape().as_list() == [None, 3, 3, 3, 128]
+    gen = Conv3DTranspose(2*N_FILTER, KERNEL, use_bias=False)(merge)
+    logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(64, (5, 5, 5), strides=(2, 2, 2), padding="same", use_bias=False)(gen)
-    assert gen.get_shape().as_list() == [None, 6, 6, 6, 64]
+    gen = Conv3DTranspose(N_FILTER, KERNEL, use_bias=False)(gen)
+    logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    output = (Conv3DTranspose(1, (5, 5, 5), strides=(2, 2, 2), use_bias=False,
+    output = (Conv3DTranspose(1, KERNEL, use_bias=False,
                     padding="same", activation="tanh", name="Fake_image")(gen))
-    assert output.get_shape().as_list() == [None, *GEOMETRY]
+    logger.info(f"Shape of the generator output: {output.get_shape()}")
+    error = "ERROR building the generator: shape different from geometry!"
+    assert output.get_shape().as_list()==[None, *GEOMETRY], error
 
     model = Model([in_lat, en_label, pid_label], output, name='generator')
     return model
@@ -292,6 +297,11 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
+    N_FILTER = 32
+    EMBED_DIM = 50
+    KERNEL = (4, 4, 4)
+    MBSTD_GROUP_SIZE = 4                      #minibatch dimension
+                                              #for minibatch discrimination
     n_nodes = 1
     for cell in GEOMETRY:
         n_nodes = n_nodes * cell
@@ -321,22 +331,25 @@ def make_discriminator_model():
     merge = Concatenate()([in_image, li_en, li_pid])
     logger.info(merge.get_shape())
 
-    #padding="same" add a 0 to left and right
+    #padding="same" add a 0 to left and right, "valid" use only available data
     #output of convolution = (input+2padding-kernel)/strides + 1
-    discr = Conv3D(32, (5, 5, 5), strides=(1, 1, 1), padding="valid")(merge)
+
+    discr = Conv3D(N_FILTER, KERNEL, strides=(1, 1, 1))(merge)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(64, (4, 4, 4), strides=(2, 2, 2), padding="valid")(discr)
+    discr = Conv3D(2 * N_FILTER, KERNEL, strides=(2, 2, 2))(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
     #===========================================================================
     #minibatch discrimination layer : important to avoid mode collapse
-    minibatch = minibatch_stddev_layer(discr, MBSTD_GROUP_SIZE)
-    discr = Conv3D(64, (4, 3, 3), strides=(2, 2, 2), padding="valid")(minibatch)
+    #minibatch = minibatch_stddev_layer(discr, MBSTD_GROUP_SIZE)
+    #logger.info(minibatch.get_shape())
+    #discr = Conv3D(2 * N_FILTER, (4, 3, 3), strides=(2, 2, 2))(minibatch)
+    #logger.info(discr.get_shape())
     #===========================================================================
 
     discr = Flatten()(discr)
@@ -360,6 +373,7 @@ def debug_discriminator(images):
     logger.info("Start debugging discriminator model.")
     discriminator = make_discriminator_model()
     images = images[0:num_examples_to_generate]
+    logger.info(f"Shape of images: {images.shape}")
     en_label = tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
                                 maxval=N_CLASSES_EN),
     pid_label = tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
@@ -526,8 +540,8 @@ def debug(path=DPATH, verbose=VERBOSE):
     if verbose :
         #Execute debug subroutines
         debug_shower(train_images, num_examples_to_generate)
-        #debug_generator(test_noise)
-        #debug_discriminator(train_images)
+        debug_generator(test_noise)
+        debug_discriminator(train_images)
 
 def train_cgan(path=DPATH, verbose=VERBOSE):
 

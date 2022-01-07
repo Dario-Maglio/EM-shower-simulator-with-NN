@@ -7,7 +7,7 @@ Taken from https://github.com/tkarras/progressive_growing_of_gans/blob/master/ne
 # Minibatch standard deviation.
 
 def minibatch_stddev_layer(x, group_size=4):
-    with tf.variable_scope('MinibatchStddev'):
+    with tf.compat.v1.variable_scope('MinibatchStddev'):
         group_size = tf.minimum(group_size, tf.shape(x)[0])           # Minibatch must be divisible by (or smaller than) group_size.
         s = x.shape                                                   # [NCHW]  Input shape.
         y = tf.reshape(x, [group_size, -1, s[1], s[2], s[3], s[4]])   # [GMCHW] Split minibatch into M groups of size G.

@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
-
+"""
+Taken from https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
+"""
 
 # Minibatch standard deviation.
 

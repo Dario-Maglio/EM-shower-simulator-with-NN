@@ -48,9 +48,9 @@ DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
 # Configuration of the dataset structure
 MBSTD_GROUP_SIZE = 32                            #minibatch dimension
 BATCH_SIZE = 256
-BUFFER_SIZE = 10000
+BUFFER_SIZE = 10400
 N_CLASSES_PID = 3
-N_CLASSES_EN = 100 + 1
+N_CLASSES_EN = 30+ 1
 GEOMETRY = (12, 12, 12, 1)
 
 # Configuration of the cGAN structure
@@ -341,6 +341,46 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
     logger.handlers.clear()
     return tf.concat([discr, layers_minib], axis=-1)
 
+def energy_condition(layer):
+    """Auxiliary condition for energy deposition
+    """
+    en_label = layer[0]
+    en_label = tf.cast(en_label, tf.float32)
+
+    #if en_label.shape[0] == num_examples_to_generate:
+    #  SIZE = num_examples_to_generate
+    #else:
+    #  SIZE = BATCH_SIZE
+
+    #en_label = tf.math.reduce_sum(en_label,axis=1)
+
+    in_image = layer[1]
+    in_image = tf.cast(in_image, tf.float32)
+    shape = in_image.shape
+
+    en_image = tf.math.divide(
+               tf.math.pow(10.,
+             ( tf.math.add(
+                            tf.math.multiply(in_image, 6.) ,1.))), 1000000 )
+
+    en_image = tf.math.reduce_sum(en_image, axis=[1,2,3])
+
+    output_zero = tf.zeros_like(en_label)
+    # output :
+    #       Gaussiana centrata in en_label e deviazione standard en_label/10
+    #       scalata per 0.2 e sommata a 0.8
+    # Fatto per rendere possibile il train del generatore: se fosse solo la gaus-
+    # siana, il discriminatore sarebbe troppo intelligente e userebbe solo questa
+    # informazione per disciminare esempi veri da falsi.
+    output_pdf  = tf.math.add(
+                  tf.math.multiply(
+                  tf.math.exp(
+                  tf.math.multiply(
+                  tf.math.pow( (en_label-en_image)/(en_label*0.1) , 2),
+                                                                        -0.5)
+                                                                        ),0.2),0.8 )
+    return output_pdf
+
 def make_discriminator_model():
     """Define discriminator model:
     Input 1) Vector of images associated to the given labels;
@@ -373,8 +413,8 @@ def make_discriminator_model():
 
     # En label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
-    li_en = Dense(n_nodes)(li_en)
+    en_label_embed = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
+    li_en = Dense(n_nodes)(en_label_embed)
     li_en = Reshape(GEOMETRY)(li_en)
 
     # Pid label input
@@ -405,6 +445,10 @@ def make_discriminator_model():
     discr = Flatten()(discr)
     output = Dense(1, activation="sigmoid", name="decision")(discr)
 
+    aux_output = Lambda(energy_condition, name= "aux_condition")([en_label, in_image])
+
+    output = Lambda(lambda x : x[0]*x[1], name= "final_decision")((aux_output,output))
+
     model = Model([in_image, en_label, pid_label], output, name='discriminator')
     return model
 
@@ -425,7 +469,7 @@ def debug_discriminator(images):
     images = images[0:num_examples_to_generate]
     logger.info(f"Shape of images: {images.shape}")
     en_label = tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
-                                maxval=N_CLASSES_EN),
+                                maxval=N_CLASSES_EN-1),
     pid_label = tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
                                 maxval=N_CLASSES_PID)
     decision = discriminator([images, en_label, pid_label])
@@ -588,8 +632,8 @@ def debug(path=DPATH, verbose=VERBOSE):
 
     if verbose :
         #Execute debug subroutines
-        #debug_shower(train_images, num_examples_to_generate)
-        #debug_generator(test_noise)
+        debug_shower(train_images, num_examples_to_generate)
+        debug_generator(test_noise)
         debug_discriminator(train_images)
 
 def train_cgan(path=DPATH, verbose=VERBOSE):
@@ -607,8 +651,8 @@ def train_cgan(path=DPATH, verbose=VERBOSE):
     cond_gan.compile()
     logger.info("The cGAN model has been compiled correctly.")
 
-    cond_gan.train(train_dataset, EPOCHS)
-
+    #cond_gan.train(train_dataset, EPOCHS)
+    cond_gan.fit(train_dataset, epochs=EPOCHS)
     # evaluate the model???
     #scores = model.evaluate(X, Y, verbose=0)
     #print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
@@ -616,7 +660,7 @@ def train_cgan(path=DPATH, verbose=VERBOSE):
 
 if __name__=="__main__":
 
-    debug(verbose=False)
+    debug(verbose=True)
 
     train_cgan()
 

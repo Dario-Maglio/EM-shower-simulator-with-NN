@@ -306,3 +306,26 @@ void quantiles(){
 }
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
+
+void pdf_en_deposited(const char* path_to_file=path_to_Geant_data){
+
+  TChain *h = new TChain("h");
+  h->Add(path_to_file);
+
+  TBranch *b_en_in, *b_pid, *b_en_mis;
+  double en_in, en_mis;
+  int pid;
+  h->SetBranchAddress("primary", &pid, &b_pid);
+  h->SetBranchAddress("en_in", &en_in, &b_en_in);
+  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
+
+  TH2D *hist = new TH2D("","en_in vs en_mis; en_in; en_mis",121,1,30,121,1,30);
+
+  for(int evt=0; evt<h->GetEntries(); evt++){
+    h->GetEntry(evt);
+    hist->Fill(en_in/1E6,en_mis/1E6);
+  }
+
+  hist->Draw("zcolor");
+  gPad->SetGrid();
+}

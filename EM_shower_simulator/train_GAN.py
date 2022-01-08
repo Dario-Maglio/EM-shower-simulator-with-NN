@@ -41,9 +41,9 @@ VERBOSE = True
 # In the project folder
 data_path = os.path.join("dataset","filtered_data","data_MVA.root")
 # In colab after cloning the repository
-#DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
+DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
 # In this folder
-DPATH = os.path.join("..", data_path)
+#DPATH = os.path.join("..", data_path)
 
 # Configuration of the dataset structure
 MBSTD_GROUP_SIZE = 8                            #minibatch dimension
@@ -54,14 +54,14 @@ N_CLASSES_EN = 100 + 1
 GEOMETRY = (12, 12, 12, 1)
 
 # Configuration of the cGAN structure
-EPOCHS = 1
+EPOCHS = 50
 L_RATE = 3e-4
 NOISE_DIM = 1000
 DEFAULT_D_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 
 # Create a random seed, to be used during the evaluation of the cGAN.
-#tf.random.set_seed(42)
+tf.random.set_seed(42)
 num_examples_to_generate = 5                 #multiple or minor of minibatch
 test_noise = [tf.random.normal([num_examples_to_generate, NOISE_DIM]),
               tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
@@ -205,7 +205,7 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 64
+    N_FILTER = 16
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
     input_shape = (3, 3, 3, 1)
@@ -330,7 +330,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 32
+    N_FILTER = 8
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
 
@@ -522,10 +522,10 @@ class ConditionalGAN(tf.keras.Model):
         checkpoint_dir = "./training_checkpoints"
         checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
         checkpoint = tf.train.Checkpoint(
-                   generator=cond_gan.generator,
-                   discriminator=cond_gan.discriminator,
-                   generator_optimizer=cond_gan.generator_optimizer,
-                   discriminator_optimizer=cond_gan.discriminator_optimizer)
+                   generator=self.generator,
+                   discriminator=self.discriminator,
+                   generator_optimizer=self.generator_optimizer,
+                   discriminator_optimizer=self.discriminator_optimizer)
 
         display.clear_output(wait=True)
         for epoch in range(epochs):
@@ -538,10 +538,11 @@ class ConditionalGAN(tf.keras.Model):
            display.clear_output(wait=True)
            print(f"EPOCH = {epoch + 1}")
            print (f"Time for epoch {epoch + 1} is {time.time()-start} sec")
-           generate_and_save_images(self.generator, epoch + 1, test_noise)
+           generate_and_save_images(self.generator, test_noise, epoch + 1)
 
-           #if (epoch + 1) % 5 == 0:
-           checkpoint.save(file_prefix = checkpoint_prefix)
+           if epoch % 5 == 0:
+               logger.info("Saving checkpoint.")
+               checkpoint.save(file_prefix = checkpoint_prefix)
 
 #-------------------------------------------------------------------------------
 
@@ -566,7 +567,7 @@ def debug(path=DPATH, verbose=VERBOSE):
 
     if verbose :
         #Execute debug subroutines
-        #debug_shower(train_images, num_examples_to_generate)
+        debug_shower(train_images, num_examples_to_generate)
         debug_generator(test_noise)
         debug_discriminator(train_images)
 
@@ -585,7 +586,7 @@ def train_cgan(path=DPATH, verbose=VERBOSE):
     cond_gan.compile()
     logger.info("The cGAN model has been compiled correctly.")
 
-    cond_gan.train(train_dataset, EPOCHS)
+    #cond_gan.train(train_dataset, EPOCHS)
 
     # evaluate the model???
     #scores = model.evaluate(X, Y, verbose=0)

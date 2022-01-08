@@ -46,7 +46,7 @@ DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
 #DPATH = os.path.join("..", data_path)
 
 # Configuration of the dataset structure
-MBSTD_GROUP_SIZE = 8                            #minibatch dimension
+MBSTD_GROUP_SIZE = 32                            #minibatch dimension
 BATCH_SIZE = 256
 BUFFER_SIZE = 10000
 N_CLASSES_PID = 3
@@ -54,7 +54,7 @@ N_CLASSES_EN = 100 + 1
 GEOMETRY = (12, 12, 12, 1)
 
 # Configuration of the cGAN structure
-EPOCHS = 50
+EPOCHS = 200
 L_RATE = 3e-4
 NOISE_DIM = 1000
 DEFAULT_D_OPTIM = tf.keras.optimizers.Adam(L_RATE)
@@ -93,7 +93,7 @@ def data_pull(path):
        raise e
 
     train_images = np.array(branches["shower"]).astype("float32")
-    # Images in log10 scale, zeros like pixel are set to -5,
+    # Images in log10 scale, empty pixels are set to -5,
     # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
     N_EVENT = train_images.shape[0]
     # Normalize the images to [-1, 1] and reshape
@@ -153,6 +153,7 @@ def debug_shower(data_images, num_examples=1):
     logger.info(f"Shape of data_images: {data_images.shape}")
     k=0
     fig = plt.figure("Generated showers")
+    plt.figure(figsize=(20,10))
     for i in range(num_examples):
        for j in range(GEOMETRY[0]):
           k=k+1
@@ -205,7 +206,7 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 16
+    N_FILTER = 64
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
     input_shape = (3, 3, 3, 1)
@@ -292,33 +293,53 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
     node with information about the statistical distribution of the group_size,
     allowing the discriminator to recognize when the generator strarts to
     replicate the same kind of event multiple times.
-
     Inspired by
     https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
     """
     with tf.compat.v1.variable_scope('MinibatchStddev'):
-        # Minibatch/batch must be divisible by (or smaller than) group_size.
-        group_size = tf.minimum(group_size, tf.shape(discr)[0])
-        # Input shape.
-        shape = discr.shape
-        # Split minibatch into M groups of size G.
-        minib = tf.reshape(discr, [group_size, -1, shape[1], shape[2], shape[3], shape[4]])
+      # Minibatch/batch must be divisible by (or smaller than) group_size.
+      group_size = tf.minimum(group_size, tf.shape(discr)[0])
+      # Input shape.
+      shape = discr.shape
+      logger.info(f"Discriminator output shape: {shape}")
+      # Split minibatch into N categories, one for each layer
+      minib = tf.reshape(discr, [group_size, -1, shape[1], shape[2], shape[3], shape[4]])
+      logger.info(f"MINIB - shape: {minib.get_shape()}")
+      for layer in range(shape[1]):
+        logger.info(f"LAYER {layer+1}")
+        minib_layer = minib[:, :, layer, :, :, :]
+        logger.info(f"MINIB - layer shape: {minib_layer.get_shape()}")
         # Cast to FP32.
-        minib = tf.cast(minib, tf.float32)
+        minib_layer = tf.cast(minib_layer, tf.float32)
         # Subtract mean over group.
-        minib = minib - tf.reduce_mean(minib, axis=0, keepdims=True)
+        minib_layer = minib_layer - tf.reduce_mean(minib_layer, axis=0, keepdims=True)
+        logger.info(f"MINIB - Reducing mean 1: {minib_layer.get_shape()}")
         # Calculate variance over group.
-        minib = tf.reduce_mean(tf.square(minib), axis=0)
+        minib_layer = tf.reduce_mean(tf.square(minib_layer), axis=0)
+        logger.info(f"MINIB - Reducing mean 2: {minib_layer.get_shape()}")
         # Calculate std dev over group.
-        minib = tf.sqrt(minib + 1e-8)
+        minib_layer = tf.sqrt(minib_layer + 1e-8)
         # Take average over fmaps and pixels.
-        minib = tf.reduce_mean(minib, axis=[1,2,3,4], keepdims=True)
+        minib_layer = tf.reduce_mean(minib_layer, axis=[1,2,3], keepdims=True)
+        logger.info(f"MINIB - Reducing mean 3: {minib_layer.get_shape()}")
         # Cast back to original data type.
-        minib = tf.cast(minib, discr.dtype)
+        minib_layer = tf.cast(minib_layer, discr.dtype)
         # New tensor by replicating input multiples times.
-        minib = tf.tile(minib, [group_size, shape[1], shape[2], shape[3], 1])
-        # Append as new fmap.
-        return tf.concat([discr, minib], axis=-1)
+        minib_layer = tf.tile(minib_layer, [group_size, 1, shape[2], shape[3]])
+        logger.info(f"MINIB - Shape after tile: {minib_layer.get_shape()}")
+        # Concatenate minib layer to minib
+        if(layer==0):
+          layers_minib = minib_layer
+        else:
+          layers_minib = tf.concat([layers_minib, minib_layer], axis = 1)
+          logger.info(f"MINIB - Shape after concat: {layers_minib.get_shape()}")
+      # Append as new fmap.
+    logger.info(f"MINIB - Shape before reshape: {layers_minib.get_shape()}")
+    layers_minib = tf.reshape(layers_minib, [-1, shape[1] , shape[2], shape[3], 1])
+    logger.info(f"MINIB - Shape after reshape: {layers_minib.get_shape()}")
+
+    logger.handlers.clear()
+    return tf.concat([discr, layers_minib], axis=-1)
 
 def make_discriminator_model():
     """Define discriminator model:
@@ -330,7 +351,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 8
+    N_FILTER = 32
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
 
@@ -567,8 +588,8 @@ def debug(path=DPATH, verbose=VERBOSE):
 
     if verbose :
         #Execute debug subroutines
-        debug_shower(train_images, num_examples_to_generate)
-        debug_generator(test_noise)
+        #debug_shower(train_images, num_examples_to_generate)
+        #debug_generator(test_noise)
         debug_discriminator(train_images)
 
 def train_cgan(path=DPATH, verbose=VERBOSE):
@@ -586,7 +607,7 @@ def train_cgan(path=DPATH, verbose=VERBOSE):
     cond_gan.compile()
     logger.info("The cGAN model has been compiled correctly.")
 
-    #cond_gan.train(train_dataset, EPOCHS)
+    cond_gan.train(train_dataset, EPOCHS)
 
     # evaluate the model???
     #scores = model.evaluate(X, Y, verbose=0)
@@ -595,7 +616,7 @@ def train_cgan(path=DPATH, verbose=VERBOSE):
 
 if __name__=="__main__":
 
-    debug()
+    debug(verbose=False)
 
     train_cgan()
 

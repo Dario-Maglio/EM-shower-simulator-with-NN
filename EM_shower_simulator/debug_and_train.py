@@ -15,7 +15,6 @@ from class_GAN import ConditionalGAN
 # In colab after cloning the repository
 #DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
 # In this folder
-#DPATH = os.path.join("..", data_path)
 DPATH = os.path.join("..", data_path)
 
 # Define logger and handler
@@ -73,8 +72,8 @@ def train_cgan(path=DPATH, verbose=False):
 
     file_name = "cGAN.h5"
     save_path = "model_saves"
-    if not os.path.isdir(save_path):
-       os.makedirs(save_path)
+    #if not os.path.isdir(save_path):
+    #   os.makedirs(save_path)
     #cond_gan.save(os.path.join(save_path, file_name))
 
     # evaluate the model???
@@ -84,7 +83,7 @@ def train_cgan(path=DPATH, verbose=False):
 
 if __name__=="__main__":
 
-    debug(verbose=False)
+    debug(verbose=True)
 
     train_cgan()
 

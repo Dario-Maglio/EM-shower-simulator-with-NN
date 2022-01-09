@@ -6,6 +6,7 @@ import logging
 import numpy as np
 import uproot as up
 import matplotlib.pyplot as plt
+from tensorflow.data import Dataset
 
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
@@ -68,7 +69,8 @@ def data_pull(path=DPATH, verbose=False):
     assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
     pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
 
-    return (train_images, en_labels, pid_labels)
+    dataset = Dataset.from_tensor_slices((train_images, en_labels, pid_labels))
+    return dataset
 
 def debug_data_pull(path=DPATH, num_examples=1, verbose=False):
     """Import data images from the dataset and test shapes.

@@ -169,7 +169,6 @@ class ConditionalGAN(tf.keras.Model):
     def fit(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE, buffer=BUFFER_SIZE):
         """Overwrite fit std method."""
         # Split the dataset in Buffer and batch
-        dataset = tf.data.Dataset.from_tensor_slices(dataset)
         dataset = dataset.shuffle(buffer)
         dataset = dataset.batch(batch, drop_remainder=True)
         super(ConditionalGAN, self).fit(dataset, epochs=epochs)
@@ -234,7 +233,6 @@ class ConditionalGAN(tf.keras.Model):
         Then generate a final image after the training is completed.
         """
         # Split the dataset in Buffer and batch
-        dataset = tf.data.Dataset.from_tensor_slices(dataset)
         dataset = dataset.shuffle(buffer)
         dataset = dataset.batch(batch, drop_remainder=True)
 

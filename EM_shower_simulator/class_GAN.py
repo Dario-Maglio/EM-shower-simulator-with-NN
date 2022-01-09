@@ -104,18 +104,18 @@ class ConditionalGAN(tf.keras.Model):
     """Class for a conditional GAN.
     It inherits keras.Model properties and functions.
     """
-    def __init__(self, discrim, gener, discrim_optim=Adam(L_RATE), gener_optim=Adam(L_RATE)):
+    def __init__(self, discr, gener, discr_optim=Adam(L_RATE), gener_optim=Adam(L_RATE)):
         """Constructor.
         Inputs:
-        discrim = discriminator network;
+        discr = discriminator network;
         gener = generator network;
-        discrim_optim = discriminator optimizer;
+        discr_optim = discriminator optimizer;
         gener_optim = generator optimizer;
         """
         super(ConditionalGAN, self).__init__()
-        self.discriminator = discrim
+        self.discriminator = discr
         self.generator = gener
-        self.discriminator_optimizer = discrim_optim
+        self.discriminator_optimizer = discr_optim
         self.generator_optimizer = gener_optim
         self.gen_loss_tracker = Mean(name="generator_loss")
         self.discr_loss_tracker = Mean(name="discriminator_loss")
@@ -177,14 +177,14 @@ class ConditionalGAN(tf.keras.Model):
         """Train step of the cGAN.
         Input: dataset = combined images vector and labels upon which the network trained.
         Description:
-        1 - Create a random noise to feed it into the model for the images generation ;
-        2 - Generate images and calculate loss values using real images and labels ;
+        1 - Create a random noise to feed it into the model for the images generation;
+        2 - Generate images and calculate loss values using real images and labels;
         3 - Calculate gradients using loss values and model variables;
-        4 - Process Gradients and Run the Optimizer ;
+        4 - Process Gradients and Run the Optimizer.
         """
         real_images, en_labels, pid_labels = dataset
 
-        noise = tf.random.normal([BATCH_SIZE, NOISE_DIM])
+        noise = tf.random.normal([real_images.shape[0], NOISE_DIM])
 
         generator_input = [noise, en_labels, pid_labels]
 

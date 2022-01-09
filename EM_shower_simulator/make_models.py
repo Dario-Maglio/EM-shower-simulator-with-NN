@@ -26,7 +26,7 @@ from tensorflow.keras.layers import (Input,
 """Constant parameters of configuration and definition of global objects."""
 
 # Configuration of the models structure
-MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
+MBSTD_GROUP_SIZE = 16                                     #minibatch dimension
 NOISE_DIM = 1000
 N_CLASSES_PID = 3
 N_CLASSES_EN = 30 + 1
@@ -63,7 +63,7 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 16
+    N_FILTER = 32
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
     input_shape = (3, 3, 3, N_FILTER)
@@ -230,7 +230,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 16
+    N_FILTER = 8
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
 

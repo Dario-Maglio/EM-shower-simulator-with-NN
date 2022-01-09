@@ -65,11 +65,18 @@ def train_cgan(path=DPATH, verbose=False):
     cond_gan.compile()
     logger.info("The cGAN model has been compiled correctly.")
 
-    #cond_gan.summary()
-    #cond_gan.plot_model()
+    cond_gan.summary()
+    cond_gan.plot_model()
 
-    #cond_gan.train(train_dataset, epochs=200)
-    cond_gan.fit(train_dataset, epochs=200)
+    cond_gan.train(train_dataset, epochs=200)
+    #cond_gan.fit(train_dataset, epochs=200)
+
+    file_name = "cGAN.h5"
+    save_path = "model_saves"
+    if not os.path.isdir(save_path):
+       os.makedirs(save_path)
+    #cond_gan.save(os.path.join(save_path, file_name))
+
     # evaluate the model???
     #scores = model.evaluate(X, Y, verbose=0)
     #print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))

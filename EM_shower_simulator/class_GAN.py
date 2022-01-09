@@ -23,10 +23,10 @@ from IPython import display
 """Constant parameters of configuration and definition of global objects."""
 
 # Configuration of the cGAN structure
-N_CLASSES_PID = 3
-N_CLASSES_EN = 30 + 1
+N_PID = 3
+N_ENER = 30 + 1
 EPOCHS = 200
-BATCH_SIZE = 256         #complicate relation with minibatch!
+BATCH_SIZE = 256                           #complicate relation with minibatch!
 BUFFER_SIZE = 10400
 L_RATE = 3e-4
 NOISE_DIM = 1000
@@ -35,10 +35,8 @@ NOISE_DIM = 1000
 tf.random.set_seed(42)
 num_examples = 6                 #multiple or minor of minibatch
 test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
-              tf.random.uniform([num_examples, 1], minval= 0.,
-                                maxval=N_CLASSES_EN),
-              tf.random.uniform([num_examples, 1], minval= 0.,
-                                maxval=N_CLASSES_PID)]
+              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
+              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
 # Define logger and handler
 ch = logging.StreamHandler()
@@ -165,7 +163,7 @@ class ConditionalGAN(tf.keras.Model):
         path = os.path.join(save_path, file_name)
         fig.savefig(os.path.join(save_path, file_name))
 
-    # tf.function annotation causes the function
+    # tf.function annotation causes the function  ----> tipo le loss?
     # to be "compiled" as part of the training
 
     def fit(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE, buffer=BUFFER_SIZE):
@@ -185,35 +183,30 @@ class ConditionalGAN(tf.keras.Model):
         3 - Calculate gradients using loss values and model variables;
         4 - Process Gradients and Run the Optimizer ;
         """
-        real_images, real_en_labels, real_pid_labels = dataset
-        #dummy_labels = real_labels[:, :, None, None, None]
-        #dummy_labels = tf.repeat( dummy_labels, repeats=[12 * 12 * 12] )
-        #dummy_labels = tf.reshape( dummy_labels, (-1, 12 ,12 , 12, N_CLASSES) )
-        #print(dummy_labels.shape)
-        random_noise = tf.random.normal([BATCH_SIZE, NOISE_DIM])
-        #noise_and_labels= tf.concat([random_noise, real_labels],axis=1)
+        real_images, en_labels, pid_labels = dataset
+
+        noise = tf.random.normal([BATCH_SIZE, NOISE_DIM])
+
+        generator_input = [noise, en_labels, pid_labels]
 
         # GradientTape method records operations for automatic differentiation.
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
 
-            generated_images = self.generator([random_noise, real_en_labels,
-                                               real_pid_labels], training=True)
+            generated_images = self.generator(generator_input, training=True)
 
-            #fake_image_and_labels = tf.concat([generated_images, dummy_labels], -1)
-            #real_image_and_labels = tf.concat([real_images, dummy_labels], -1)
+            real_sample = [real_images, en_labels, pid_labels]
+            real_output = self.discriminator(real_sample, training=True)
 
-            real_output = self.discriminator([real_images, real_en_labels,
-                                              real_pid_labels], training=True)
-            fake_output = self.discriminator([generated_images, real_en_labels,
-                                              real_pid_labels], training=True)
+            fake_sample = [generated_images, en_labels, pid_labels]
+            fake_output = self.discriminator(fake_sample, training=True)
 
-            gen_loss = generator_loss(fake_output)
+            gener_loss = generator_loss(fake_output)
             discr_loss = discriminator_loss(real_output, fake_output)
 
-        gradients_of_generator = gen_tape.gradient(gen_loss,
-                                          self.generator.trainable_variables)
+        gradients_of_generator = gen_tape.gradient(gener_loss,
+                                         self.generator.trainable_variables)
         gradients_of_discriminator = disc_tape.gradient(discr_loss,
-                                           self.discriminator.trainable_variables)
+                                         self.discriminator.trainable_variables)
         self.generator_optimizer.apply_gradients(zip(gradients_of_generator,
                                          self.generator.trainable_variables))
         self.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator,

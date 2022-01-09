@@ -1,24 +1,134 @@
+""" Taken from
+https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
+"""
 import tensorflow as tf
 import numpy as np
-"""
-Taken from https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
-"""
+
+MBSTD_GROUP_SIZE = 6
+test_noise = tf.random.normal([3, 1, 10, 10, 3], stddev=1.0)
+test_noise = tf.concat([test_noise, tf.random.normal([3, 1, 10, 10, 3], stddev=2.0)], axis=1)
+test_noise = tf.concat([test_noise, tf.random.normal([3, 1, 10, 10, 3], stddev=3.0)], axis=1)
 
 # Minibatch standard deviation.
 
-def minibatch_stddev_layer(x, group_size=4):
+def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
+    """Minibatch discrimination layer is important to avoid mode collapse.
+    Once it is wrapped with a Lambda Keras layer it returns an additional filter
+    node with information about the statistical distribution of the group_size,
+    allowing the discriminator to recognize when the generator strarts to
+    replicate the same kind of event multiple times.
+
+    Inspired by
+    https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
+    """
     with tf.compat.v1.variable_scope('MinibatchStddev'):
-        group_size = tf.minimum(group_size, tf.shape(x)[0])           # Minibatch must be divisible by (or smaller than) group_size.
-        s = x.shape                                                   # [NCHW]  Input shape.
-        y = tf.reshape(x, [group_size, -1, s[1], s[2], s[3], s[4]])   # [GMCHW] Split minibatch into M groups of size G.
-        y = tf.cast(y, tf.float32)                                    # [GMCHW] Cast to FP32.
-        y -= tf.reduce_mean(y, axis=0, keepdims=True)                 # [GMCHW] Subtract mean over group.
-        y = tf.reduce_mean(tf.square(y), axis=0)                      # [MCHW]  Calc variance over group.
-        y = tf.sqrt(y + 1e-8)                                         # [MCHW]  Calc stddev over group.
-        y = tf.reduce_mean(y, axis=[1,2,3,4], keepdims=True)          # [M111]  Take average over fmaps and pixels.
-        y = tf.cast(y, x.dtype)                                       # [M111]  Cast back to original data type.
-        y = tf.tile(y, [group_size, 1, s[2], s[3],s[4]])              # [N1HW]  Replicate over group and pixels.
-        return tf.concat([x, y], axis=1)                              # [NCHW]  Append as new fmap.
+        # Input 0 dimension must be divisible by (or smaller than) group_size.
+        group_size = tf.minimum(group_size, tf.shape(discr)[0])
+        # Input shape.
+        shape = discr.shape
+        # Split minibatch into M groups of size G.
+        minib = tf.reshape(discr, [group_size, -1, shape[1], shape[2], shape[3], shape[4]])
+        # Cast to FP32.
+        minib = tf.cast(minib, tf.float32)
+        # Subtract mean over group.
+        minib = minib - tf.reduce_mean(minib, axis=0, keepdims=True)
+        print(minib.shape)
+        # Calculate variance over group.
+        minib = tf.reduce_mean(tf.square(minib), axis=0)
+        # Calculate std dev over group.
+        minib = tf.sqrt(minib + 1e-8)
+        print(minib.shape)
+        # Take average over fmaps and pixels.
+        minib = tf.reduce_mean(minib, axis=[1,2,3,4], keepdims=True)
+        # Cast back to original data type.
+        minib = tf.cast(minib, discr.dtype)
+        # New tensor by replicating input multiples times.
+        minib = tf.tile(minib, [group_size, shape[1], shape[2], shape[3], 1])
+        # Append as new fmap.
+        return tf.concat([discr, minib], axis=-1)
+
+
+def minibatch_stddev_layer_2(discr, group_size=MBSTD_GROUP_SIZE):
+    """Minibatch discrimination layer is important to avoid mode collapse.
+    Once it is wrapped with a Lambda Keras layer it returns an additional filter
+    node with information about the statistical distribution of the group_size,
+    allowing the discriminator to recognize when the generator strarts to
+    replicate the same kind of event multiple times.
+    Inspired by
+    https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
+    """
+    with tf.compat.v1.variable_scope('MinibatchStddev'):
+      # Minibatch/batch must be divisible by (or smaller than) group_size.
+      group_size = tf.minimum(group_size, tf.shape(discr)[0])
+      # Input shape.
+      shape = discr.shape
+      # Split minibatch into N categories, one for each layer
+      minib = tf.reshape(discr, [group_size, -1, shape[1], shape[2], shape[3], shape[4]])
+      for layer in range(shape[1]):
+        minib_layer = minib[:, :, layer, :, :, :]
+        # Cast to FP32.
+        minib_layer = tf.cast(minib_layer, tf.float32)
+        # Subtract mean over group.
+        minib_layer = minib_layer - tf.reduce_mean(minib_layer, axis=0, keepdims=True)
+        # Calculate variance over group.
+        minib_layer = tf.reduce_mean(tf.square(minib_layer), axis=0)
+        # Calculate std dev over group.
+        minib_layer = tf.sqrt(minib_layer + 1e-8)
+        # Take average over fmaps and pixels.
+        minib_layer = tf.reduce_mean(minib_layer, axis=[1,2,3], keepdims=True)
+        # Cast back to original data type.
+        minib_layer = tf.cast(minib_layer, discr.dtype)
+        # New tensor by replicating input multiples times.
+        minib_layer = tf.tile(minib_layer, [group_size, 1, shape[2], shape[3]])
+        # Concatenate minib layer to minib
+        if(layer==0):
+          layers_minib = minib_layer
+        else:
+          layers_minib = tf.concat([layers_minib, minib_layer], axis = 1)
+    layers_minib = tf.reshape(layers_minib, [-1, shape[1] , shape[2], shape[3], 1])
+    return tf.concat([discr, layers_minib], axis=-1)
+
+def minibatch_stddev_layer_3(discr, group_size=MBSTD_GROUP_SIZE):
+    """Minibatch discrimination layer is important to avoid mode collapse.
+    Once it is wrapped with a Lambda Keras layer it returns an additional filter
+    node with information about the statistical distribution of the group_size,
+    allowing the discriminator to recognize when the generator strarts to
+    replicate the same kind of event multiple times.
+
+    Inspired by
+    https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
+    """
+    with tf.compat.v1.variable_scope('MinibatchStddev'):
+        # Input 0 dimension must be divisible by (or smaller than) group_size.
+        group_size = tf.minimum(group_size, tf.shape(discr)[0])
+        # Input shape.
+        shape = discr.shape
+        print(shape)
+        # Split minibatch into M groups of size G.
+        minib = tf.reshape(discr, [group_size, -1, shape[1], shape[2], shape[3], shape[4]])
+        print(minib.shape)
+        # Cast to FP32.
+        minib = tf.cast(minib, tf.float32)
+        # Calculate the std deviation for each pixel over minibatch.
+        minib = tf.math.reduce_std(minib, axis=0)
+        print(minib.shape)
+        # Take average over pixels to get a kind of fmap std deviation.
+        minib = tf.reduce_mean(minib, axis=[1,2,3], keepdims=True)
+        print(minib.shape)
+        # Cast back to original data type.
+        minib = tf.cast(minib, discr.dtype)
+        # New tensor by replicating input multiples times.
+        minib = tf.tile(minib, [group_size, shape[1], shape[2], shape[3], 1])
+        print(minib.shape)
+        # Append as new fmap.
+        return tf.concat([discr, minib], axis=-1)
+
+if __name__ == "__main__":
+   minibatch_stddev_layer(test_noise)[:, :, :, :, -1]
+   minibatch_stddev_layer_3(test_noise)[:, :, :, :, -1]
+   #print(tf.math.reduce_std(test_noise, axis=1))
+
+
 
 """
 #----------------------------------------------------------------------------

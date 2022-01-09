@@ -27,6 +27,7 @@ from tensorflow.keras.layers import (Input,
                                      Conv3D,
                                      Dropout,
                                      Lambda,
+                                     Multiply,
                                      Flatten)
 
 from IPython import display
@@ -41,17 +42,19 @@ VERBOSE = True
 # In the project folder
 data_path = os.path.join("dataset","filtered_data","data_MVA.root")
 # In colab after cloning the repository
-DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
+#DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
 # In this folder
-#DPATH = os.path.join("..", data_path)
+DPATH = os.path.join("..", data_path)
 
 # Configuration of the dataset structure
 MBSTD_GROUP_SIZE = 32                            #minibatch dimension
 BATCH_SIZE = 256
 BUFFER_SIZE = 10400
 N_CLASSES_PID = 3
-N_CLASSES_EN = 30+ 1
+N_CLASSES_EN = 30 + 1
 GEOMETRY = (12, 12, 12, 1)
+ENERGY_SCALE = 1000000
+ENERGY_NORM = 6.
 
 # Configuration of the cGAN structure
 EPOCHS = 200
@@ -62,7 +65,7 @@ DEFAULT_G_OPTIM = tf.keras.optimizers.Adam(L_RATE)
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
-num_examples_to_generate = 5                 #multiple or minor of minibatch
+num_examples_to_generate = 6                 #multiple or minor of minibatch
 test_noise = [tf.random.normal([num_examples_to_generate, NOISE_DIM]),
               tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
                                 maxval=N_CLASSES_EN),
@@ -75,6 +78,8 @@ formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger = logging.getLogger("trainLogger")
 logger.addHandler(ch)
+logger2 = logging.getLogger("trainSubLogger")
+logger2.addHandler(ch)
 
 #-------------------------------------------------------------------------------
 """Subroutines for the dataset organization and shower plot."""
@@ -97,9 +102,10 @@ def data_pull(path):
     # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
     N_EVENT = train_images.shape[0]
     # Normalize the images to [-1, 1] and reshape
-    train_images = np.reshape((train_images - 1.)/6., (N_EVENT, *GEOMETRY))
+    train_images = (train_images - 1.) / ENERGY_NORM
+    train_images = np.reshape(train_images, (N_EVENT, *GEOMETRY))
 
-    en_labels = np.array(branches["en_in"]).astype("float32")/1000000.0
+    en_labels = np.array(branches["en_in"]).astype("float32") / ENERGY_SCALE
     en_labels = np.transpose(en_labels)
     assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
     en_labels = np.reshape(en_labels, (N_EVENT, 1))
@@ -117,7 +123,7 @@ def data_pull(path):
     train_dataset = train_dataset.batch(BATCH_SIZE, drop_remainder=True)
     return train_dataset
 
-def debug_data_pull(path):
+def debug_data_pull(path, num_examples=1):
     """Import data images from the dataset and test shapes.
     Take in input a path to the dataset and return train_images from the dataset
     that can be plotted with debug_shower.
@@ -135,30 +141,37 @@ def debug_data_pull(path):
     # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
     N_EVENT = train_images.shape[0]
     # Normalize the images to [-1, 1] and reshape
-    train_images = np.reshape((train_images - 1.)/6., (N_EVENT, *GEOMETRY))
+    train_images = (train_images - 1.) / ENERGY_NORM
+    train_images = np.reshape(train_images, (N_EVENT, *GEOMETRY))
+    train_images = train_images[0:num_examples]
 
-    en_labels = np.array(branches["en_in"]).astype("float32")
+    en_labels = np.array(branches["en_in"]).astype("float32") / ENERGY_SCALE
     en_labels = np.transpose(en_labels)
     assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
+    en_labels = np.reshape(en_labels, (N_EVENT, 1))
+    en_labels = en_labels[0:num_examples]
 
+    # Particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer
     pid_labels = np.array(branches["primary"]) + 1
     pid_labels = np.transpose(pid_labels)
     assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
+    pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
+    pid_labels = pid_labels[0:num_examples]
+
     logger.info("Debug of the loading subroutines finished.")
-    return train_images
+    return [train_images, en_labels, pid_labels]
 
 def debug_shower(data_images, num_examples=1):
     """Show num_examples showers from data_images and return the figure."""
     logger.info("Start debug data_images features.")
     logger.info(f"Shape of data_images: {data_images.shape}")
     k=0
-    fig = plt.figure("Generated showers")
-    plt.figure(figsize=(20,10))
+    fig = plt.figure("Generated showers", figsize=(20,10))
     for i in range(num_examples):
        for j in range(GEOMETRY[0]):
           k=k+1
           plt.subplot(num_examples, GEOMETRY[0], k)
-          plt.imshow(data_images[i,j,:,:,0], cmap="gray")
+          plt.imshow(data_images[i,j,:,:,0]) #, cmap="gray")
           plt.axis("off")
     plt.show()
     logger.info("Debug of data_images features finished.")
@@ -182,16 +195,18 @@ def generate_and_save_images(model, noise, epoch=0, verbose=False):
     fig = debug_shower(predictions, num_examples=predictions.shape[0])
 
     # 3 - Save the generated images
-    if not verbose:
-       save_path = Path('training_results').resolve()
+    save_path = Path('training_results').resolve()
+
+    if verbose:
+       file_name = "debug_image.png"
+    else:
        file_name = f"image_at_epoch_{epoch}.png"
 
-       if not os.path.isdir(save_path):
-          os.makedirs(save_path)
+    if not os.path.isdir(save_path):
+       os.makedirs(save_path)
 
-       fig.savefig(os.path.join(save_path, file_name))
-    else:
-       logger.info("Images not saved.")
+    fig.savefig(os.path.join(save_path, file_name))
+    logger.info("Images saved as debug_image.")
 
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
@@ -206,11 +221,11 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 64
+    N_FILTER = 16
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
-    input_shape = (3, 3, 3, 1)
-    image_shape = (3, 3, 3, 3 * N_FILTER)
+    input_shape = (3, 3, 3, N_FILTER)
+    image_shape = (3, 3, 3, 4 * N_FILTER)
 
     # Input[i] -> input[i] + 3 convolution * (KERNEL-1) = GEOMETRY[i]!
     error = "ERROR building the generator: shape different from geometry!"
@@ -248,7 +263,7 @@ def make_generator_model():
     # Merge image gen and label input
     merge = Concatenate()([gen, li_en, li_pid])
 
-    gen = Conv3DTranspose(2*N_FILTER, KERNEL, use_bias=False)(merge)
+    gen = Conv3DTranspose(3*N_FILTER, KERNEL, use_bias=False)(merge)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
@@ -293,92 +308,57 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
     node with information about the statistical distribution of the group_size,
     allowing the discriminator to recognize when the generator strarts to
     replicate the same kind of event multiple times.
+
     Inspired by
     https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
     """
     with tf.compat.v1.variable_scope('MinibatchStddev'):
-      # Minibatch/batch must be divisible by (or smaller than) group_size.
-      group_size = tf.minimum(group_size, tf.shape(discr)[0])
-      # Input shape.
-      shape = discr.shape
-      logger.info(f"Discriminator output shape: {shape}")
-      # Split minibatch into N categories, one for each layer
-      minib = tf.reshape(discr, [group_size, -1, shape[1], shape[2], shape[3], shape[4]])
-      logger.info(f"MINIB - shape: {minib.get_shape()}")
-      for layer in range(shape[1]):
-        logger.info(f"LAYER {layer+1}")
-        minib_layer = minib[:, :, layer, :, :, :]
-        logger.info(f"MINIB - layer shape: {minib_layer.get_shape()}")
+        # Input 0 dimension must be divisible by (or smaller than) group_size.
+        group_size = tf.minimum(group_size, tf.shape(discr)[0])
+        # Input shape.
+        shape = discr.shape
+        # Split minibatch into M groups of size G.
+        minib = tf.reshape(discr, [group_size, -1, shape[1], shape[2], shape[3], shape[4]])
         # Cast to FP32.
-        minib_layer = tf.cast(minib_layer, tf.float32)
-        # Subtract mean over group.
-        minib_layer = minib_layer - tf.reduce_mean(minib_layer, axis=0, keepdims=True)
-        logger.info(f"MINIB - Reducing mean 1: {minib_layer.get_shape()}")
-        # Calculate variance over group.
-        minib_layer = tf.reduce_mean(tf.square(minib_layer), axis=0)
-        logger.info(f"MINIB - Reducing mean 2: {minib_layer.get_shape()}")
-        # Calculate std dev over group.
-        minib_layer = tf.sqrt(minib_layer + 1e-8)
+        minib = tf.cast(minib, tf.float32)
+        # Calculate the std deviation for each pixel over minibatch
+        minib = tf.math.reduce_std(minib, axis=0)
         # Take average over fmaps and pixels.
-        minib_layer = tf.reduce_mean(minib_layer, axis=[1,2,3], keepdims=True)
-        logger.info(f"MINIB - Reducing mean 3: {minib_layer.get_shape()}")
+        minib = tf.reduce_mean(minib, axis=[1,2,3], keepdims=True)
         # Cast back to original data type.
-        minib_layer = tf.cast(minib_layer, discr.dtype)
+        minib = tf.cast(minib, discr.dtype)
         # New tensor by replicating input multiples times.
-        minib_layer = tf.tile(minib_layer, [group_size, 1, shape[2], shape[3]])
-        logger.info(f"MINIB - Shape after tile: {minib_layer.get_shape()}")
-        # Concatenate minib layer to minib
-        if(layer==0):
-          layers_minib = minib_layer
-        else:
-          layers_minib = tf.concat([layers_minib, minib_layer], axis = 1)
-          logger.info(f"MINIB - Shape after concat: {layers_minib.get_shape()}")
-      # Append as new fmap.
-    logger.info(f"MINIB - Shape before reshape: {layers_minib.get_shape()}")
-    layers_minib = tf.reshape(layers_minib, [-1, shape[1] , shape[2], shape[3], 1])
-    logger.info(f"MINIB - Shape after reshape: {layers_minib.get_shape()}")
+        minib = tf.tile(minib, [group_size, shape[1], shape[2], shape[3], 1])
+        # Append as new fmap.
+        return tf.concat([discr, minib], axis=-1)
 
-    logger.handlers.clear()
-    return tf.concat([discr, layers_minib], axis=-1)
-
-def energy_condition(layer):
-    """Auxiliary condition for energy deposition
+def auxiliary_condition(layer):
+    """Auxiliary condition for energy deposition:
+    Calculate the energy deposited in the detector en_image and pass to the
+    discriminator the conditioned probability output_pdf for such an event given
+    the initial energy label. The distribition is assumed to be a Gaussian
+    centered in en_label with a std deviation of en_label/10, scalata per 0.2 e
+    sommata a 0.8. Fatto per rendere possibile il train del generatore: se fosse
+    solo la gaussiana, il discriminatore sarebbe troppo intelligente e userebbe
+    solo questa informazione per disciminare esempi veri da falsi.
     """
+
     en_label = layer[0]
     en_label = tf.cast(en_label, tf.float32)
-
-    #if en_label.shape[0] == num_examples_to_generate:
-    #  SIZE = num_examples_to_generate
-    #else:
-    #  SIZE = BATCH_SIZE
-
-    #en_label = tf.math.reduce_sum(en_label,axis=1)
-
     in_image = layer[1]
     in_image = tf.cast(in_image, tf.float32)
-    shape = in_image.shape
 
-    en_image = tf.math.divide(
-               tf.math.pow(10.,
-             ( tf.math.add(
-                            tf.math.multiply(in_image, 6.) ,1.))), 1000000 )
-
+    en_image = tf.math.multiply(in_image, ENERGY_NORM)
+    en_image = tf.math.add(en_image, 1.)
+    en_image = tf.math.pow(10., en_image)
+    en_image = tf.math.divide(en_image, ENERGY_SCALE)
     en_image = tf.math.reduce_sum(en_image, axis=[1,2,3])
 
-    output_zero = tf.zeros_like(en_label)
-    # output :
-    #       Gaussiana centrata in en_label e deviazione standard en_label/10
-    #       scalata per 0.2 e sommata a 0.8
-    # Fatto per rendere possibile il train del generatore: se fosse solo la gaus-
-    # siana, il discriminatore sarebbe troppo intelligente e userebbe solo questa
-    # informazione per disciminare esempi veri da falsi.
-    output_pdf  = tf.math.add(
-                  tf.math.multiply(
-                  tf.math.exp(
-                  tf.math.multiply(
-                  tf.math.pow( (en_label-en_image)/(en_label*0.1) , 2),
-                                                                        -0.5)
-                                                                        ),0.2),0.8 )
+    output_pdf = tf.math.pow((en_label-en_image)/(en_label*0.1) , 2)
+    output_pdf = tf.math.multiply(output_pdf, -0.5)
+    output_pdf = tf.math.exp(output_pdf)
+    output_pdf = tf.math.multiply(output_pdf, 0.2)
+    output_pdf = tf.math.add(output_pdf, 0.8)
     return output_pdf
 
 def make_discriminator_model():
@@ -391,7 +371,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 32
+    N_FILTER = 16
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
 
@@ -413,8 +393,8 @@ def make_discriminator_model():
 
     # En label input
     en_label = Input(shape=(1,), name="energy_input")
-    en_label_embed = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
-    li_en = Dense(n_nodes)(en_label_embed)
+    li_en = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
+    li_en = Dense(n_nodes)(li_en)
     li_en = Reshape(GEOMETRY)(li_en)
 
     # Pid label input
@@ -432,22 +412,105 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(2 * N_FILTER - 1, KERNEL)(discr)
+    discr = Conv3D(2 * N_FILTER, KERNEL)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     logger.info(f"Minibatch shape: {minibatch.get_shape()}")
-    discr = Conv3D(4 * N_FILTER, KERNEL)(minibatch)
+    discr = Conv3D(8 * N_FILTER, KERNEL)(minibatch)
     logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
 
     discr = Flatten()(discr)
-    output = Dense(1, activation="sigmoid", name="decision")(discr)
+    discr = Dense(1, activation="sigmoid", name="decision")(discr)
 
-    aux_output = Lambda(energy_condition, name= "aux_condition")([en_label, in_image])
+    aux_output = Lambda(auxiliary_condition, name= "aux_condition")([en_label, in_image])
 
-    output = Lambda(lambda x : x[0]*x[1], name= "final_decision")((aux_output,output))
+    output = Lambda(lambda x : x[0]*x[1], name= "final_decision")((aux_output, discr))
+
+    model = Model([in_image, en_label, pid_label], output, name='discriminator')
+    return model
+
+def make_discriminator_model_2():
+    """Define discriminator model:
+    Input 1) Vector of images associated to the given labels;
+    Input 2) Energy label to be passed to the network;
+    Input 3) ParticleID label to be passed to the network.
+
+    Labels are given as scalars in input; then they are passed to an embedding
+    layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
+    categorizes the labels in N_CLASSES_ * classes.
+    """
+    N_FILTER = 32
+    EMBED_DIM = 10
+    KERNEL = (4, 4, 4)
+
+    # padding="same" add a 0 to borders, "valid" use only available data !
+    # Output of convolution = (input + 2padding - kernel) / strides + 1 !
+    # Here we use padding default = "valid" (=0 above) and strides = 1 !
+    # GEOMETRY[i] -> GEOMETRY[i] - 3convolution * (KERNEL[i] - 1) > 0 !
+    error = "ERROR building the discriminator: smaller KERNEL is required!"
+    assert KERNEL[0] < GEOMETRY[0]/3 + 1, error
+    assert KERNEL[1] < GEOMETRY[1]/3 + 1, error
+    assert KERNEL[2] < GEOMETRY[2]/3 + 1, error
+
+    n_nodes = 1
+    for cell in GEOMETRY:
+        n_nodes = n_nodes * cell
+
+    # Image input
+    in_image = Input(shape=GEOMETRY, name="input_image")
+
+    # En label input
+    en_label = Input(shape=(1,), name="energy_input")
+    li_en = Dense(n_nodes)(en_label)
+    li_en = Reshape(GEOMETRY)(li_en)
+
+    # Pid label input
+    pid_label = Input(shape=(1,), name="particleID_input")
+    li_pid = Embedding(N_CLASSES_PID, EMBED_DIM * N_CLASSES_PID)(pid_label)
+    li_pid = Dense(n_nodes)(li_pid)
+    li_pid = Reshape(GEOMETRY)(li_pid)
+
+    # Concat label as a channel
+    merge = Concatenate()([in_image, li_en, li_pid])
+    logger.info(merge.get_shape())
+
+    # Discr main channel
+    discr = Conv3D(N_FILTER, KERNEL)(merge)
+    logger.info(discr.get_shape())
+    discr = LeakyReLU()(discr)
+    discr = Dropout(0.3)(discr)
+
+    discr = Conv3D(2 * N_FILTER, KERNEL)(discr)
+    logger.info(f"Shape of the last conv-discr layer: {discr.get_shape()}")
+    discr = LeakyReLU()(discr)
+    discr = Dropout(0.3)(discr)
+
+    # Minibatch channel
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    minibatch = Conv3D(N_FILTER, KERNEL)(minibatch)
+    logger.info(f"Shape of the conv-minibatch layer: {minibatch.get_shape()}")
+
+    # Minibatch output
+    minibatch = Flatten()(minibatch)
+    minibatch = Dense(1, activation="sigmoid", name="repetitions")(minibatch)
+
+    # Discriminator output
+    discr = Flatten()(discr)
+    discr = Dense(1, activation="sigmoid", name="decision")(discr)
+
+    # Auxiliary output
+    aux_output = Lambda(auxiliary_condition, name= "auxiliary")([en_label, in_image])
+
+    # Output
+    merge = Concatenate()([discr, minibatch, aux_output])
+    out1 = Dense(1)(merge)
+    out2 = Dense(1)(merge)
+    mix = Multiply()([out1, out2])
+    output = Dense(1, activation="sigmoid", name= "final_decision")(mix)
 
     model = Model([in_image, en_label, pid_label], output, name='discriminator')
     return model
@@ -462,18 +525,15 @@ def discriminator_loss(real_output, fake_output):
     total_loss = real_loss + fake_loss
     return total_loss
 
-def debug_discriminator(images):
+def debug_discriminator(data):
     """Uses images from the sample to test discriminator model."""
     logger.info("Start debugging discriminator model.")
     discriminator = make_discriminator_model()
-    images = images[0:num_examples_to_generate]
-    logger.info(f"Shape of images: {images.shape}")
-    en_label = tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
-                                maxval=N_CLASSES_EN-1),
-    pid_label = tf.random.uniform([num_examples_to_generate, 1], minval= 0.,
-                                maxval=N_CLASSES_PID)
-    decision = discriminator([images, en_label, pid_label])
+    decision = discriminator(data)
     logger.info(f"\nDecision per raw:\n {decision}")
+    discriminator = make_discriminator_model_2()
+    decision = discriminator(data)
+    logger.info(f"\nDecision 2 per raw:\n {decision}")
     logger.info("Debug finished.")
 
 #-------------------------------------------------------------------------------
@@ -605,7 +665,7 @@ class ConditionalGAN(tf.keras.Model):
            print (f"Time for epoch {epoch + 1} is {time.time()-start} sec")
            generate_and_save_images(self.generator, test_noise, epoch + 1)
 
-           if epoch % 5 == 0:
+           if epoch+1 % 5 == 0:
                logger.info("Saving checkpoint.")
                checkpoint.save(file_prefix = checkpoint_prefix)
 
@@ -621,8 +681,16 @@ def debug(path=DPATH, verbose=VERBOSE):
         logger.setLevel(logging.WARNING)
         logger.info('Logging level set on WARNING.')
 
+    if False :
+        #Set the logger level to debug
+        logger2.setLevel(logging.DEBUG)
+        logger2.info('Logging level set on DEBUG.')
+    else:
+        logger2.setLevel(logging.WARNING)
+        logger2.info('Logging level set on WARNING.')
+
     try:
-        train_images = debug_data_pull(path)
+        train_data = debug_data_pull(path, num_examples_to_generate)
     except AssertionError as e:
         print(f"An error occurred while loading the dataset: \n{e}")
         exit()
@@ -632,9 +700,10 @@ def debug(path=DPATH, verbose=VERBOSE):
 
     if verbose :
         #Execute debug subroutines
-        debug_shower(train_images, num_examples_to_generate)
-        debug_generator(test_noise)
-        debug_discriminator(train_images)
+        train_images = train_data[0]
+        #debug_shower(train_images, num_examples_to_generate)
+        #debug_generator(test_noise)
+        debug_discriminator(train_data)
 
 def train_cgan(path=DPATH, verbose=VERBOSE):
 
@@ -652,7 +721,7 @@ def train_cgan(path=DPATH, verbose=VERBOSE):
     logger.info("The cGAN model has been compiled correctly.")
 
     #cond_gan.train(train_dataset, EPOCHS)
-    cond_gan.fit(train_dataset, epochs=EPOCHS)
+    #cond_gan.fit(train_dataset, epochs=EPOCHS)
     # evaluate the model???
     #scores = model.evaluate(X, Y, verbose=0)
     #print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
@@ -660,7 +729,7 @@ def train_cgan(path=DPATH, verbose=VERBOSE):
 
 if __name__=="__main__":
 
-    debug(verbose=True)
+    debug()
 
     train_cgan()
 

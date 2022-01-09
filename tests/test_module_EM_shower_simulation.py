@@ -15,10 +15,11 @@ class TestCore(unittest.TestCase):
 
     def test_debug_train(self):
         """Test that the debug subroutins run without exceptions."""
-        train_images = EM.debug_data_pull(EM.data_path)
+        train_data = EM.debug_data_pull(EM.data_path, EM.num_examples)
+        train_images = train_data[0]
         EM.debug_shower(train_images)
-        EM.debug_generator(EM.test_noise)
-        EM.debug_discriminator(train_images)
+        EM.debug_generator()
+        EM.debug_discriminator(train_data)
         train_images = train_images[0, :, :, :, :]
         self.assertEqual(train_images.shape , EM.GEOMETRY)
 

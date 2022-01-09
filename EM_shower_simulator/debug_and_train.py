@@ -1,19 +1,22 @@
 """ Train the GAN with the Geant generated dataset and save the model """
 
-# Examples of conditional GANs from which we built our neural network :
-# https://machinelearningmastery.com/how-to-develop-a-conditional-generative-adversarial-network-from-scratch/
-# https://keras.io/examples/generative/conditional_gan/
-
+import os
 import logging
 from sys import exit
 
-from dataset import DPATH, data_pull, debug_data_pull, debug_shower
+from dataset import data_path, data_pull, debug_data_pull, debug_shower
 from make_models import num_examples, debug_generator, debug_discriminator
 from make_models import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
 
-#-------------------------------------------------------------------------------
-"""Constant parameters of configuration and definition of global objects."""
+# Creation of the default dataset path
+# In the project folder
+#DPATH = data_path
+# In colab after cloning the repository
+#DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
+# In this folder
+#DPATH = os.path.join("..", data_path)
+DPATH = os.path.join("..", data_path)
 
 # Define logger and handler
 ch = logging.StreamHandler()

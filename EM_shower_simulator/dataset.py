@@ -12,12 +12,8 @@ import matplotlib.pyplot as plt
 """Constant parameters of configuration and definition of global objects."""
 
 # Creation of the default dataset path
-# In the project folder
 data_path = os.path.join("dataset","filtered_data","data_MVA.root")
-# In colab after cloning the repository
-DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
-# In this folder
-#DPATH = os.path.join("..", data_path)
+DPATH = os.path.join("..", data_path)
 
 # Configuration of the dataset structure
 ENERGY_NORM = 6.

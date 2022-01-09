@@ -2,7 +2,6 @@
 
 import os
 import logging
-from pathlib import Path
 
 import numpy as np
 import uproot as up
@@ -44,7 +43,7 @@ def data_pull(path=DPATH, verbose=False):
 
     logger.info("Loading the training dataset.")
     try:
-       with up.open(Path(path).resolve()) as file:
+       with up.open(path) as file:
            branches = file["h"].arrays()
     except Exception as e:
        print("Error: Invalid path or corrupted file.")
@@ -85,7 +84,7 @@ def debug_data_pull(path=DPATH, num_examples=1, verbose=False):
 
     logger.info("Start debugging the dataset loading subroutines.")
     try:
-       with up.open(Path(path).resolve()) as file:
+       with up.open(path) as file:
            branches = file["h"].arrays()
     except Exception as e:
        print("Error: Invalid path or corrupted file.")

@@ -2,7 +2,6 @@
 
 import os
 import logging
-from pathlib import Path
 
 import numpy as np
 import tensorflow as tf
@@ -151,7 +150,7 @@ def debug_generator(noise=test_noise, verbose=False):
     plt.show()
 
     if verbose :
-        save_path = Path('model_plot').resolve()
+        save_path = 'model_plot'
         if not os.path.isdir(save_path):
            os.makedirs(save_path)
         file_name = "debug_generator.png"
@@ -385,7 +384,7 @@ def debug_discriminator(data, verbose=False):
         logger.info('Logging level set on WARNING.')
     logger.info("Start debugging discriminator model.")
 
-    save_path = Path('model_plot').resolve()
+    save_path = 'model_plot'
     if not os.path.isdir(save_path):
        os.makedirs(save_path)
 

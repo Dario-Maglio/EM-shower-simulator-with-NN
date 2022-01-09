@@ -18,7 +18,6 @@ from tensorflow.keras.metrics import Mean
 from tensorflow.keras.optimizers import Adam
 
 from IPython import display
-from IPython.core.display import Image
 
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
@@ -168,6 +167,14 @@ class ConditionalGAN(tf.keras.Model):
 
     # tf.function annotation causes the function
     # to be "compiled" as part of the training
+
+    def fit(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE, buffer=BUFFER_SIZE):
+        """Overwrite fit std method."""
+        # Split the dataset in Buffer and batch
+        dataset = tf.data.Dataset.from_tensor_slices(dataset)
+        dataset = dataset.shuffle(buffer)
+        dataset = dataset.batch(batch, drop_remainder=True)
+        super(ConditionalGAN, self).fit(dataset, epochs=epochs)
 
     def train_step(self, dataset):
         """Train step of the cGAN.

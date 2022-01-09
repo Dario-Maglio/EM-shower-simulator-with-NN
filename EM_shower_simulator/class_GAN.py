@@ -213,7 +213,7 @@ class ConditionalGAN(tf.keras.Model):
                                          self.discriminator.trainable_variables))
 
         # Monitor losses
-        self.gen_loss_tracker.update_state(gen_loss)
+        self.gen_loss_tracker.update_state(gener_loss)
         self.discr_loss_tracker.update_state(discr_loss)
         return{
             "gen_loss": self.gen_loss_tracker.result(),

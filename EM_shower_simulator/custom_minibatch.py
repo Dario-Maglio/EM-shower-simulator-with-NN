@@ -1,4 +1,4 @@
-""" Taken from
+"""Custom minibatch subroutines and tests. Taken and inspired by:
 https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
 """
 import tensorflow as tf

@@ -1,4 +1,4 @@
-""" Train the GAN with the Geant generated dataset and save the model """
+"""Subroutins for the creation of the generator and discriminator models."""
 
 import os
 import logging
@@ -27,9 +27,7 @@ from tensorflow.keras.layers import (Input,
 """Constant parameters of configuration and definition of global objects."""
 
 # Configuration of the models structure
-MBSTD_GROUP_SIZE = 32                            #minibatch dimension
-BATCH_SIZE = 256
-BUFFER_SIZE = 10400
+MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
 NOISE_DIM = 1000
 N_CLASSES_PID = 3
 N_CLASSES_EN = 30 + 1
@@ -137,10 +135,6 @@ def debug_generator(noise=test_noise, verbose=False):
         logger.info('Logging level set on WARNING.')
     logger.info("Start debugging the generator model.")
 
-    save_path = Path('model_plot').resolve()
-    if not os.path.isdir(save_path):
-       os.makedirs(save_path)
-
     generator = make_generator_model()
     data_images = generator(noise, training=False)
     logger.info(f"Shape of generated images: {data_images.shape}")
@@ -157,6 +151,9 @@ def debug_generator(noise=test_noise, verbose=False):
     plt.show()
 
     if verbose :
+        save_path = Path('model_plot').resolve()
+        if not os.path.isdir(save_path):
+           os.makedirs(save_path)
         file_name = "debug_generator.png"
         path = os.path.join(save_path, file_name)
         plot_model(generator, to_file=path, show_shapes=True)

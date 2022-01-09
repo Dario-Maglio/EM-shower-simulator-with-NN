@@ -4,13 +4,8 @@
 # https://machinelearningmastery.com/how-to-develop-a-conditional-generative-adversarial-network-from-scratch/
 # https://keras.io/examples/generative/conditional_gan/
 
-import os
-import time
 import logging
 from sys import exit
-from pathlib import Path
-
-import tensorflow as tf
 
 from dataset import DPATH, data_pull, debug_data_pull, debug_shower
 from make_models import num_examples, debug_generator, debug_discriminator
@@ -19,13 +14,6 @@ from class_GAN import ConditionalGAN
 
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
-
-# Configuration of the cGAN structure
-EPOCHS = 200
-L_RATE = 3e-4
-
-BATCH_SIZE = 256
-BUFFER_SIZE = 10400
 
 # Define logger and handler
 ch = logging.StreamHandler()
@@ -37,9 +25,8 @@ logger.addHandler(ch)
 #-------------------------------------------------------------------------------
 
 def debug(path=DPATH, verbose=False):
-
+    """Debug subroutines for the training of the cGAN with dataset in path."""
     if verbose :
-        #Set the logger level to debug
         logger.setLevel(logging.DEBUG)
         logger.info('Logging level set on DEBUG.')
     else:
@@ -67,20 +54,18 @@ def train_cgan(path=DPATH, verbose=False):
     logger.info("Starting training operations.")
     train_dataset = data_pull(path)
 
-    train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
-    train_dataset = train_dataset.shuffle(BUFFER_SIZE)
-    train_dataset = train_dataset.batch(BATCH_SIZE, drop_remainder=True)
-
     generator = make_generator_model()
 
     discriminator = make_discriminator_model()
 
     cond_gan = ConditionalGAN(discriminator, generator)
-    cond_gan.summary()
     cond_gan.compile()
     logger.info("The cGAN model has been compiled correctly.")
 
-    #cond_gan.train(train_dataset, EPOCHS)
+    cond_gan.summary()
+    cond_gan.plot_model()
+
+    #cond_gan.train(train_dataset, epochs=200)
     #cond_gan.fit(train_dataset, epochs=EPOCHS)
     # evaluate the model???
     #scores = model.evaluate(X, Y, verbose=0)

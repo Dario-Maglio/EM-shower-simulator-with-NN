@@ -1,4 +1,4 @@
-""" Train the GAN with the Geant generated dataset and save the model """
+"""Conditional GAN structure and subroutines."""
 
 # Examples of conditional GANs from which we built our neural network :
 # https://machinelearningmastery.com/how-to-develop-a-conditional-generative-adversarial-network-from-scratch/
@@ -11,7 +11,9 @@ from pathlib import Path
 
 import numpy as np
 import tensorflow as tf
-#from tensorflow.keras.utils import plot_model
+import matplotlib.pyplot as plt
+from matplotlib.image import imread
+from tensorflow.keras.utils import plot_model
 from tensorflow.keras.metrics import Mean
 from tensorflow.keras.optimizers import Adam
 
@@ -25,7 +27,7 @@ from IPython.core.display import Image
 N_CLASSES_PID = 3
 N_CLASSES_EN = 30 + 1
 EPOCHS = 200
-BATCH_SIZE = 256
+BATCH_SIZE = 256         #complicate relation with minibatch!
 BUFFER_SIZE = 10400
 L_RATE = 3e-4
 NOISE_DIM = 1000
@@ -66,9 +68,9 @@ def generate_and_save_images(model, noise, epoch=0):
     fig = plt.figure("Generated showers", figsize=(20,10))
     num_examples = predictions.shape[0]
     for i in range(num_examples):
-       for j in range(GEOMETRY[0]):
+       for j in range(predictions.shape[1]):
           k=k+1
-          plt.subplot(num_examples, GEOMETRY[0], k)
+          plt.subplot(num_examples, predictions.shape[1], k)
           plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
           plt.axis("off")
     plt.show()
@@ -137,6 +139,33 @@ class ConditionalGAN(tf.keras.Model):
         print("\n")
         self.discriminator.summary()
 
+    def plot_model(self):
+        """Plot and saves the current cGAN model"""
+        save_path = Path('model_plot').resolve()
+        if not os.path.isdir(save_path):
+           os.makedirs(save_path)
+
+        fig = plt.figure("Model scheme", figsize=(20,10))
+        plt.subplot(1, 2, 1)
+        plt.title("Generator")
+        file_name = "cgan-generator.png"
+        path = os.path.join(save_path, file_name)
+        plot_model(self.generator, to_file=path, show_shapes=True)
+        plt.imshow(imread(path))
+        plt.axis("off")
+        plt.subplot(1, 2, 2)
+        plt.title("Discriminator")
+        file_name = "cgan-discriminator.png"
+        path = os.path.join(save_path, file_name)
+        plot_model(self.discriminator, to_file=path, show_shapes=True)
+        plt.imshow(imread(path))
+        plt.axis("off")
+        plt.show()
+
+        file_name = "cgan-scheme.png"
+        path = os.path.join(save_path, file_name)
+        fig.savefig(os.path.join(save_path, file_name))
+
     # tf.function annotation causes the function
     # to be "compiled" as part of the training
 
@@ -191,7 +220,7 @@ class ConditionalGAN(tf.keras.Model):
             "discr_loss": self.discr_loss_tracker.result(),
         }
 
-    def train(self, dataset, epochs):
+    def train(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE, buffer=BUFFER_SIZE):
         """Define the training function of the cGAN.
         Inputs:
         dataset = combined real images vectors and labels;
@@ -204,6 +233,10 @@ class ConditionalGAN(tf.keras.Model):
         -) Print out the completed epoch no. and the time spent;
         Then generate a final image after the training is completed.
         """
+        # Split the dataset in Buffer and batch
+        dataset = tf.data.Dataset.from_tensor_slices(dataset)
+        dataset = dataset.shuffle(buffer)
+        dataset = dataset.batch(batch, drop_remainder=True)
 
         # Create a folder to save rusults from training in form of checkpoints.
         checkpoint_dir = "./training_checkpoints"

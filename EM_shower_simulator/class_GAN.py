@@ -26,7 +26,7 @@ from IPython import display
 N_PID = 3
 N_ENER = 30 + 1
 EPOCHS = 200
-BATCH_SIZE = 256                           #complicate relation with minibatch!
+BATCH_SIZE = 32                           #complicate relation with minibatch!
 BUFFER_SIZE = 10400
 L_RATE = 3e-4
 NOISE_DIM = 1000
@@ -117,17 +117,13 @@ class ConditionalGAN(tf.keras.Model):
         self.generator = gener
         self.discriminator_optimizer = discr_optim
         self.generator_optimizer = gener_optim
-        self.gen_loss_tracker = Mean(name="generator_loss")
+        self.gener_loss_tracker = Mean(name="generator_loss")
         self.discr_loss_tracker = Mean(name="discriminator_loss")
 
     @property
     def metrics(self):
         """Metrics of the network."""
-        return [self.gen_loss_tracker, self.discr_loss_tracker]
-
-    def compile(self):
-        """Compile method for the network."""
-        super(ConditionalGAN, self).compile(optimizer = 'adam')
+        return [self.gener_loss_tracker, self.discr_loss_tracker]
 
     def summary(self):
         """Summary method for both the generator and discriminator."""
@@ -166,12 +162,9 @@ class ConditionalGAN(tf.keras.Model):
     # tf.function annotation causes the function  ----> tipo le loss?
     # to be "compiled" as part of the training
 
-    def fit(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE, buffer=BUFFER_SIZE):
-        """Overwrite fit std method."""
-        # Split the dataset in Buffer and batch
-        dataset = dataset.shuffle(buffer)
-        dataset = dataset.batch(batch, drop_remainder=True)
-        super(ConditionalGAN, self).fit(dataset, epochs=epochs)
+    def compile(self):
+        """Compile method for the network."""
+        super(ConditionalGAN, self).compile()
 
     def train_step(self, dataset):
         """Train step of the cGAN.
@@ -212,12 +205,19 @@ class ConditionalGAN(tf.keras.Model):
                                          self.discriminator.trainable_variables))
 
         # Monitor losses
-        self.gen_loss_tracker.update_state(gener_loss)
+        self.gener_loss_tracker.update_state(gener_loss)
         self.discr_loss_tracker.update_state(discr_loss)
         return{
-            "gen_loss": self.gen_loss_tracker.result(),
+            "gen_loss": self.gener_loss_tracker.result(),
             "discr_loss": self.discr_loss_tracker.result(),
         }
+
+    def fit(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE, buffer=BUFFER_SIZE):
+        """aaa"""
+        # Split the dataset in Buffer and batch
+        dataset = dataset.shuffle(buffer)
+        dataset = dataset.batch(batch, drop_remainder=True)
+        super(ConditionalGAN, self).fit(dataset, epochs=epochs)
 
     def train(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE, buffer=BUFFER_SIZE):
         """Define the training function of the cGAN.

@@ -26,7 +26,7 @@ from tensorflow.keras.layers import (Input,
 """Constant parameters of configuration and definition of global objects."""
 
 # Configuration of the models structure
-MBSTD_GROUP_SIZE = 16                                     #minibatch dimension
+MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 NOISE_DIM = 1000
 N_CLASSES_PID = 3
 N_CLASSES_EN = 30 + 1

@@ -259,7 +259,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 8
+    N_FILTER = 32
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
 
@@ -307,7 +307,7 @@ def make_discriminator_model():
 
     #minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     #logger.info(f"Minibatch shape: {minibatch.get_shape()}")
-    #discr = Conv3D(8 * N_FILTER, KERNEL)(minibatch)
+    discr = Conv3D(8 * N_FILTER, KERNEL)(discr)
     #logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
 
     discr = Flatten()(discr)

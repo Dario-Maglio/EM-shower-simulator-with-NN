@@ -29,7 +29,7 @@ logger.addHandler(ch)
 
 #-------------------------------------------------------------------------------
 
-def data_pull(path=DPATH, verbose=False):
+def data_pull(DPATH, verbose=False):
     """Organize and reshape the dataset for the cGan training.
     Take in input a path to the dataset and return an iterator over events that
     can be used to train the cGAN using the method train.
@@ -72,7 +72,7 @@ def data_pull(path=DPATH, verbose=False):
     dataset = dataset.shuffle(BUFFER_SIZE)
     return dataset
 
-def debug_data_pull(path=DPATH, num_examples=1, verbose=False):
+def debug_data_pull(DPATH, num_examples=1, verbose=False):
     """Import data images from the dataset and test shapes.
     Take in input a path to the dataset and return num_examples of events from
     the shuffled dataset that can be plotted with debug_shower.

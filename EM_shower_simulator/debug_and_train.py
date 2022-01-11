@@ -36,7 +36,7 @@ def debug(path=DPATH, verbose=False):
         logger.info('Logging level set on WARNING.')
 
     try:
-        train_data = debug_data_pull(path=path, num_examples=num_examples)
+        train_data = debug_data_pull(path, num_examples=num_examples)
     except AssertionError as e:
         print(f"An error occurred while loading the dataset: \n{e}")
         exit()
@@ -61,7 +61,7 @@ def train_cgan(path=DPATH, verbose=False):
         logger.info('Logging level set on WARNING.')
 
     logger.info("Starting training operations.")
-    train_dataset = data_pull(path=path)
+    train_dataset = data_pull(path)
 
     generator = make_generator_model()
 

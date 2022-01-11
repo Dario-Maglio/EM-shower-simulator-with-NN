@@ -5,8 +5,6 @@ import unittest
 
 from EM_shower_simulator import data_path, check_path
 
-
-
 class TestCore(unittest.TestCase):
     """Test methods class for configuration and dataset."""
 

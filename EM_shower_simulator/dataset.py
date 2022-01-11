@@ -1,4 +1,4 @@
-"""Subroutines for the dataset organization, debug and plot."""
+"""Subroutines for the dataset organization and shower plot."""
 
 import os
 import logging
@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from tensorflow.data import Dataset
 
 #-------------------------------------------------------------------------------
-"""Constant parameters of configuration and definition of global objects."""
 
 # Creation of the default dataset path
 data_path = os.path.join("dataset","filtered_data","data_MVA.root")
@@ -29,11 +28,10 @@ logger = logging.getLogger("DataSetLogger")
 logger.addHandler(ch)
 
 #-------------------------------------------------------------------------------
-"""Subroutines for the dataset organization and shower plot."""
 
 def data_pull(path=DPATH, verbose=False):
     """Organize and reshape the dataset for the cGan training.
-    Take in input a path to the dataset and return an iterator over batchs that
+    Take in input a path to the dataset and return an iterator over events that
     can be used to train the cGAN using the method train.
     """
     if verbose :
@@ -76,8 +74,8 @@ def data_pull(path=DPATH, verbose=False):
 
 def debug_data_pull(path=DPATH, num_examples=1, verbose=False):
     """Import data images from the dataset and test shapes.
-    Take in input a path to the dataset and return train_images from the dataset
-    that can be plotted with debug_shower.
+    Take in input a path to the dataset and return num_examples of events from
+    the shuffled dataset that can be plotted with debug_shower.
     """
     if verbose :
         logger.setLevel(logging.DEBUG)
@@ -101,19 +99,20 @@ def debug_data_pull(path=DPATH, num_examples=1, verbose=False):
     # Normalize the images to [-1, 1] and reshape
     train_images = (train_images - 1.) / ENERGY_NORM
     train_images = np.reshape(train_images, (N_EVENT, *GEOMETRY))
-    train_images = train_images[0:num_examples]
 
     en_labels = np.array(branches["en_in"]).astype("float32") / ENERGY_SCALE
     en_labels = np.transpose(en_labels)
     assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
     en_labels = np.reshape(en_labels, (N_EVENT, 1))
-    en_labels = en_labels[0:num_examples]
 
     # Particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer
     pid_labels = np.array(branches["primary"]) + 1
     pid_labels = np.transpose(pid_labels)
     assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
     pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
+
+    train_images = train_images[0:num_examples]
+    en_labels = en_labels[0:num_examples]
     pid_labels = pid_labels[0:num_examples]
 
     logger.info("Debug of the loading subroutines finished.")

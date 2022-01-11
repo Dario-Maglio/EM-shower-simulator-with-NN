@@ -36,7 +36,7 @@ def debug(path=DPATH, verbose=False):
         logger.info('Logging level set on WARNING.')
 
     try:
-        train_data = debug_data_pull(path, num_examples, verbose)
+        train_data = debug_data_pull(path=path, num_examples=num_examples)
     except AssertionError as e:
         print(f"An error occurred while loading the dataset: \n{e}")
         exit()
@@ -52,9 +52,16 @@ def debug(path=DPATH, verbose=False):
         debug_discriminator(train_data, verbose=verbose)
 
 def train_cgan(path=DPATH, verbose=False):
+    """Creation and training of the conditional GAN."""
+    if verbose :
+        logger.setLevel(logging.DEBUG)
+        logger.info('Logging level set on DEBUG.')
+    else:
+        logger.setLevel(logging.WARNING)
+        logger.info('Logging level set on WARNING.')
 
     logger.info("Starting training operations.")
-    train_dataset = data_pull(path)
+    train_dataset = data_pull(path=path)
 
     generator = make_generator_model()
 
@@ -67,13 +74,13 @@ def train_cgan(path=DPATH, verbose=False):
     cond_gan.summary()
     cond_gan.plot_model()
 
+    cond_gan.train(train_dataset, epochs=100)
+    #cond_gan.fit(train_dataset, epochs=100)
+
     cond_gan.create_generator()
 
-    #cond_gan.train(train_dataset, epochs=6)
-    #cond_gan.fit(train_dataset, epochs=200)
-
-    file_name = "cGAN.h5"
-    save_path = "model_saves"
+    #file_name = "cGAN.h5"
+    #save_path = "model_saves"
     #if not os.path.isdir(save_path):
     #   os.makedirs(save_path)
     #cond_gan.save(os.path.join(save_path, file_name))
@@ -85,7 +92,7 @@ def train_cgan(path=DPATH, verbose=False):
 
 if __name__=="__main__":
 
-    debug(verbose=False)
+    debug(verbose=True)
 
     train_cgan()
 

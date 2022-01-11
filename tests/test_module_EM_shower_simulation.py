@@ -4,8 +4,6 @@ import unittest
 
 import EM_shower_simulator as EM
 
-
-
 class TestCore(unittest.TestCase):
     """Test methods class for the module's execution."""
 
@@ -15,7 +13,7 @@ class TestCore(unittest.TestCase):
 
     def test_debug_train(self):
         """Test that the debug subroutins run without exceptions."""
-        train_data = EM.debug_data_pull(EM.data_path, EM.num_examples)
+        train_data = EM.debug_data_pull(path=EM.data_path, , num_examples=EM.num_examples)
         train_images = train_data[0]
         EM.debug_shower(train_images)
         EM.debug_generator()

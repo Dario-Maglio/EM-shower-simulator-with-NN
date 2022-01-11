@@ -238,10 +238,10 @@ class ConditionalGAN(tf.keras.Model):
             "discr_loss": self.discr_loss_tracker.result()
         }
 
-    def fit(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE):
+    def fit(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE, verbose='auto'):
         """Wrap the default training function of the model."""
         dataset = dataset.batch(batch, drop_remainder=True)
-        super(ConditionalGAN, self).fit(dataset, epochs=epochs)
+        super(ConditionalGAN, self).fit(dataset, epochs=epochs, verbose=verbose)
 
     def train(self, dataset, epochs=EPOCHS, batch=BATCH_SIZE, verbose=1):
         """Define the training function of the cGAN.
@@ -285,8 +285,8 @@ class ConditionalGAN(tf.keras.Model):
            print (f"Time for epoch {epoch + 1} is {end} sec")
            print(f"gen_loss ={self.gener_loss_tracker.result()}"
                  +f"\tdisc_loss={self.discr_loss_tracker.result()}")
-           self.generate_and_save_images(self.generator, test_noise, epoch + 1)
+           self.generate_and_save_images(test_noise, epoch + 1)
 
-           if (epoch + 1) % 2 == 0:
+           if (epoch + 1) % 5 == 0:
               save_path = self.manager.save()
               print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")

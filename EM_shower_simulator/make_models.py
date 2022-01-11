@@ -26,22 +26,19 @@ from tensorflow.keras.layers import (Input,
 """Constant parameters of configuration and definition of global objects."""
 
 # Configuration of the models structure
-MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 NOISE_DIM = 1000
-N_CLASSES_PID = 3
-N_CLASSES_EN = 30 + 1
+N_PID = 3
+N_ENER = 30 + 1
 GEOMETRY = (12, 12, 12, 1)
 ENERGY_SCALE = 1000000.
 ENERGY_NORM = 6.
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
-num_examples = 6                 #multiple or minor of minibatch
+num_examples = 6
 test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
-              tf.random.uniform([num_examples, 1], minval= 0.,
-                                maxval=N_CLASSES_EN),
-              tf.random.uniform([num_examples, 1], minval= 0.,
-                                maxval=N_CLASSES_PID)]
+              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
+              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
 # Define logger and handler
 ch = logging.StreamHandler()
@@ -64,7 +61,7 @@ def make_generator_model():
     categorizes the labels in N_CLASSES_* classes.
     """
     N_FILTER = 2
-    EMBED_DIM = 10
+    EMBED_DIM = 5
     KERNEL = (4, 4, 4)
     input_shape = (3, 3, 3, 2*N_FILTER)
     image_shape = (3, 3, 3, N_FILTER)
@@ -81,13 +78,13 @@ def make_generator_model():
 
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
+    li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
     li_en = Dense(n_nodes)(li_en)
     li_en = Reshape(input_shape)(li_en)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particleID_input")
-    li_pid = Embedding(N_CLASSES_PID, EMBED_DIM)(pid_label)
+    li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
     li_pid = Dense(n_nodes)(li_pid)
     li_pid = Reshape(input_shape)(li_pid)
 
@@ -126,7 +123,7 @@ def make_generator_model():
 
 def debug_generator(noise=test_noise, verbose=False):
     """Uses the random seeds to generate fake samples and plots them."""
-    if verbose :
+    if verbose:
         logger.setLevel(logging.DEBUG)
         logger.info('Logging level set on DEBUG.')
     else:
@@ -157,7 +154,7 @@ def debug_generator(noise=test_noise, verbose=False):
            +f"\tInitial energy ={noise[1][example][0]}"
            +f"\tGenerated energy ={energy[example]}")
 
-    if verbose :
+    if verbose:
         save_path = 'model_plot'
         if not os.path.isdir(save_path):
            os.makedirs(save_path)
@@ -201,14 +198,14 @@ def make_discriminator_model():
 
     # En label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Embedding(N_CLASSES_EN, EMBED_DIM)(en_label)
+    li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
     li_en = Dense(n_nodes)(li_en)
     li_en = Dense(n_nodes)(li_en)
     li_en = Reshape(GEOMETRY)(li_en)
 
     # Pid label input
     pid_label = Input(shape=(1,), name="particleID_input")
-    li_pid = Embedding(N_CLASSES_PID, EMBED_DIM)(pid_label)
+    li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
     li_pid = Dense(n_nodes)(li_pid)
     li_pid = Dense(n_nodes)(li_pid)
     li_pid = Reshape(GEOMETRY)(li_pid)
@@ -235,7 +232,7 @@ def make_discriminator_model():
 
 def debug_discriminator(data, verbose=False):
     """Uses images from the sample to test discriminator model."""
-    if verbose :
+    if verbose:
         logger.setLevel(logging.DEBUG)
         logger.info('Logging level set on DEBUG.')
     else:
@@ -250,7 +247,7 @@ def debug_discriminator(data, verbose=False):
     discriminator = make_discriminator_model()
     decision = discriminator(data)
     logger.info(f"\nDecision per raw:\n {decision}")
-    if verbose :
+    if verbose:
         file_name = "debug_discriminator.png"
         path = os.path.join(save_path, file_name)
         plot_model(discriminator, to_file=path, show_shapes=True)

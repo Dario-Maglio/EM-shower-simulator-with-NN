@@ -11,11 +11,11 @@ from tensorflow.data import Dataset
 #-------------------------------------------------------------------------------
 
 # Creation of the default dataset path
-data_path = os.path.join("dataset","filtered_data","data_MVA.root")
+data_path = os.path.join("dataset","filtered_data","data_MVA_normalized.root")
 DPATH = os.path.join("..", data_path)
 
 # Configuration of the dataset structure
-ENERGY_NORM = 6.
+ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000
 GEOMETRY = (12, 12, 12, 1)
 BUFFER_SIZE = 10400
@@ -54,7 +54,6 @@ def data_pull(path, verbose=False):
     # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
     N_EVENT = train_images.shape[0]
     # Normalize the images to [-1, 1] and reshape
-    train_images = (train_images - 1.) / ENERGY_NORM
     train_images = np.reshape(train_images, (N_EVENT, *GEOMETRY))
 
     en_labels = np.array(branches["en_in"]).astype("float32") / ENERGY_SCALE
@@ -97,7 +96,6 @@ def debug_data_pull(path, num_examples=1, verbose=False):
     # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
     N_EVENT = train_images.shape[0]
     # Normalize the images to [-1, 1] and reshape
-    train_images = (train_images - 1.) / ENERGY_NORM
     train_images = np.reshape(train_images, (N_EVENT, *GEOMETRY))
 
     en_labels = np.array(branches["en_in"]).astype("float32") / ENERGY_SCALE

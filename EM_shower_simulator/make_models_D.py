@@ -32,7 +32,7 @@ N_CLASSES_PID = 3
 N_CLASSES_EN = 30 + 1
 GEOMETRY = (12, 12, 12, 1)
 ENERGY_SCALE = 1000000.
-ENERGY_NORM = 6.
+ENERGY_NORM = 6.503
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
@@ -137,6 +137,9 @@ def debug_generator(noise=test_noise, verbose=False):
     generator = make_generator_model()
     data_images = generator(noise, training=False)
     logger.info(f"Shape of generated images: {data_images.shape}")
+    energy = np.array(data_images)
+    energy = (10.**(energy*ENERGY_NORM)) / ENERGY_SCALE
+    energy = np.sum(energy, axis=(1,2,3,4))
 
     k=0
     plt.figure("Generated showers", figsize=(20,10))
@@ -148,6 +151,11 @@ def debug_generator(noise=test_noise, verbose=False):
           plt.imshow(data_images[i,j,:,:,0]) #, cmap="gray")
           plt.axis("off")
     plt.show()
+
+    for example in range(len(noise[0]) ):
+      print(f"{example+1})\tPrimary particle={int(noise[2][example][0])}"
+           +f"\tInitial energy ={noise[1][example][0]}"
+           +f"\tGenerated energy ={energy[example]}")
 
     if verbose :
         save_path = 'model_plot'
@@ -201,6 +209,8 @@ def auxiliary_condition(layer):
     solo la gaussiana, il discriminatore sarebbe troppo intelligente e userebbe
     solo questa informazione per disciminare esempi veri da falsi.
     """
+    BIAS = 0.5
+    GAUS_NORM = 1
 
     en_label = layer[0]
     en_label = tf.cast(en_label, tf.float32)
@@ -213,12 +223,31 @@ def auxiliary_condition(layer):
     en_image = tf.math.divide(en_image, ENERGY_SCALE)
     en_image = tf.math.reduce_sum(en_image, axis=[1,2,3])
 
-    output_pdf = tf.math.pow((en_label-en_image)/(en_label*0.1) , 2)
-    output_pdf = tf.math.multiply(output_pdf, -0.5)
-    output_pdf = tf.math.exp(output_pdf)
-    output_pdf = tf.math.multiply(output_pdf, 0.2)
-    output_pdf = tf.math.add(output_pdf, 0.8)
-    return output_pdf
+    output_1 = tf.math.pow((en_label-en_image)/(50) , 2) #en_label*0.4
+    output_1 = tf.math.multiply(output_1, -0.5)
+    output_1 = tf.math.exp(output_1)
+    output_1 = tf.math.multiply(output_1, GAUS_NORM)
+
+    output_2 = tf.math.pow((en_label-en_image)/(en_label*0.5) , 2) #en_label*0.4
+    output_2 = tf.math.multiply(output_2, -0.5)
+    output_2 = tf.math.exp(output_2)
+    output_2 = tf.math.multiply(output_2, GAUS_NORM)
+
+    output_3 = tf.math.pow((en_label-en_image)/(2) , 2) #en_label*0.4
+    output_3 = tf.math.multiply(output_3, -0.5)
+    output_3 = tf.math.exp(output_3)
+    output_3 = tf.math.multiply(output_3, GAUS_NORM )
+
+    aux_output = tf.math.add(output_1, output_2)
+    aux_output = tf.math.add(aux_output,output_3)
+    aux_output = tf.math.add(output_3, BIAS)
+
+    aux_output = tf.math.multiply(aux_output, 1/(BIAS+3*GAUS_NORM))
+    #print(aux_output)
+    # returns zero if en_image > en_label
+    #en_max_condition = tf.experimental.numpy.heaviside(en_label-en_image, tf.ones_like(en_label) )
+    #output_pdf = tf.math.multiply(output_pdf, en_max_condition)
+    return aux_output
 
 def make_discriminator_model():
     """Define discriminator model:
@@ -282,13 +311,13 @@ def make_discriminator_model():
     #logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
 
     discr = Flatten()(discr)
-    discr = Dense(1, activation="sigmoid", name="decision")(discr)
+    output_conv = Dense(1, activation="sigmoid", name="decision")(discr)
 
-    #aux_output = Lambda(auxiliary_condition, name= "aux_condition")([en_label, in_image])
+    aux_output = Lambda(auxiliary_condition, name= "aux_condition")([en_label, in_image])
 
     #output = Lambda(lambda x : x[0]*x[1], name= "final_decision")((aux_output, discr))
 
-    model = Model([in_image, en_label, pid_label], discr, name='discriminator')
+    model = Model([in_image, en_label, pid_label], [output_conv, aux_output], name='discriminator')
     return model
 
 def make_discriminator_model_2(verbose=False):
@@ -395,12 +424,3 @@ def debug_discriminator(data, verbose=False):
         file_name = "debug_discriminator.png"
         path = os.path.join(save_path, file_name)
         plot_model(discriminator, to_file=path, show_shapes=True)
-
-    discriminator = make_discriminator_model_2()
-    decision = discriminator(data)
-    logger.info(f"\nDecision 2 per raw:\n {decision}")
-    if verbose :
-        file_name = "debug_discriminator_2.png"
-        path = os.path.join(save_path, file_name)
-        plot_model(discriminator, to_file=path, show_shapes=True)
-    logger.info("Debug discriminator model finished.")

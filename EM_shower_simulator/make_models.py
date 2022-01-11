@@ -31,7 +31,7 @@ N_PID = 3
 N_ENER = 30 + 1
 GEOMETRY = (12, 12, 12, 1)
 ENERGY_SCALE = 1000000.
-ENERGY_NORM = 6.
+ENERGY_NORM = 6.503
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
@@ -135,7 +135,7 @@ def debug_generator(noise=test_noise, verbose=False):
     data_images = generator(noise, training=False)
     logger.info(f"Shape of generated images: {data_images.shape}")
     energy = np.array(data_images)
-    energy = (10.**(energy*ENERGY_NORM + 1.))/ENERGY_SCALE
+    energy = (10.**(energy*ENERGY_NORM)) / ENERGY_SCALE
     energy = np.sum(energy, axis=(1,2,3,4))
 
     k=0

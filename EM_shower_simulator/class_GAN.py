@@ -30,7 +30,7 @@ BATCH_SIZE = 64
 L_RATE = 3e-5
 NOISE_DIM = 1000
 ENERGY_SCALE = 1000000.
-ENERGY_NORM = 6.
+ENERGY_NORM = 6.503
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
@@ -151,7 +151,7 @@ class ConditionalGAN(tf.keras.Model):
         decisions = self.discriminator([predictions, noise[1], noise[2]])
         logger.info(f"Shape of generated images: {predictions.shape}")
         energy = np.array(predictions)
-        energy = (10.**(energy*ENERGY_NORM + 1.))/ENERGY_SCALE
+        energy = (10.**(energy*ENERGY_NORM))/ENERGY_SCALE
         energy = np.sum(energy, axis=(1,2,3,4))
 
         # 2 - Plot the generated images

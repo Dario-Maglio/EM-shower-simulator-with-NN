@@ -19,6 +19,7 @@ DPATH = os.path.join("..", data_path)
 ENERGY_NORM = 6.
 ENERGY_SCALE = 1000000
 GEOMETRY = (12, 12, 12, 1)
+BUFFER_SIZE = 10400
 
 # Define logger and handler
 ch = logging.StreamHandler()
@@ -70,6 +71,7 @@ def data_pull(path=DPATH, verbose=False):
     pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
 
     dataset = Dataset.from_tensor_slices((train_images, en_labels, pid_labels))
+    dataset = dataset.shuffle(BUFFER_SIZE)
     return dataset
 
 def debug_data_pull(path=DPATH, num_examples=1, verbose=False):

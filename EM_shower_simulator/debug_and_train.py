@@ -60,15 +60,17 @@ def train_cgan(path=DPATH, verbose=False):
 
     discriminator = make_discriminator_model()
 
-    cond_gan = ConditionalGAN(discriminator, generator)
+    cond_gan = ConditionalGAN(generator, discriminator)
     cond_gan.compile()
     logger.info("The cGAN model has been compiled correctly.")
 
-    #cond_gan.summary()
-    #cond_gan.plot_model()
+    cond_gan.summary()
+    cond_gan.plot_model()
 
-    #cond_gan.train(train_dataset, epochs=200)
-    cond_gan.fit(train_dataset, epochs=200)
+    cond_gan.create_generator()
+
+    #cond_gan.train(train_dataset, epochs=6)
+    #cond_gan.fit(train_dataset, epochs=200)
 
     file_name = "cGAN.h5"
     save_path = "model_saves"

@@ -167,15 +167,14 @@ class ConditionalGAN(tf.keras.Model):
            for j in range(predictions.shape[1]):
               k=k+1
               plt.subplot(num_examples, predictions.shape[1], k)
-              plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
+              plt.imshow(predictions[i,j,:,:,0]) , cmap="gray")
               plt.axis("off")
         plt.show()
 
         for example in range(len(noise[0]) ):
           print(f"{example+1})\tPrimary particle={int(noise[2][example][0])}"
                +f"\tInitial energy ={noise[1][example][0]}"
-               +f"\tGenerated energy ={energy[example]}"
-               +f"\tDecision ={decisions[example]}")
+               +f"\tGenerated energy ={energy[example]}")
 
         # 3 - Save the generated images
         save_path = Path('training_results').resolve()

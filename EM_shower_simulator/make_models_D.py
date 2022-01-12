@@ -259,7 +259,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 8
+    N_FILTER = 32
     EMBED_DIM = 50
     KERNEL = (4, 4, 4)
 

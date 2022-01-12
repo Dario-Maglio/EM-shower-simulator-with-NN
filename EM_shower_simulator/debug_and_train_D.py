@@ -13,9 +13,9 @@ from class_GAN_D import ConditionalGAN
 # In the project folder
 #DPATH = data_path
 # In colab after cloning the repository
-#DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
+DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
 # In this folder
-DPATH = os.path.join("..", data_path)
+#DPATH = os.path.join("..", data_path)
 
 # Define logger and handler
 ch = logging.StreamHandler()

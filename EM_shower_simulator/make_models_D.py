@@ -191,11 +191,11 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         # Calculate the std deviation for each pixel over minibatch
         minib = tf.math.reduce_std(minib, axis=0)
         # Take average over fmaps and pixels.
-        minib = tf.reduce_mean(minib, axis=[1,2,3], keepdims=True)
+        minib = tf.reduce_mean(minib, axis=[2,3,4], keepdims=True)
         # Cast back to original data type.
         minib = tf.cast(minib, discr.dtype)
         # New tensor by replicating input multiples times.
-        minib = tf.tile(minib, [group_size, shape[1], shape[2], shape[3], 1])
+        minib = tf.tile(minib, [group_size, 1 , shape[2], shape[3], 1])
         # Append as new fmap.
         return tf.concat([discr, minib], axis=-1)
 
@@ -305,10 +305,10 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    #minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
-    #logger.info(f"Minibatch shape: {minibatch.get_shape()}")
-    #discr = Conv3D(8 * N_FILTER, KERNEL)(minibatch)
-    #logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    discr = Conv3D(8 * N_FILTER, KERNEL)(minibatch)
+    logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
 
     discr = Flatten()(discr)
     output_conv = Dense(1, activation="sigmoid", name="decision")(discr)

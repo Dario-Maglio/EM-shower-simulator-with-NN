@@ -25,13 +25,13 @@ from tensorflow.keras.layers import (Input,
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
 
-# Configuration of the models structure
-NOISE_DIM = 1000
+# Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-GEOMETRY = (12, 12, 12, 1)
-ENERGY_SCALE = 1000000.
+NOISE_DIM = 1024
 ENERGY_NORM = 6.503
+ENERGY_SCALE = 1000000.
+GEOMETRY = (12, 12, 12, 1)
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
@@ -40,12 +40,8 @@ test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
-# Define logger and handler
-ch = logging.StreamHandler()
-formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
+# Define logger
 logger = logging.getLogger("ModelsLogger")
-logger.addHandler(ch)
 
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
@@ -60,8 +56,8 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 2
-    EMBED_DIM = 5
+    N_FILTER = 16
+    EMBED_DIM = 10
     KERNEL = (4, 4, 4)
     input_shape = (3, 3, 3, 2*N_FILTER)
     image_shape = (3, 3, 3, N_FILTER)
@@ -150,7 +146,7 @@ def debug_generator(noise=test_noise, verbose=False):
     plt.show()
 
     for example in range(len(noise[0]) ):
-      print(f"{example+1})\tPrimary particle={int(noise[2][example][0])}"
+      print(f"{example+1}) Primary particle={int(noise[2][example][0])}"
            +f"\tInitial energy ={noise[1][example][0]}"
            +f"\tGenerated energy ={energy[example]}")
 
@@ -176,7 +172,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 2
+    N_FILTER = 16
     EMBED_DIM = 10
     KERNEL = (4, 4, 4)
 

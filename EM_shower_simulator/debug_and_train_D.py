@@ -4,10 +4,24 @@ import os
 import logging
 from sys import exit
 
-from dataset import data_path, data_pull, debug_data_pull, debug_shower
-from make_models_D import num_examples, debug_generator, debug_discriminator
+import matplotlib.pyplot as plt
+
+from dataset import data_path
+
+# Logger import
+from dataset import logger as logData
+from make_models_D import logger as logMod
+from class_GAN_D import logger as logGAN
+
+# Debug import
+from dataset import debug_data_pull, debug_shower
+from make_models_D import debug_generator, debug_discriminator
+
+# Train import
+from dataset import data_pull
 from make_models_D import make_generator_model, make_discriminator_model
 from class_GAN_D import ConditionalGAN
+
 
 # Creation of the default dataset path
 # In the project folder
@@ -23,6 +37,9 @@ formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger = logging.getLogger("DEBUGLogger")
 logger.addHandler(ch)
+logData.addHandler(ch)
+logMod.addHandler(ch)
+logGAN.addHandler(ch)
 
 #-------------------------------------------------------------------------------
 
@@ -36,7 +53,7 @@ def debug(path=DPATH, verbose=False):
         logger.info('Logging level set on WARNING.')
 
     try:
-        train_data = debug_data_pull(path, num_examples=num_examples)
+        train_data = debug_data_pull(path, 6)
     except AssertionError as e:
         print(f"An error occurred while loading the dataset: \n{e}")
         exit()
@@ -74,10 +91,17 @@ def train_cgan(path=DPATH, verbose=False):
     cond_gan.summary()
     cond_gan.plot_model()
 
-    cond_gan.train(train_dataset, epochs=100)
-    #cond_gan.fit(train_dataset, epochs=100)
+    history = cond_gan.train(train_dataset, epochs=2, batch=128)
+    #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
 
-    cond_gan.create_generator()
+    plt.figure("Evolution of losses per epochs")
+    plt.plot(history.history["gener_loss"])
+    plt.plot(history.history["discr_loss"])
+    plt.plot(history.history["energ_loss"])
+    plt.show()
+
+    for key in history.history.keys():
+        print(key)
 
     #file_name = "cGAN.h5"
     #save_path = "model_saves"
@@ -85,16 +109,11 @@ def train_cgan(path=DPATH, verbose=False):
     #   os.makedirs(save_path)
     #cond_gan.save(os.path.join(save_path, file_name))
 
-    # evaluate the model???
-    #scores = model.evaluate(X, Y, verbose=0)
-    #print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
-
-
 if __name__=="__main__":
 
     debug(verbose=True)
 
-    train_cgan()
+    train_cgan(verbose=True)
 
     logger.info("The work is done.")
     logger.handlers.clear()

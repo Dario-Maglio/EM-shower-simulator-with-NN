@@ -28,7 +28,7 @@ from tensorflow.keras.layers import (Input,
 
 # Configuration of the models structure
 MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
-NOISE_DIM = 1000
+NOISE_DIM = 1024
 N_CLASSES_PID = 3
 N_CLASSES_EN = 30 + 1
 GEOMETRY = (12, 12, 12, 1)
@@ -45,11 +45,8 @@ test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
                                 maxval=N_CLASSES_PID)]
 
 # Define logger and handler
-ch = logging.StreamHandler()
-formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
 logger = logging.getLogger("ModelsLogger")
-logger.addHandler(ch)
+
 
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
@@ -322,13 +319,13 @@ def make_discriminator_model():
     discr = Flatten()(discr)
     output_conv = Dense(1, activation="sigmoid", name="shape_decision")(discr)
 
-    total_energy = Lambda(compute_energy,"total_energy")(in_image)
+    total_energy = Lambda(compute_energy, name="total_energy")(in_image)
 
-    aux_output = Lambda(auxiliary_condition, name= "aux_condition")([en_label,total_energy])
+    aux_output = Lambda(auxiliary_condition, name="aux_condition")([en_label,total_energy])
 
     output = Concatenate()([output_conv, aux_output, total_energy])
 
-    output = Dense(1, activation="sigmoid", name ="final_decision")(output)
+    output = Dense(1, activation="sigmoid", name="final_decision")(output)
 
     model = Model([in_image, en_label, pid_label], [output, total_energy], name='discriminator')
     return model

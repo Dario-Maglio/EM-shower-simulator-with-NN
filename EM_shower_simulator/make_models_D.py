@@ -197,7 +197,7 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         minib = tf.cast(minib, discr.dtype)
         # New tensor by replicating input multiples times.
         minib = tf.tile(minib, [group_size, 1 , shape[2], shape[3], 1])
-        print(f"SHAPE MINIBATCH {minib.shape}")
+        #print(f"SHAPE MINIBATCH {minib.shape}")
         # Append as new fmap.
         return tf.concat([discr, minib], axis=-1)
 
@@ -226,12 +226,12 @@ def auxiliary_condition(layer):
 
     en_label = layer[0]
     en_label = tf.cast(en_label, tf.float32)
-    print(f"LABELS SHAPE {en_label.shape}")
-    print(f"Initial energy = \t{en_label}")
+    #print(f"LABELS SHAPE {en_label.shape}")
+    #print(f"Initial energy = \t{en_label}")
     en_image = layer[1]
     en_image = tf.cast(en_image, tf.float32)
-    print(f"SUMMED ENERGY SHAPE {en_image.shape}")
-    print(f"Total energy = \t{en_image}")
+    #print(f"SUMMED ENERGY SHAPE {en_image.shape}")
+    #print(f"Total energy = \t{en_image}")
 
     output_1 = tf.math.pow((en_label-en_image)/(50) , 2) #en_label*0.4
     output_1 = tf.math.multiply(output_1, -0.5)
@@ -256,7 +256,7 @@ def auxiliary_condition(layer):
     #print(aux_output)
     # make a "potential" well: gradients look for minimization
     aux_output = (1 - aux_output)
-    print(f"Auxiliary output = \t{aux_output}")
+    #print(f"Auxiliary output = \t{aux_output}")
     return aux_output
 
 def make_discriminator_model():

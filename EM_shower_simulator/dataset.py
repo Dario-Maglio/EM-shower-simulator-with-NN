@@ -134,7 +134,7 @@ def debug_shower(data_images, verbose=False):
        for j in range(GEOMETRY[0]):
           k=k+1
           plt.subplot(num_examples, GEOMETRY[0], k)
-          plt.imshow(data_images[i,j,:,:,0]) #, cmap="gray")
+          plt.imshow(data_images[i,j,:,:,0], cmap="gray")
           plt.axis("off")
     plt.show()
     logger.info("Debug of data_images features finished.")

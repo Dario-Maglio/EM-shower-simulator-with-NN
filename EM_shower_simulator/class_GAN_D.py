@@ -283,7 +283,7 @@ class ConditionalGAN(tf.keras.Model):
 
            start = time.time()
            for index, image_batch in enumerate(dataset):
-              print(f"\n*************  BATCH {index}  *************")
+              #print(f"\n*************  BATCH {index}  *************")
               status = self.train_step(image_batch, batch=batch)
               status_to_display = zip(status.keys(), status.values())
               progbar.update(index, status_to_display)

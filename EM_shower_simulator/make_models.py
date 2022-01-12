@@ -19,19 +19,21 @@ from tensorflow.keras.layers import (Input,
                                      Conv3D,
                                      Dropout,
                                      Lambda,
+                                     Concatenate,
                                      Multiply,
                                      Flatten)
 
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
 
-# Configuration of the models structure
-NOISE_DIM = 1000
+# Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-GEOMETRY = (12, 12, 12, 1)
-ENERGY_SCALE = 1000000.
+NOISE_DIM = 1024
+MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 ENERGY_NORM = 6.503
+ENERGY_SCALE = 1000000.
+GEOMETRY = (12, 12, 12, 1)
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
@@ -41,11 +43,8 @@ test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
 # Define logger and handler
-ch = logging.StreamHandler()
-formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
 logger = logging.getLogger("ModelsLogger")
-logger.addHandler(ch)
+
 
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
@@ -60,10 +59,10 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 2
-    EMBED_DIM = 5
+    N_FILTER = 32
+    EMBED_DIM = 10
     KERNEL = (4, 4, 4)
-    input_shape = (3, 3, 3, 2*N_FILTER)
+    input_shape = (3, 3, 3, 3 * N_FILTER)
     image_shape = (3, 3, 3, N_FILTER)
 
     # Input[i] -> input[i] + 3 convolution * (KERNEL-1) = GEOMETRY[i]!
@@ -123,7 +122,7 @@ def make_generator_model():
 
 def debug_generator(noise=test_noise, verbose=False):
     """Uses the random seeds to generate fake samples and plots them."""
-    if verbose:
+    if verbose :
         logger.setLevel(logging.DEBUG)
         logger.info('Logging level set on DEBUG.')
     else:
@@ -134,9 +133,8 @@ def debug_generator(noise=test_noise, verbose=False):
     generator = make_generator_model()
     data_images = generator(noise, training=False)
     logger.info(f"Shape of generated images: {data_images.shape}")
-    energy = np.array(data_images)
-    energy = (10.**(energy*ENERGY_NORM)) / ENERGY_SCALE
-    energy = np.sum(energy, axis=(1,2,3,4))
+
+    energy = compute_energy(data_images)
 
     k=0
     plt.figure("Generated showers", figsize=(20,10))
@@ -154,7 +152,7 @@ def debug_generator(noise=test_noise, verbose=False):
            +f"\tInitial energy ={noise[1][example][0]}"
            +f"\tGenerated energy ={energy[example]}")
 
-    if verbose:
+    if verbose :
         save_path = 'model_plot'
         if not os.path.isdir(save_path):
            os.makedirs(save_path)
@@ -166,6 +164,95 @@ def debug_generator(noise=test_noise, verbose=False):
 #-------------------------------------------------------------------------------
 """Subroutines for the discriminator network."""
 
+def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
+    """Minibatch discrimination layer is important to avoid mode collapse.
+    Once it is wrapped with a Lambda Keras layer it returns an additional filter
+    node with information about the statistical distribution of the group_size,
+    allowing the discriminator to recognize when the generator strarts to
+    replicate the same kind of event multiple times.
+
+    Inspired by
+    https://github.com/tkarras/progressive_growing_of_gans/blob/master/networks.py
+    """
+    with tf.compat.v1.variable_scope('MinibatchStddev'):
+        # Input 0 dimension must be divisible by (or smaller than) group_size.
+        group_size = tf.minimum(group_size, tf.shape(discr)[0])
+        # Input shape.
+        shape = discr.shape
+        # Split minibatch into M groups of size G.
+        minib = tf.reshape(discr, [group_size, -1, shape[1], shape[2], shape[3], shape[4]])
+        # Cast to FP32.
+        minib = tf.cast(minib, tf.float32)
+        # Calculate the std deviation for each pixel over minibatch
+        minib = tf.math.reduce_std(minib, axis=0)
+        # Take average over fmaps and pixels.
+        minib = tf.reduce_mean(minib, axis=[2,3,4], keepdims=True)
+        # Cast back to original data type.
+        minib = tf.cast(minib, discr.dtype)
+        # New tensor by replicating input multiples times.
+        minib = tf.tile(minib, [group_size, 1 , shape[2], shape[3], 1])
+        #print(f"SHAPE MINIBATCH {minib.shape}")
+        # Append as new fmap.
+        return tf.concat([discr, minib], axis=-1)
+
+def compute_energy(in_images):
+    """Compute energy deposited in detector
+    """
+    in_images = tf.cast(in_images, tf.float32)
+
+    en_images = tf.math.multiply(in_images, ENERGY_NORM)
+    en_images = tf.math.pow(10., en_images)
+    en_images = tf.math.divide(en_images, ENERGY_SCALE)
+    en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
+    return en_images
+
+def auxiliary_condition(layer):
+    """Auxiliary condition for energy deposition:
+    Compute the conditioned probability output_pdf for a generator event given
+    the initial energy label. The distribition is assumed to be a Gaussian
+    centered in en_label with a std deviation of en_label/10, scalata per 0.2 e
+    sommata a 0.8. Fatto per rendere possibile il train del generatore: se fosse
+    solo la gaussiana, il discriminatore sarebbe troppo intelligente e userebbe
+    solo questa informazione per disciminare esempi veri da falsi.
+    """
+    BIAS = 0.
+    GAUS_NORM = 1.
+
+    en_label = layer[0]
+    en_label = tf.cast(en_label, tf.float32)
+    #print(f"LABELS SHAPE {en_label.shape}")
+    #print(f"Initial energy = \t{en_label}")
+    en_image = layer[1]
+    en_image = tf.cast(en_image, tf.float32)
+    #print(f"SUMMED ENERGY SHAPE {en_image.shape}")
+    #print(f"Total energy = \t{en_image}")
+
+    output_1 = tf.math.pow((en_label-en_image)/(50) , 2) #en_label*0.4
+    output_1 = tf.math.multiply(output_1, -0.5)
+    output_1 = tf.math.exp(output_1)
+    output_1 = tf.math.multiply(output_1, GAUS_NORM)
+
+    #output_2 = tf.math.pow((en_label-en_image)/(en_label*0.5) , 2) #en_label*0.4
+    #output_2 = tf.math.multiply(output_2, -0.5)
+    #output_2 = tf.math.exp(output_2)
+    #output_2 = tf.math.multiply(output_2, GAUS_NORM)
+
+    output_3 = tf.math.pow((en_label-en_image)/(3) , 2) #en_label*0.4
+    output_3 = tf.math.multiply(output_3, -0.5)
+    output_3 = tf.math.exp(output_3)
+    output_3 = tf.math.multiply(output_3, 2.*GAUS_NORM )
+
+    aux_output = tf.math.add(output_1, output_3)
+    #aux_output = tf.math.add(aux_output,output_3)
+    #aux_output = tf.math.add(output_3, BIAS)
+
+    aux_output = tf.math.multiply(aux_output, 1./(BIAS+3.*GAUS_NORM))
+    #print(aux_output)
+    # make a "potential" well: gradients look for minimization
+    aux_output = (1 - aux_output)
+    #print(f"Auxiliary output = \t{aux_output}")
+    return aux_output
+
 def make_discriminator_model():
     """Define discriminator model:
     Input 1) Vector of images associated to the given labels;
@@ -176,7 +263,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 2
+    N_FILTER = 32
     EMBED_DIM = 10
     KERNEL = (4, 4, 4)
 
@@ -200,13 +287,11 @@ def make_discriminator_model():
     en_label = Input(shape=(1,), name="energy_input")
     li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
     li_en = Dense(n_nodes)(li_en)
-    li_en = Dense(n_nodes)(li_en)
     li_en = Reshape(GEOMETRY)(li_en)
 
     # Pid label input
     pid_label = Input(shape=(1,), name="particleID_input")
     li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
-    li_pid = Dense(n_nodes)(li_pid)
     li_pid = Dense(n_nodes)(li_pid)
     li_pid = Reshape(GEOMETRY)(li_pid)
 
@@ -224,15 +309,27 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
+    #minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    #logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    discr = Conv3D(8 * N_FILTER, KERNEL)(discr)
+    #logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
     discr = Flatten()(discr)
-    output = Dense(1, activation="sigmoid", name="decision")(discr)
+    output_conv = Dense(1, activation="sigmoid", name="shape_decision")(discr)
 
-    model = Model([in_image, en_label, pid_label], output, name='discriminator')
+    total_energy = Lambda(compute_energy, name="total_energy")(in_image)
+
+    aux_output = Lambda(auxiliary_condition, name="aux_condition")([en_label,total_energy])
+
+    output = Concatenate()([output_conv, aux_output, total_energy])
+
+    output = Dense(1, activation="sigmoid", name="final_decision")(output)
+
+    model = Model([in_image, en_label, pid_label], [output, total_energy], name='discriminator')
     return model
 
 def debug_discriminator(data, verbose=False):
     """Uses images from the sample to test discriminator model."""
-    if verbose:
+    if verbose :
         logger.setLevel(logging.DEBUG)
         logger.info('Logging level set on DEBUG.')
     else:
@@ -246,10 +343,8 @@ def debug_discriminator(data, verbose=False):
 
     discriminator = make_discriminator_model()
     decision = discriminator(data)
-    logger.info(f"\nDecision per raw:\n {decision}")
-    if verbose:
+    logger.info(f"\nDecision per raw:\n {decision[0]}")
+    if verbose :
         file_name = "debug_discriminator.png"
         path = os.path.join(save_path, file_name)
         plot_model(discriminator, to_file=path, show_shapes=True)
-
-    logger.info("Debug discriminator model finished.")

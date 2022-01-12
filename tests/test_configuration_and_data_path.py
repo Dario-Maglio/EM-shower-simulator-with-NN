@@ -20,5 +20,10 @@ class TestCore(unittest.TestCase):
         """Test model checkpoints path for the weights upload."""
         self.assertIsFile(check_path)
 
+    def test_costants(self):
+        """Assert constant values in models structure are all the same."""
+        #self.assertEqual(NOISE_DIM , NOISE_DIM) among different files
+        pass
+
 if __name__ == "__main__":
     unittest.main()

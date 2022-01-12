@@ -20,17 +20,17 @@ ENERGY_SCALE = 1000000
 GEOMETRY = (12, 12, 12, 1)
 BUFFER_SIZE = 10400
 
-# Define logger and handler
-ch = logging.StreamHandler()
-formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger = logging.getLogger("DataSetLogger")
-logger.addHandler(ch)
+# Define logger
+logger = logging.getLogger("DataLogger")
 
 #-------------------------------------------------------------------------------
 
 def data_pull(path, verbose=False):
     """Organize and reshape the dataset for the cGan training.
+    Inputs:
+    path = path to a .root file containing the dataset.
+
+    Description:
     Take in input a path to the dataset and return an iterator over events that
     can be used to train the cGAN using the method train.
     """
@@ -73,8 +73,13 @@ def data_pull(path, verbose=False):
 
 def debug_data_pull(path, num_examples=1, verbose=False):
     """Import data images from the dataset and test shapes.
+    Inputs:
+    path = path to a .root file containing the dataset;
+    num_examples = number of random shower to plot.
+
+    Description:
     Take in input a path to the dataset and return num_examples of events from
-    the shuffled dataset that can be plotted with debug_shower.
+    the dataset that can be plotted with debug_shower.
     """
     if verbose :
         logger.setLevel(logging.DEBUG)
@@ -117,7 +122,10 @@ def debug_data_pull(path, num_examples=1, verbose=False):
     return [train_images, en_labels, pid_labels]
 
 def debug_shower(data_images, verbose=False):
-    """Plot all showers from data_images and return the figure."""
+    """Plot all showers from data_images and return the figure.
+    Inputs:
+    data_images = vector of images with shape equal to GEOMETRY.
+    """
     if verbose :
         logger.setLevel(logging.DEBUG)
         logger.info('Logging level set on DEBUG.')
@@ -134,7 +142,7 @@ def debug_shower(data_images, verbose=False):
        for j in range(GEOMETRY[0]):
           k=k+1
           plt.subplot(num_examples, GEOMETRY[0], k)
-          plt.imshow(data_images[i,j,:,:,0], cmap="gray")
+          plt.imshow(data_images[i,j,:,:,0]) #, cmap="gray")
           plt.axis("off")
     plt.show()
     logger.info("Debug of data_images features finished.")

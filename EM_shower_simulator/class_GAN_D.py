@@ -66,9 +66,10 @@ def discriminator_loss(real_output, fake_output):
     total_loss = real_loss + fake_loss
     return total_loss
 
-def energy_loss(aux_output):
-    cross_entropy = tf.keras.losses.BinaryCrossentropy()
-    return cross_entropy(tf.ones_like(aux_output), aux_output)
+def energy_loss(en_label, total_energy):
+    msle = tf.keras.losses.MeanSquaredLogarithmicError()
+    #msle = tf.keras.losses.MeanSquaredError()
+    return msle(en_label, total_energy)
 
 #-------------------------------------------------------------------------------
 
@@ -167,7 +168,7 @@ class ConditionalGAN(tf.keras.Model):
            for j in range(predictions.shape[1]):
               k=k+1
               plt.subplot(num_examples, predictions.shape[1], k)
-              plt.imshow(predictions[i,j,:,:,0]) , cmap="gray")
+              plt.imshow(predictions[i,j,:,:,0] , cmap="gray")
               plt.axis("off")
         plt.show()
 
@@ -220,9 +221,9 @@ class ConditionalGAN(tf.keras.Model):
             fake_sample = [generated_images, en_labels, pid_labels]
             fake_output = self.discriminator(fake_sample, training=True)
 
-            en_loss    = energy_loss(fake_output[1])
+            en_loss    = energy_loss(en_labels, fake_output[1])
             gen_loss   = generator_loss(fake_output[0])
-            train_loss = gen_loss + en_loss
+            gen_total_loss = gen_loss + en_loss
             discr_loss = discriminator_loss(real_output[0], fake_output[0]) #real_output, fake_output
 
         gradients_of_discriminator = disc_tape.gradient(discr_loss ,
@@ -230,7 +231,7 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator,
                                          self.discriminator.trainable_variables))
 
-        gradients_of_generator = gen_tape.gradient(train_loss ,
+        gradients_of_generator = gen_tape.gradient(gen_total_loss ,
                                           self.generator.trainable_variables)
         self.generator_optimizer.apply_gradients(zip(gradients_of_generator,
                                          self.generator.trainable_variables) )
@@ -282,6 +283,7 @@ class ConditionalGAN(tf.keras.Model):
 
            start = time.time()
            for index, image_batch in enumerate(dataset):
+              print(f"\n*************  BATCH {index}  *************")
               status = self.train_step(image_batch, batch=batch)
               status_to_display = zip(status.keys(), status.values())
               progbar.update(index, status_to_display)

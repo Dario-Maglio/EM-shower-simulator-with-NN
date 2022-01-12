@@ -19,6 +19,7 @@ from tensorflow.keras.layers import (Input,
                                      Conv3D,
                                      Dropout,
                                      Lambda,
+                                     Concatenate,
                                      Multiply,
                                      Flatten)
 
@@ -196,57 +197,66 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         minib = tf.cast(minib, discr.dtype)
         # New tensor by replicating input multiples times.
         minib = tf.tile(minib, [group_size, 1 , shape[2], shape[3], 1])
+        print(f"SHAPE MINIBATCH {minib.shape}")
         # Append as new fmap.
         return tf.concat([discr, minib], axis=-1)
 
+def compute_energy(in_images):
+    """Compute energy deposited in detector
+    """
+    in_images = tf.cast(in_images, tf.float32)
+
+    en_images = tf.math.multiply(in_images, ENERGY_NORM)
+    en_images = tf.math.pow(10., en_images)
+    en_images = tf.math.divide(en_images, ENERGY_SCALE)
+    en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
+    return en_images
+
 def auxiliary_condition(layer):
     """Auxiliary condition for energy deposition:
-    Calculate the energy deposited in the detector en_image and pass to the
-    discriminator the conditioned probability output_pdf for such an event given
+    Compute the conditioned probability output_pdf for a generator event given
     the initial energy label. The distribition is assumed to be a Gaussian
     centered in en_label with a std deviation of en_label/10, scalata per 0.2 e
     sommata a 0.8. Fatto per rendere possibile il train del generatore: se fosse
     solo la gaussiana, il discriminatore sarebbe troppo intelligente e userebbe
     solo questa informazione per disciminare esempi veri da falsi.
     """
-    BIAS = 0.5
-    GAUS_NORM = 1
+    BIAS = 0.
+    GAUS_NORM = 1.
 
     en_label = layer[0]
     en_label = tf.cast(en_label, tf.float32)
-    in_image = layer[1]
-    in_image = tf.cast(in_image, tf.float32)
-
-    en_image = tf.math.multiply(in_image, ENERGY_NORM)
-    en_image = tf.math.add(en_image, 1.)
-    en_image = tf.math.pow(10., en_image)
-    en_image = tf.math.divide(en_image, ENERGY_SCALE)
-    en_image = tf.math.reduce_sum(en_image, axis=[1,2,3])
+    print(f"LABELS SHAPE {en_label.shape}")
+    print(f"Initial energy = \t{en_label}")
+    en_image = layer[1]
+    en_image = tf.cast(en_image, tf.float32)
+    print(f"SUMMED ENERGY SHAPE {en_image.shape}")
+    print(f"Total energy = \t{en_image}")
 
     output_1 = tf.math.pow((en_label-en_image)/(50) , 2) #en_label*0.4
     output_1 = tf.math.multiply(output_1, -0.5)
     output_1 = tf.math.exp(output_1)
     output_1 = tf.math.multiply(output_1, GAUS_NORM)
 
-    output_2 = tf.math.pow((en_label-en_image)/(en_label*0.5) , 2) #en_label*0.4
-    output_2 = tf.math.multiply(output_2, -0.5)
-    output_2 = tf.math.exp(output_2)
-    output_2 = tf.math.multiply(output_2, GAUS_NORM)
+    #output_2 = tf.math.pow((en_label-en_image)/(en_label*0.5) , 2) #en_label*0.4
+    #output_2 = tf.math.multiply(output_2, -0.5)
+    #output_2 = tf.math.exp(output_2)
+    #output_2 = tf.math.multiply(output_2, GAUS_NORM)
 
-    output_3 = tf.math.pow((en_label-en_image)/(2) , 2) #en_label*0.4
+    output_3 = tf.math.pow((en_label-en_image)/(3) , 2) #en_label*0.4
     output_3 = tf.math.multiply(output_3, -0.5)
     output_3 = tf.math.exp(output_3)
-    output_3 = tf.math.multiply(output_3, GAUS_NORM )
+    output_3 = tf.math.multiply(output_3, 2.*GAUS_NORM )
 
-    aux_output = tf.math.add(output_1, output_2)
-    aux_output = tf.math.add(aux_output,output_3)
-    aux_output = tf.math.add(output_3, BIAS)
+    aux_output = tf.math.add(output_1, output_3)
+    #aux_output = tf.math.add(aux_output,output_3)
+    #aux_output = tf.math.add(output_3, BIAS)
 
-    aux_output = tf.math.multiply(aux_output, 1/(BIAS+3*GAUS_NORM))
+    aux_output = tf.math.multiply(aux_output, 1./(BIAS+3.*GAUS_NORM))
     #print(aux_output)
-    # returns zero if en_image > en_label
-    #en_max_condition = tf.experimental.numpy.heaviside(en_label-en_image, tf.ones_like(en_label) )
-    #output_pdf = tf.math.multiply(output_pdf, en_max_condition)
+    # make a "potential" well: gradients look for minimization
+    aux_output = (1 - aux_output)
+    print(f"Auxiliary output = \t{aux_output}")
     return aux_output
 
 def make_discriminator_model():
@@ -306,18 +316,21 @@ def make_discriminator_model():
     discr = Dropout(0.3)(discr)
 
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
-    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
-    discr = Conv3D(8 * N_FILTER, KERNEL)(minibatch)
-    logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
-
+    #logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    discr = Conv3D(8 * N_FILTER, KERNEL)(discr)
+    #logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
     discr = Flatten()(discr)
-    output_conv = Dense(1, activation="sigmoid", name="decision")(discr)
+    output_conv = Dense(1, activation="sigmoid", name="shape_decision")(discr)
 
-    aux_output = Lambda(auxiliary_condition, name= "aux_condition")([en_label, in_image])
+    total_energy = Lambda(compute_energy,"total_energy")(in_image)
 
-    #output = Lambda(lambda x : x[0]*x[1], name= "final_decision")((aux_output, discr))
+    aux_output = Lambda(auxiliary_condition, name= "aux_condition")([en_label,total_energy])
 
-    model = Model([in_image, en_label, pid_label], [output_conv, aux_output], name='discriminator')
+    output = Concatenate()([output_conv, aux_output, total_energy])
+
+    output = Dense(1, activation="sigmoid", name ="final_decision")(output)
+
+    model = Model([in_image, en_label, pid_label], [output, total_energy], name='discriminator')
     return model
 
 def make_discriminator_model_2(verbose=False):

@@ -275,6 +275,69 @@ void MVA_processing_formatting_normalization(){
 
 }
 
+void MVA_processing_formatting_linear_normalization(){
+
+  ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
+
+  const char *input="data_MVA.root";
+  TChain *h = new TChain("h");
+  h->Add(input);
+
+  double shower_0[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
+  TBranch *b_shower, *b_en_in, *b_pid, *b_en_mis;
+  double en_in_0, en_mis_0;
+  int pid_0;
+  h->SetBranchAddress("primary", &pid_0, &b_pid);
+  h->SetBranchAddress("en_in", &en_in_0, &b_en_in);
+  h->SetBranchAddress("en_mis", &en_mis_0, &b_en_mis);
+  h->SetBranchAddress("shower", shower_0, &b_shower);
+
+  TFile *file = new TFile("data_MVA_linear_normalized.root", "recreate");
+  TTree *tree = new TTree("h","ttree");
+  int evt; // id of event from Geant4 simulation
+  int primary;
+  double theta, phi, en_in, en_mis;
+  tree->Branch("evt",&evt,"evt/I");
+  tree->Branch("primary",&primary, "primary/I");
+  tree->Branch("en_in", &en_in, "en_in/D");
+  tree->Branch("en_mis", &en_mis, "en_mis/D");
+  //tree->Branch("theta", &theta, "theta/D");
+  //tree->Branch("phi", &phi, "phi/D");
+  double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
+  char shower_name[50];
+  sprintf(shower_name, "shower[%d][%d][%d][1]/D", NUMBER_OF_LAYERS,
+          NUMBER_OF_PIXEL_Z,NUMBER_OF_PIXEL_Y);
+  tree->Branch("shower", &shower, shower_name);
+
+  double max = MVA_processing_normalization();
+
+  for(int evt=0; evt<h->GetEntries(); evt++){
+    cout<<evt<<endl;
+    h->GetEntry(evt);
+    tree->GetEntry(evt);
+    primary = pid_0;
+    en_in = en_in_0;
+    en_mis = en_mis_0;
+    for(int layer=0; layer<NUMBER_OF_LAYERS; layer++){
+      for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
+        for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
+          if(shower_0[layer][num_z][num_y][0]==-5){
+            shower[layer][num_z][num_y][0] = -1.;
+          }
+          else{
+            shower[layer][num_z][num_y][0] = (TMath::Power(10, shower_0[layer][num_z][num_y][0])
+                                              /TMath::Power(10, max) - 0.5)*2;
+          }
+        }
+      }
+    }
+    tree->Fill();
+  }
+  cout<<"****************************OK****************************"<<endl;
+  tree->Write("", TObject::kWriteDelete); // write tree, then delete previous
+  file->Close(); // close output file
+
+}
 
 
 TH2D *set_hist_layer(const int LAYER, double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1]){
@@ -318,7 +381,7 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
 
   ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
-  const char *input="data_MVA_normalized.root";
+  const char *input="data_MVA_linear_normalized.root";
   TChain *h = new TChain("h");
   h->Add(input);
 

@@ -59,6 +59,11 @@ def discriminator_loss(real_output, fake_output):
     total_loss = real_loss + fake_loss
     return total_loss
 
+def energy_loss(en_label, total_energy):
+    msle = tf.keras.losses.MeanSquaredLogarithmicError()
+    #msle = tf.keras.losses.MeanSquaredError()
+    return msle(en_label, total_energy)
+
 #-------------------------------------------------------------------------------
 
 class ConditionalGAN(tf.keras.Model):
@@ -78,6 +83,7 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator_optimizer = Adam(learning_rate)
         self.gener_loss_tracker = Mean(name="generator_loss")
         self.discr_loss_tracker = Mean(name="discriminator_loss")
+        self.energ_loss_tracker = Mean(name="energy_loss")
 
         # Create a manager to save rusults from training in form of checkpoints.
         self.checkpoint = tf.train.Checkpoint(
@@ -134,9 +140,6 @@ class ConditionalGAN(tf.keras.Model):
         predictions = self.generator(noise, training=False)
         decisions = self.discriminator([predictions, noise[1], noise[2]])
         logger.info(f"Shape of generated images: {predictions.shape}")
-        energy = np.array(predictions)
-        energy = (10.**(energy*ENERGY_NORM))/ENERGY_SCALE
-        energy = np.sum(energy, axis=(1,2,3,4))
 
         # 2 - Plot the generated images
         k=0
@@ -150,11 +153,10 @@ class ConditionalGAN(tf.keras.Model):
               plt.axis("off")
 
         for example in range(len(noise[0]) ):
-          print(f"{example+1}) Primary particle={int(noise[2][example][0])}"
-               +f"\tInitial energy ={noise[1][example][0]}"
-               +f"\tGenerated energy ={energy[example]}"
-               +f"\tDecision ={decisions[example]}")
-
+            print(f"{example+1}) Primary particle={int(noise[2][example][0])}"
+                 +f"\nInitial energy ={noise[1][example][0]}"
+                 +f"\tGenerated energy ={decisions[1][example]}"
+                 +f"\tDecision ={decisions[0][example]}")
         plt.show()
 
         # 3 - Save the generated images
@@ -219,15 +221,18 @@ class ConditionalGAN(tf.keras.Model):
             fake_sample = [generated_images, en_labels, pid_labels]
             fake_output = self.discriminator(fake_sample, training=True)
 
-            gener_loss = generator_loss(fake_output)
-            discr_loss = discriminator_loss(real_output, fake_output)
+            energ_loss = energy_loss(en_labels, fake_output[1])
+            gener_loss = generator_loss(fake_output[0])
+            gener_total_loss = gener_loss + energ_loss
+            discr_loss = discriminator_loss(real_output[0], fake_output[0])
+            discr_total_loss = discr_loss
 
-        grad_generator = gen_tape.gradient(gener_loss,
+        grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
         self.generator_optimizer.apply_gradients(zip(grad_generator,
                                         self.generator.trainable_variables))
 
-        grad_discriminator = disc_tape.gradient(discr_loss,
+        grad_discriminator = disc_tape.gradient(discr_total_loss,
                                         self.discriminator.trainable_variables)
         self.discriminator_optimizer.apply_gradients(zip(grad_discriminator,
                                         self.discriminator.trainable_variables))
@@ -235,10 +240,12 @@ class ConditionalGAN(tf.keras.Model):
         # Monitor losses
         self.gener_loss_tracker.update_state(gener_loss)
         self.discr_loss_tracker.update_state(discr_loss)
+        self.energ_loss_tracker.update_state(energ_loss)
 
         return{
             "gener_loss": self.gener_loss_tracker.result(),
-            "discr_loss": self.discr_loss_tracker.result()
+            "discr_loss": self.discr_loss_tracker.result(),
+            "energ_loss": self.energ_loss_tracker.result()
         }
 
     def fit(self, dataset, epochs=1, batch=32):
@@ -282,7 +289,7 @@ class ConditionalGAN(tf.keras.Model):
         display.clear_output(wait=True)
         callbacks.on_train_begin()
         for epoch in range(epochs):
-           print(f"Running EPOCH = {epoch + 1}")
+           print(f"Running EPOCH = {epoch + 1}/{epochs}")
            callbacks.on_epoch_begin(epoch)
            progbar = tf.keras.utils.Progbar(len(dataset), verbose=verbose)
 
@@ -297,9 +304,9 @@ class ConditionalGAN(tf.keras.Model):
 
            display.clear_output(wait=True)
            print(f"EPOCH = {epoch + 1}/{epochs}")
-           print (f"Time for epoch {epoch + 1} is {end} sec")
-           print(f"gener_loss ={self.gener_loss_tracker.result()}"
-                 +f"\tdiscr_loss={self.discr_loss_tracker.result()}")
+           for state in status_to_display:
+               print(f"{state[0]} = {state[1]}")
+           print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
 
            if (epoch + 1) % 5 == 0:

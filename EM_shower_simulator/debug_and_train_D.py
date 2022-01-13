@@ -91,16 +91,17 @@ def train_cgan(path=DPATH, verbose=False):
     cond_gan.summary()
     cond_gan.plot_model()
 
-    history = cond_gan.train(train_dataset, epochs=1, batch=64)
+    history = cond_gan.train(train_dataset, epochs=100, batch=128)
     #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
 
     plt.plot(history.history["gener_loss"], label="gener_loss")
     plt.plot(history.history["discr_loss"], label="discr_loss")
     plt.plot(history.history["energ_loss"], label="energ_loss")
+    plt.plot(history.history["label_loss"], label="label_loss")
     plt.show()
 
     for key in history.history.keys():
-        print(key)
+        print(f"{key}" )
 
     #file_name = "cGAN.h5"
     #save_path = "model_saves"

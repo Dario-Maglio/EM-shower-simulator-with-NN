@@ -263,17 +263,17 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 32
-    KERNEL = (3, 4, 4)
+    N_FILTER = 16
+    KERNEL = (5, 5, 5)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
     # Here we use padding default = "valid" (=0 above) and strides = 1 !
     # GEOMETRY[i] -> GEOMETRY[i] - 3convolution * (KERNEL[i] - 1) > 0 !
     error = "ERROR building the discriminator: smaller KERNEL is required!"
-    assert KERNEL[0] < GEOMETRY[0]/3 + 1, error
-    assert KERNEL[1] < GEOMETRY[1]/3 + 1, error
-    assert KERNEL[2] < GEOMETRY[2]/3 + 1, error
+    # assert KERNEL[0] < GEOMETRY[0]/3 + 1, error
+    # assert KERNEL[1] < GEOMETRY[1]/3 + 1, error
+    # assert KERNEL[2] < GEOMETRY[2]/3 + 1, error
 
     n_nodes = 1
     for cell in GEOMETRY:
@@ -292,7 +292,7 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(2*N_FILTER, KERNEL, strides=(2,1,1), use_bias=False)(discr)
+    discr = Conv3D(N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
@@ -300,23 +300,27 @@ def make_discriminator_model():
     # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
-    discr = Conv3D(3*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
+    discr = Conv3D(2*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
 
-    discr_conv = Dense(2*N_FILTER, activation="relu")(discr)
+    discr_conv = Dense(N_FILTER, activation="relu")(discr)
     discr_conv = Dense(N_FILTER, activation="relu")(discr_conv)
     output_conv = Dense(1, activation="sigmoid", name="decision")(discr_conv)
 
+    discr_en = Dense(N_FILTER, activation="relu")(discr)
+    discr_en = Dense(N_FILTER, activation="relu")(discr_en)
+    output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
+
     total_energy = Lambda(compute_energy, name="total_energy")(in_image)
 
-    aux_output = Lambda(auxiliary_condition, name="aux_condition")([en_label,total_energy])
+    #aux_output = Lambda(auxiliary_condition, name="aux_condition")([en_label,total_energy])
 
-    output = Concatenate()([output_conv, aux_output])
+    #output = Concatenate()([output_conv, aux_output])
 
-    output = Dense(1, activation="sigmoid", name="final_decision")(output)
+    #output = Dense(1, activation="sigmoid", name="final_decision")(output)
 
-    model = Model([in_image, en_label], [output, total_energy], name='discriminator')#, pid_label
+    model = Model([in_image, en_label], [output_conv, total_energy, output_en], name='discriminator')#, pid_label
     return model
 
 def debug_discriminator(data, verbose=False):

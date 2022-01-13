@@ -65,7 +65,7 @@ def discriminator_loss(real_output, fake_output):
 def energy_loss(en_label, total_energy):
     #msle = tf.keras.losses.MeanSquaredLogarithmicError()
     msle = tf.keras.losses.MeanSquaredError()
-    return msle(en_label, total_energy)
+    return msle(en_label, total_energy) * PARAM_EN
 
 #-------------------------------------------------------------------------------
 
@@ -87,6 +87,7 @@ class ConditionalGAN(tf.keras.Model):
         self.gener_loss_tracker = Mean(name="generator_loss")
         self.discr_loss_tracker = Mean(name="discriminator_loss")
         self.energ_loss_tracker = Mean(name="energy_loss")
+        self.label_loss_tracker = Mean(name="label_loss")
 
         # Create a manager to save rusults from training in form of checkpoints.
         self.checkpoint = tf.train.Checkpoint(
@@ -225,11 +226,12 @@ class ConditionalGAN(tf.keras.Model):
             fake_output = self.discriminator(fake_sample, training=True)
 
             energ_loss = energy_loss(en_labels, fake_output[1])
+            label_loss = energy_loss(en_labels, fake_output[2])
             gener_loss = generator_loss(fake_output[0])
             discr_loss = discriminator_loss(real_output[0], fake_output[0])
 
-            gener_total_loss = PARAM_EN * energ_loss + gener_loss
-            discr_total_loss = discr_loss # + PARAM_EN * energ_loss
+            gener_total_loss = gener_loss + energ_loss
+            discr_total_loss = discr_loss + label_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
@@ -245,11 +247,13 @@ class ConditionalGAN(tf.keras.Model):
         self.gener_loss_tracker.update_state(gener_loss)
         self.discr_loss_tracker.update_state(discr_loss)
         self.energ_loss_tracker.update_state(energ_loss)
+        self.label_loss_tracker.update_state(label_loss)
 
         return{
             "gener_loss": self.gener_loss_tracker.result(),
             "discr_loss": self.discr_loss_tracker.result(),
-            "energ_loss": self.energ_loss_tracker.result()
+            "energ_loss": self.energ_loss_tracker.result(),
+            "label_loss": self.label_loss_tracker.result()
         }
 
     def fit(self, dataset, epochs=1, batch=32):
@@ -300,29 +304,22 @@ class ConditionalGAN(tf.keras.Model):
            start = time.time()
            for index, image_batch in enumerate(dataset):
               callbacks.on_train_batch_begin(index)
-              batch_logs = self.train_step(image_batch)
-              status_to_display = zip(batch_logs.keys(), batch_logs.values())
-              progbar.update(index, status_to_display)
-              callbacks.on_train_batch_end(index, batch_logs)
+              logs = self.train_step(image_batch)
+              progbar.update(index, zip(logs.keys(), logs.values()))
+              callbacks.on_train_batch_end(index, logs)
            end = time.time() - start
 
            display.clear_output(wait=True)
            print(f"EPOCH = {epoch + 1}/{epochs}")
-           for state in status_to_display:
-               print(f"{state[0]} = {state[1]}")
+           for log in logs:
+               print(f"{log} = {logs[log]}")
            print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
-           #plt.figure("Evolution of losses per epochs")
-           #plt.plot(self.history.history["gener_loss"], label="gener_loss")
-           #plt.plot(self.history.history["discr_loss"], label="discr_loss")
-           #plt.plot(self.history.history["energ_loss"], label="energ_loss")
-           #plt.xlim(1, epochs)
-           #plt.show()
 
            if (epoch + 1) % 5 == 0:
               save_path = self.manager.save()
               print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
 
-           callbacks.on_epoch_end(epoch, batch_logs)
-        callbacks.on_train_end(batch_logs)
+           callbacks.on_epoch_end(epoch, logs)
+        callbacks.on_train_end(logs)
         return self.history

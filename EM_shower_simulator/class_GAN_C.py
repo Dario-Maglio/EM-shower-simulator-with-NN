@@ -138,7 +138,7 @@ class ConditionalGAN(tf.keras.Model):
         """Generate images from the noise, plot and evaluate them."""
         # 1 - Generate images
         predictions = self.generator(noise, training=False)
-        decisions = self.discriminator([predictions, noise[1], noise[2]])
+        decisions = self.discriminator(predictions, training=False)
         logger.info(f"Shape of generated images: {predictions.shape}")
 
         # 2 - Plot the generated images
@@ -304,8 +304,8 @@ class ConditionalGAN(tf.keras.Model):
 
            display.clear_output(wait=True)
            print(f"EPOCH = {epoch + 1}/{epochs}")
-           for state in status_to_display:
-               print(f"{state[0]} = {state[1]}")
+           #for state in status_to_display:
+            #   print(f"{state[0]} = {state[1]}")
            print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
 

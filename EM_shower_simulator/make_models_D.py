@@ -264,7 +264,7 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES_ * classes.
     """
     N_FILTER = 32
-    KERNEL = (3, 5, 5)
+    KERNEL = (3, 4, 4)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !

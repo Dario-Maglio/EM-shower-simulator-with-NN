@@ -25,9 +25,12 @@ from IPython import display
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
+S_EPOCH = 10
+PARAM_EN = 0.01
 NOISE_DIM = 1024
 ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
+
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
@@ -40,6 +43,17 @@ test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
 logger = logging.getLogger("CGANLogger")
 
 #-------------------------------------------------------------------------------
+
+def compute_energy(in_images):
+    """Compute energy deposited in detector
+    """
+    in_images = tf.cast(in_images, tf.float32)
+
+    en_images = tf.math.multiply(in_images, ENERGY_NORM)
+    en_images = tf.math.pow(10., en_images)
+    en_images = tf.math.divide(en_images, ENERGY_SCALE)
+    en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
+    return en_images
 
 def generator_loss(fake_output):
     """Definie generator loss:
@@ -60,9 +74,9 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 def energy_loss(en_label, total_energy):
-    msle = tf.keras.losses.MeanSquaredLogarithmicError()
-    #msle = tf.keras.losses.MeanSquaredError()
-    return msle(en_label, total_energy)
+    #msle = tf.keras.losses.MeanSquaredLogarithmicError()
+    msle = tf.keras.losses.MeanSquaredError()
+    return msle(en_label, total_energy) * PARAM_EN
 
 #-------------------------------------------------------------------------------
 
@@ -70,22 +84,30 @@ class ConditionalGAN(tf.keras.Model):
     """Class for a conditional GAN.
     It inherits keras.Model properties and functions.
     """
-    def __init__(self, gener, discr, learning_rate=3e-5):
+    def __init__(self, gener, discr, learning_rate=2e-5):
         """Constructor.
         Inputs:
         gener = generator network;
-        discr = discriminator network.
+        discr = discriminator network;
+        learning_rate = starting poor learning rate.
         """
         super(ConditionalGAN, self).__init__()
         self.generator = gener
         self.discriminator = discr
-        self.generator_optimizer = Adam(learning_rate)
-        self.discriminator_optimizer = Adam(learning_rate)
+
+        # Metrics
         self.gener_loss_tracker = Mean(name="generator_loss")
         self.discr_loss_tracker = Mean(name="discriminator_loss")
         self.energ_loss_tracker = Mean(name="energy_loss")
+        self.label_loss_tracker = Mean(name="label_loss")
 
-        # Create a manager to save rusults from training in form of checkpoints.
+        # Scheduler attributes and optimizers
+        self.switch = None
+        self.learning_rate = learning_rate
+        self.generator_optimizer = Adam(learning_rate)
+        self.discriminator_optimizer = Adam(learning_rate)
+
+        # Manager to save rusults from training in form of checkpoints.
         self.checkpoint = tf.train.Checkpoint(
                            generator=self.generator,
                            discriminator=self.discriminator,
@@ -98,17 +120,20 @@ class ConditionalGAN(tf.keras.Model):
     @property
     def metrics(self):
         """Metrics of the cGAN network."""
-        return [self.gener_loss_tracker, self.discr_loss_tracker]
+        return [self.gener_loss_tracker,
+                self.discr_loss_tracker,
+                self.energ_loss_tracker,
+                self.label_loss_tracker]
 
     def summary(self):
-        """Summary method for both the generator and discriminator."""
-        print("\n\n Conditional GAN model summary:\n")
+        """Summary of the cGAN network."""
+        print("\n\n Conditional GAN summary:\n")
         self.generator.summary()
         print("\n")
         self.discriminator.summary()
 
     def plot_model(self):
-        """Plot and saves the current cGAN model scheme."""
+        """Plot_model of the cGAN network."""
         save_path = Path('model_plot').resolve()
         if not os.path.isdir(save_path):
            os.makedirs(save_path)
@@ -128,18 +153,29 @@ class ConditionalGAN(tf.keras.Model):
         plot_model(self.discriminator, to_file=path, show_shapes=True)
         plt.imshow(imread(path))
         plt.axis("off")
-        plt.show()
 
         file_name = "cgan-scheme.png"
         path = os.path.join(save_path, file_name)
         fig.savefig(os.path.join(save_path, file_name))
+        plt.show()
+
+    def generate_noise(self, num_examples=num_examples):
+        """Generate a set of num_examples noise inputs for the generator."""
+        return [tf.random.normal([num_examples, NOISE_DIM]),
+                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
+                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
     def generate_and_save_images(self, noise, epoch=0):
-        """Generate images from the noise, plot and evaluate them."""
+        """Use the current status of the NN to generate images from the noise,
+        plot, evaluate and save them.
+        Inputs:
+        noise = noise with the generator input shape.
+        """
         # 1 - Generate images
         predictions = self.generator(noise, training=False)
-        decisions = self.discriminator([predictions, noise[1], noise[2]])
+        decisions = self.discriminator(predictions, training=False)
         logger.info(f"Shape of generated images: {predictions.shape}")
+        energies = compute_energy(predictions)
 
         # 2 - Plot the generated images
         k=0
@@ -153,10 +189,11 @@ class ConditionalGAN(tf.keras.Model):
               plt.axis("off")
 
         for example in range(len(noise[0]) ):
-            print(f"{example+1}) Primary particle={int(noise[2][example][0])}"
-                 +f"\nInitial energy ={noise[1][example][0]}"
-                 +f"\tGenerated energy ={decisions[1][example]}"
-                 +f"\tDecision ={decisions[0][example]}")
+            print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
+                 +f"\nInitial energy = {noise[1][example][0]}   "
+                 +f"Generated energy = {energies[example][0]}   "
+                 +f"Predicted energy = {decisions[1][example][0]}   "
+                 +f"Decision = {decisions[0][example][0]}")
         plt.show()
 
         # 3 - Save the generated images
@@ -166,15 +203,17 @@ class ConditionalGAN(tf.keras.Model):
            os.makedirs(save_path)
         fig.savefig(os.path.join(save_path, file_name))
 
-    def evaluate(self):
-        """Return the generator from the last checkpoint and show examples."""
-        try:
-           self.checkpoint.restore(self.manager.latest_checkpoint)
-        except:
-           raise Exception('Error loading the model: corrupted checkpoint!')
-        print("Showing example showers from noise.")
-        self.generate_and_save_images(noise)
-        return self.generator
+    def evaluate(self, num_examples=num_examples):
+        """Restore the last checkpoint and return the models."""
+        if self.manager.latest_checkpoint:
+            try:
+               self.checkpoint.restore(self.manager.latest_checkpoint)
+               print(f"Restored from {self.manager.latest_checkpoint}")
+               return self.generator, self.discriminator
+            except:
+               raise Exception("Invalid checkpoint.")
+        else:
+            raise Exception("No checkpoint found.")
 
     def compile(self):
         """Wrap the default compile method of the network.
@@ -184,14 +223,31 @@ class ConditionalGAN(tf.keras.Model):
         """
         super(ConditionalGAN, self).compile()
 
-    def scheduler(self, epoch, lr):
-        """Not implemented yet"""
-        if epoch < 34:
-           return lr
-        else:
-           lr = lr * tf.math.exp(-0.1)
-           print(f"Learning rate updated to {lr}")
-           return lr
+    def scheduler(self, epoch, logs):
+        """Not yet my dear."""
+        if (epoch == S_EPOCH):
+           learning_rate_pro = self.generator_optimizer.lr * 10.
+           if (logs["gener_loss"] > logs["discr_loss"]):
+              self.generator_optimizer.lr = learning_rate_pro
+              self.switch = False
+              print("Power to the generator!")
+           elif (logs["gener_loss"] < logs["discr_loss"]):
+              self.discriminator_optimizer.lr = learning_rate_pro
+              self.switch = True
+              print("Power to the discriminator!")
+        elif (epoch > S_EPOCH):
+           if (logs["gener_loss"] > logs["discr_loss"]) & self.switch:
+              discr_lr = self.discriminator_optimizer.lr
+              self.discriminator_optimizer.lr = self.learning_rate
+              self.generator_optimizer.lr = discr_lr
+              self.switch = False
+              print(f"Learning rate switched: power to the generator!")
+           elif (logs["gener_loss"] < logs["discr_loss"]) & (not self.switch):
+              gener_lr = self.generator_optimizer.lr
+              self.generator_optimizer.lr = self.learning_rate
+              self.discriminator_optimizer.lr = gener_lr
+              self.switch = True
+              print(f"Learning rate switched: power to the discriminator!")
 
     def train_step(self, dataset):
         """Train step of the cGAN.
@@ -215,17 +271,18 @@ class ConditionalGAN(tf.keras.Model):
 
             generated_images = self.generator(generator_input, training=True)
 
-            real_sample = [real_images, en_labels, pid_labels]
-            real_output = self.discriminator(real_sample, training=True)
+            #real_sample = [real_images, en_labels, pid_labels]
+            real_output = self.discriminator(real_images, training=True)
 
-            fake_sample = [generated_images, en_labels, pid_labels]
-            fake_output = self.discriminator(fake_sample, training=True)
+            #fake_sample = [generated_images, en_labels, pid_labels]
+            fake_output = self.discriminator(generated_images, training=True)
 
+            label_loss = energy_loss(en_labels, fake_output[2])
             energ_loss = energy_loss(en_labels, fake_output[1])
             gener_loss = generator_loss(fake_output[0])
             gener_total_loss = gener_loss + energ_loss
             discr_loss = discriminator_loss(real_output[0], fake_output[0])
-            discr_total_loss = discr_loss
+            discr_total_loss = discr_loss + label_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
@@ -241,11 +298,13 @@ class ConditionalGAN(tf.keras.Model):
         self.gener_loss_tracker.update_state(gener_loss)
         self.discr_loss_tracker.update_state(discr_loss)
         self.energ_loss_tracker.update_state(energ_loss)
+        self.label_loss_tracker.update_state(label_loss)
 
         return{
             "gener_loss": self.gener_loss_tracker.result(),
             "discr_loss": self.discr_loss_tracker.result(),
-            "energ_loss": self.energ_loss_tracker.result()
+            "energ_loss": self.energ_loss_tracker.result(),
+            "label_loss": self.label_loss_tracker.result()
         }
 
     def fit(self, dataset, epochs=1, batch=32):
@@ -272,47 +331,47 @@ class ConditionalGAN(tf.keras.Model):
         switch = input("Do you want to restore the last checkpoint? [y/N]")
         if switch=='y':
             if self.manager.latest_checkpoint:
-                self.checkpoint.restore(self.manager.latest_checkpoint)
-                print(f"Restored from {self.manager.latest_checkpoint}")
+                try:
+                   self.checkpoint.restore(self.manager.latest_checkpoint)
+                   print(f"Restored from {self.manager.latest_checkpoint}")
+                except:
+                   print("Invalid checkpoint: initializing from scratch.")
             else:
                 print("No checkpoint found: initializing from scratch.")
         else:
             print("Initializing from scratch.")
 
-        # Define default callbacks for the training
-        callbacks =  tf.keras.callbacks.CallbackList([
-                                                 tf.keras.callbacks.History()])
-        callbacks.set_model(self)
-
-
         # Start training operations
         display.clear_output(wait=True)
-        callbacks.on_train_begin()
+        history = {}
         for epoch in range(epochs):
            print(f"Running EPOCH = {epoch + 1}/{epochs}")
-           callbacks.on_epoch_begin(epoch)
+
+           # Define the progbar
            progbar = tf.keras.utils.Progbar(len(dataset), verbose=verbose)
 
+           # Start iterate on batches
            start = time.time()
            for index, image_batch in enumerate(dataset):
-              callbacks.on_train_batch_begin(index)
-              batch_logs = self.train_step(image_batch)
-              status_to_display = zip(batch_logs.keys(), batch_logs.values())
-              progbar.update(index, status_to_display)
-              callbacks.on_train_batch_end(index, batch_logs)
+              logs = self.train_step(image_batch)
+              progbar.update(index, zip(logs.keys(), logs.values()))
            end = time.time() - start
 
+           # Dispaly results and save images
            display.clear_output(wait=True)
            print(f"EPOCH = {epoch + 1}/{epochs}")
-           for state in status_to_display:
-               print(f"{state[0]} = {state[1]}")
+           for log in logs:
+               print(f"{log} = {logs[log]}")
            print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
 
+           # Save checkpoint
            if (epoch + 1) % 5 == 0:
               save_path = self.manager.save()
               print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
 
-           callbacks.on_epoch_end(epoch, batch_logs)
-        callbacks.on_train_end(batch_logs)
-        return self.history
+           # Update history and call the scheduler
+           for key, value in logs.items():
+               history.setdefault(key, []).append(value)
+           self.scheduler(epoch, logs)
+        return history

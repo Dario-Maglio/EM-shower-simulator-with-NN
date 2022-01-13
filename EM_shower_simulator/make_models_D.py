@@ -20,7 +20,6 @@ from tensorflow.keras.layers import (Input,
                                      Dropout,
                                      Lambda,
                                      Concatenate,
-                                     Multiply,
                                      Flatten)
 
 #-------------------------------------------------------------------------------
@@ -60,7 +59,7 @@ def make_generator_model():
     categorizes the labels in N_CLASSES_* classes.
     """
     N_FILTER = 32
-    EMBED_DIM = 10
+    EMBED_DIM = 5
     KERNEL = (4, 4, 4)
     input_shape = (3, 3, 3, 3 * N_FILTER)
     image_shape = (3, 3, 3, N_FILTER)
@@ -282,11 +281,6 @@ def make_discriminator_model():
     # Image input
     in_image = Input(shape=GEOMETRY, name="input_image")
 
-    # En label input
-    en_label = Input(shape=(1,), name="energy_input")
-
-    in_image = Input(shape=GEOMETRY, name="input_image")
-
     discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
@@ -320,7 +314,7 @@ def make_discriminator_model():
 
     #output = Dense(1, activation="sigmoid", name="final_decision")(output)
 
-    model = Model([in_image, en_label], [output_conv, total_energy, output_en], name='discriminator')#, pid_label
+    model = Model(in_image, [output_conv, total_energy, output_en], name='discriminator')#, pid_label
     return model
 
 def debug_discriminator(data, verbose=False):

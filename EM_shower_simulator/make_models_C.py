@@ -59,11 +59,11 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 16
+    N_FILTER = 32
     EMBED_DIM = 5
-    KERNEL = (3, 5, 5)
+    KERNEL = (5, 5, 5)
     SIDE = 12
-    input_shape = (SIDE, SIDE, SIDE, 3 * N_FILTER)
+    input_shape = (SIDE, SIDE, SIDE, 2 * N_FILTER)
     image_shape = (SIDE, SIDE, SIDE, N_FILTER)
 
     # Input[i] -> input[i] + 3convolution*(KERNEL- 1) = GEOMETRY[i]!
@@ -97,9 +97,9 @@ def make_generator_model():
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
     gen = Dense(NOISE_DIM, activation="relu", use_bias=False)(in_lat)
-    gen = Dense(n_nodes, activation="relu", use_bias=False)(gen)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
+    gen = Dense(n_nodes)(gen)
     gen = Reshape(image_shape)(gen)
 
     # Merge image gen and label input
@@ -268,7 +268,7 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES_ * classes.
     """
     N_FILTER = 32
-    KERNEL = (3, 5, 5)
+    KERNEL = (5, 5, 5)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
@@ -287,7 +287,7 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(2*N_FILTER, KERNEL, strides=(2,1,1), use_bias=False)(discr)
+    discr = Conv3D(2*N_FILTER, KERNEL, use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)

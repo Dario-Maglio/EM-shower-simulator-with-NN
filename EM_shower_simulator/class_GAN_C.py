@@ -60,8 +60,8 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 def energy_loss(en_label, total_energy):
-    msle = tf.keras.losses.MeanSquaredLogarithmicError()
-    #msle = tf.keras.losses.MeanSquaredError()
+    #msle = tf.keras.losses.MeanSquaredLogarithmicError()
+    msle = tf.keras.losses.MeanSquaredError()
     return msle(en_label, total_energy)
 
 #-------------------------------------------------------------------------------
@@ -140,6 +140,7 @@ class ConditionalGAN(tf.keras.Model):
         predictions = self.generator(noise, training=False)
         decisions = self.discriminator(predictions, training=False)
         logger.info(f"Shape of generated images: {predictions.shape}")
+        energies = self.compute_energy(predictions)
 
         # 2 - Plot the generated images
         k=0
@@ -154,9 +155,10 @@ class ConditionalGAN(tf.keras.Model):
 
         for example in range(len(noise[0]) ):
             print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
-                 +f"\nInitial energy = {noise[1][example][0]}"
-                 +f"\tGenerated energy = {decisions[1][example][0]}"
-                 +f"\tDecision = {decisions[0][example][0]}")
+                 +f"\nInitial energy = {noise[1][example][0]}   "
+                 +f"Generated energy = {energies[example]}   "
+                 +f"Predicted energy = {decisions[1][example][0]}   "
+                 +f"Decision = {decisions[0][example][0]}")
         plt.show()
 
         # 3 - Save the generated images
@@ -165,6 +167,17 @@ class ConditionalGAN(tf.keras.Model):
         if not os.path.isdir(save_path):
            os.makedirs(save_path)
         fig.savefig(os.path.join(save_path, file_name))
+
+    def compute_energy(in_images):
+        """Compute energy deposited in detector
+        """
+        in_images = tf.cast(in_images, tf.float32)
+
+        en_images = tf.math.multiply(in_images, ENERGY_NORM)
+        en_images = tf.math.pow(10., en_images)
+        en_images = tf.math.divide(en_images, ENERGY_SCALE)
+        en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
+        return en_images
 
     def evaluate(self):
         """Return the generator from the last checkpoint and show examples."""
@@ -304,8 +317,8 @@ class ConditionalGAN(tf.keras.Model):
 
            display.clear_output(wait=True)
            print(f"EPOCH = {epoch + 1}/{epochs}")
-           #for state in status_to_display:
-            #   print(f"{state[0]} = {state[1]}")
+           for log in batch_logs:
+               print(f"{log} = {batch_logs[log]}")
            print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
 

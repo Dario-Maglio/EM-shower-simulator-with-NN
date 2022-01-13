@@ -140,7 +140,7 @@ class ConditionalGAN(tf.keras.Model):
         predictions = self.generator(noise, training=False)
         decisions = self.discriminator(predictions, training=False)
         logger.info(f"Shape of generated images: {predictions.shape}")
-        energies = self.compute_energy(predictions)
+        energies = self.compute_energy(predictions[0])
 
         # 2 - Plot the generated images
         k=0

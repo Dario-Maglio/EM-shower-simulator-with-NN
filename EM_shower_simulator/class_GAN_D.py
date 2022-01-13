@@ -29,6 +29,9 @@ NOISE_DIM = 1024
 ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
 
+# Scale parameter for energy loss
+PARAM_EN = 0.01
+
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
 num_examples = 6
@@ -60,8 +63,8 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 def energy_loss(en_label, total_energy):
-    msle = tf.keras.losses.MeanSquaredLogarithmicError()
-    #msle = tf.keras.losses.MeanSquaredError()
+    #msle = tf.keras.losses.MeanSquaredLogarithmicError()
+    msle = tf.keras.losses.MeanSquaredError()
     return msle(en_label, total_energy)
 
 #-------------------------------------------------------------------------------
@@ -80,7 +83,7 @@ class ConditionalGAN(tf.keras.Model):
         self.generator = gener
         self.discriminator = discr
         self.generator_optimizer = Adam(learning_rate)
-        self.discriminator_optimizer = Adam(learning_rate)
+        self.discriminator_optimizer = Adam(1e-4)
         self.gener_loss_tracker = Mean(name="generator_loss")
         self.discr_loss_tracker = Mean(name="discriminator_loss")
         self.energ_loss_tracker = Mean(name="energy_loss")
@@ -138,7 +141,7 @@ class ConditionalGAN(tf.keras.Model):
         """Generate images from the noise, plot and evaluate them."""
         # 1 - Generate images
         predictions = self.generator(noise, training=False)
-        decisions = self.discriminator([predictions, noise[1], noise[2]])
+        decisions = self.discriminator([predictions, noise[1]])
         logger.info(f"Shape of generated images: {predictions.shape}")
 
         # 2 - Plot the generated images
@@ -215,17 +218,18 @@ class ConditionalGAN(tf.keras.Model):
 
             generated_images = self.generator(generator_input, training=True)
 
-            real_sample = [real_images, en_labels, pid_labels]
+            real_sample = [real_images, en_labels]#, pid_labels]
             real_output = self.discriminator(real_sample, training=True)
 
-            fake_sample = [generated_images, en_labels, pid_labels]
+            fake_sample = [generated_images, en_labels]#, pid_labels]
             fake_output = self.discriminator(fake_sample, training=True)
 
             energ_loss = energy_loss(en_labels, fake_output[1])
             gener_loss = generator_loss(fake_output[0])
-            gener_total_loss = gener_loss + energ_loss
             discr_loss = discriminator_loss(real_output[0], fake_output[0])
-            discr_total_loss = discr_loss
+
+            gener_total_loss = PARAM_EN * energ_loss + gener_loss
+            discr_total_loss = discr_loss # + PARAM_EN * energ_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
@@ -308,6 +312,12 @@ class ConditionalGAN(tf.keras.Model):
                print(f"{state[0]} = {state[1]}")
            print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
+           #plt.figure("Evolution of losses per epochs")
+           #plt.plot(self.history.history["gener_loss"], label="gener_loss")
+           #plt.plot(self.history.history["discr_loss"], label="discr_loss")
+           #plt.plot(self.history.history["energ_loss"], label="energ_loss")
+           #plt.xlim(1, epochs)
+           #plt.show()
 
            if (epoch + 1) % 5 == 0:
               save_path = self.manager.save()

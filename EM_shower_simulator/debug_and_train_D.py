@@ -10,17 +10,17 @@ from dataset import data_path
 
 # Logger import
 from dataset import logger as logData
-from make_models import logger as logMod
-from class_GAN import logger as logGAN
+from make_models_D import logger as logMod
+from class_GAN_D import logger as logGAN
 
 # Debug import
 from dataset import debug_data_pull, debug_shower
-from make_models import debug_generator, debug_discriminator
+from make_models_D import debug_generator, debug_discriminator
 
 # Train import
 from dataset import data_pull
-from make_models import make_generator_model, make_discriminator_model
-from class_GAN import ConditionalGAN
+from make_models_D import make_generator_model, make_discriminator_model
+from class_GAN_D import ConditionalGAN
 
 
 # Creation of the default dataset path
@@ -66,7 +66,7 @@ def debug(path=DPATH, verbose=False):
         train_images = train_data[0]
         debug_shower(train_images, verbose)
         debug_generator(verbose=verbose)
-        debug_discriminator(train_data, verbose=verbose)
+        debug_discriminator([train_data[0], train_data[1] ], verbose=verbose)
 
 def train_cgan(path=DPATH, verbose=False):
     """Creation and training of the conditional GAN."""
@@ -94,9 +94,9 @@ def train_cgan(path=DPATH, verbose=False):
     history = cond_gan.train(train_dataset, epochs=1, batch=64)
     #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
 
-    plt.figure("Evolution of losses per epochs")
-    plt.plot(history.history["gener_loss"])
-    plt.plot(history.history["discr_loss"])
+    plt.plot(history.history["gener_loss"], label="gener_loss")
+    plt.plot(history.history["discr_loss"], label="discr_loss")
+    plt.plot(history.history["energ_loss"], label="energ_loss")
     plt.show()
 
     for key in history.history.keys():

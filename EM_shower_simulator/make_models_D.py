@@ -227,26 +227,26 @@ def auxiliary_condition(layer):
     #print(f"SUMMED ENERGY SHAPE {en_image.shape}")
     #print(f"Total energy = \t{en_image}")
 
-    output_1 = tf.math.pow((en_label-en_image)/(50) , 2) #en_label*0.4
-    output_1 = tf.math.multiply(output_1, -0.5)
-    output_1 = tf.math.exp(output_1)
-    output_1 = tf.math.multiply(output_1, GAUS_NORM)
+    #output_1 = tf.math.pow((en_label-en_image)/(50) , 2) #en_label*0.4
+    #output_1 = tf.math.multiply(output_1, -0.5)
+    #output_1 = tf.math.exp(output_1)
+    #output_1 = tf.math.multiply(output_1, GAUS_NORM)
 
     #output_2 = tf.math.pow((en_label-en_image)/(en_label*0.5) , 2) #en_label*0.4
     #output_2 = tf.math.multiply(output_2, -0.5)
     #output_2 = tf.math.exp(output_2)
     #output_2 = tf.math.multiply(output_2, GAUS_NORM)
 
-    output_3 = tf.math.pow((en_label-en_image)/(3) , 2) #en_label*0.4
+    output_3 = tf.math.pow((en_label-en_image)/(2) , 2) #en_label*0.4
     output_3 = tf.math.multiply(output_3, -0.5)
     output_3 = tf.math.exp(output_3)
-    output_3 = tf.math.multiply(output_3, 2.*GAUS_NORM )
+    output_3 = tf.math.multiply(output_3, GAUS_NORM )
 
-    aux_output = tf.math.add(output_1, output_3)
+    #aux_output = tf.math.add(output_1, output_3)
     #aux_output = tf.math.add(aux_output,output_3)
     #aux_output = tf.math.add(output_3, BIAS)
 
-    aux_output = tf.math.multiply(aux_output, 1./(BIAS+3.*GAUS_NORM))
+    aux_output = tf.math.multiply(output_3, 1./(BIAS+GAUS_NORM))
     #print(aux_output)
     # make a "potential" well: gradients look for minimization
     aux_output = (1 - aux_output)
@@ -285,21 +285,21 @@ def make_discriminator_model():
 
     # En label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
-    li_en = Dense(n_nodes)(li_en)
-    li_en = Reshape(GEOMETRY)(li_en)
+    #li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
+    #li_en = Dense(n_nodes)(li_en)
+    #li_en = Reshape(GEOMETRY)(li_en)
 
     # Pid label input
-    pid_label = Input(shape=(1,), name="particleID_input")
-    li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
-    li_pid = Dense(n_nodes)(li_pid)
-    li_pid = Reshape(GEOMETRY)(li_pid)
+    #pid_label = Input(shape=(1,), name="particleID_input")
+    #li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
+    #li_pid = Dense(n_nodes)(li_pid)
+    #li_pid = Reshape(GEOMETRY)(li_pid)
 
     # Concat label as a channel
-    merge = Concatenate()([in_image, li_en, li_pid])
-    logger.info(merge.get_shape())
+    #merge = Concatenate()([in_image, li_en, li_pid])
+    #logger.info(merge.get_shape())
 
-    discr = Conv3D(N_FILTER, KERNEL)(merge)
+    discr = Conv3D(N_FILTER, KERNEL)(in_image) # merge
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
@@ -309,7 +309,7 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    #minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     #logger.info(f"Minibatch shape: {minibatch.get_shape()}")
     discr = Conv3D(8 * N_FILTER, KERNEL)(discr)
     #logger.info(f"Shape of the last discriminator layer: {discr.get_shape()}")
@@ -320,11 +320,11 @@ def make_discriminator_model():
 
     aux_output = Lambda(auxiliary_condition, name="aux_condition")([en_label,total_energy])
 
-    output = Concatenate()([output_conv, aux_output, total_energy])
+    output = Concatenate()([output_conv, aux_output])#, total_energy])
 
     output = Dense(1, activation="sigmoid", name="final_decision")(output)
 
-    model = Model([in_image, en_label, pid_label], [output, total_energy], name='discriminator')
+    model = Model([in_image, en_label], [output, total_energy], name='discriminator')#, pid_label
     return model
 
 def debug_discriminator(data, verbose=False):

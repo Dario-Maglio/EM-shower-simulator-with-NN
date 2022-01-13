@@ -27,6 +27,7 @@ from tensorflow.keras.layers import (Input,
 
 # Configuration parameters
 N_PID = 3
+N_ENER = 30 + 1
 NOISE_DIM = 1024
 MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 ENERGY_NORM = 6.503

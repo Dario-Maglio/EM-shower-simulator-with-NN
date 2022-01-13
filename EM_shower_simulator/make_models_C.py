@@ -59,7 +59,7 @@ def make_generator_model():
     categorizes the labels in N_CLASSES_* classes.
     """
     SIDE = 4
-    N_FILTER = 32
+    N_FILTER = 16
     KERNEL = (5, 5, 5)
     input_shape = (SIDE, SIDE, SIDE, 2 * N_FILTER)
     image_shape = (SIDE, SIDE, SIDE, N_FILTER)
@@ -75,7 +75,6 @@ def make_generator_model():
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
     li_en = Dense(n_nodes, activation="relu")(en_label)
-    li_en = Dense(n_nodes, activation="relu")(li_en)
     li_en = Reshape(input_shape)(li_en)
 
     # ParticleID label input
@@ -93,7 +92,6 @@ def make_generator_model():
     gen = Dense(NOISE_DIM, activation="relu", use_bias=False)(in_lat)
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
-    gen = Dense(n_nodes)(gen)
     gen = Reshape(image_shape)(gen)
 
     # Merge image gen and label input

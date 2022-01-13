@@ -91,7 +91,7 @@ def train_cgan(path=DPATH, verbose=False):
     cond_gan.summary()
     cond_gan.plot_model()
 
-    history = cond_gan.train(train_dataset, epochs=1, batch=64)
+    history = cond_gan.train(train_dataset, epochs=1, batch=512)
     #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
 
     plt.figure("Evolution of losses per epochs")

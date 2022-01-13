@@ -153,7 +153,7 @@ def debug_generator(noise=test_noise, verbose=False):
 
     for example in range(len(noise[0]) ):
       print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
-           +f"\tInitial energy = {noise[1][example][0]}"
+           +f"\nInitial energy = {noise[1][example][0]}"
            +f"\tGenerated energy = {energy[example][0]}")
 
     if verbose :

@@ -41,6 +41,17 @@ logger = logging.getLogger("CGANLogger")
 
 #-------------------------------------------------------------------------------
 
+def compute_energy(in_images):
+    """Compute energy deposited in detector
+    """
+    in_images = tf.cast(in_images, tf.float32)
+
+    en_images = tf.math.multiply(in_images, ENERGY_NORM)
+    en_images = tf.math.pow(10., en_images)
+    en_images = tf.math.divide(en_images, ENERGY_SCALE)
+    en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
+    return en_images
+
 def generator_loss(fake_output):
     """Definie generator loss:
     successes on fake samples from the generator valued as true samples by
@@ -140,7 +151,7 @@ class ConditionalGAN(tf.keras.Model):
         predictions = self.generator(noise, training=False)
         decisions = self.discriminator(predictions, training=False)
         logger.info(f"Shape of generated images: {predictions.shape}")
-        energies = self.compute_energy(predictions[0])
+        energies = compute_energy(predictions)
 
         # 2 - Plot the generated images
         k=0
@@ -167,17 +178,6 @@ class ConditionalGAN(tf.keras.Model):
         if not os.path.isdir(save_path):
            os.makedirs(save_path)
         fig.savefig(os.path.join(save_path, file_name))
-
-    def compute_energy(in_images):
-        """Compute energy deposited in detector
-        """
-        in_images = tf.cast(in_images, tf.float32)
-
-        en_images = tf.math.multiply(in_images, ENERGY_NORM)
-        en_images = tf.math.pow(10., en_images)
-        en_images = tf.math.divide(en_images, ENERGY_SCALE)
-        en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
-        return en_images
 
     def evaluate(self):
         """Return the generator from the last checkpoint and show examples."""

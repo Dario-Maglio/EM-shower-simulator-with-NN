@@ -73,7 +73,7 @@ def discriminator_loss(real_output, fake_output):
 def energy_loss(en_label, total_energy):
     #msle = tf.keras.losses.MeanSquaredLogarithmicError()
     msle = tf.keras.losses.MeanSquaredError()
-    return msle(en_label, total_energy)
+    return msle(en_label, total_energy)/2000
 
 #-------------------------------------------------------------------------------
 
@@ -145,6 +145,12 @@ class ConditionalGAN(tf.keras.Model):
         path = os.path.join(save_path, file_name)
         fig.savefig(os.path.join(save_path, file_name))
 
+    def generate_noise(self, num_examples=num_examples):
+        """Generate num_examples noise input for the generator."""
+        return [tf.random.normal([num_examples, NOISE_DIM]),
+                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
+                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
+
     def generate_and_save_images(self, noise, epoch=0):
         """Generate images from the noise, plot and evaluate them."""
         # 1 - Generate images
@@ -186,7 +192,7 @@ class ConditionalGAN(tf.keras.Model):
         except:
            raise Exception('Error loading the model: corrupted checkpoint!')
         print("Showing example showers from noise.")
-        self.generate_and_save_images(noise)
+        self.generate_and_save_images(generate_noise(3))
         return self.generator
 
     def compile(self):
@@ -309,16 +315,15 @@ class ConditionalGAN(tf.keras.Model):
            start = time.time()
            for index, image_batch in enumerate(dataset):
               callbacks.on_train_batch_begin(index)
-              batch_logs = self.train_step(image_batch)
-              status_to_display = zip(batch_logs.keys(), batch_logs.values())
-              progbar.update(index, status_to_display)
-              callbacks.on_train_batch_end(index, batch_logs)
+              logs = self.train_step(image_batch)
+              progbar.update(index, zip(logs.keys(), logs.values()))
+              callbacks.on_train_batch_end(index, logs)
            end = time.time() - start
 
            display.clear_output(wait=True)
            print(f"EPOCH = {epoch + 1}/{epochs}")
-           for log in batch_logs:
-               print(f"{log} = {batch_logs[log]}")
+           for log in logs:
+               print(f"{log} = {logs[log]}")
            print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
 
@@ -326,6 +331,6 @@ class ConditionalGAN(tf.keras.Model):
               save_path = self.manager.save()
               print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
 
-           callbacks.on_epoch_end(epoch, batch_logs)
-        callbacks.on_train_end(batch_logs)
+           callbacks.on_epoch_end(epoch, logs)
+        callbacks.on_train_end(logs)
         return self.history

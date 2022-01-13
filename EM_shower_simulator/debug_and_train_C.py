@@ -91,16 +91,21 @@ def train_cgan(path=DPATH, verbose=False):
     cond_gan.summary()
     cond_gan.plot_model()
 
-    history = cond_gan.train(train_dataset, epochs=1, batch=512)
+    history = cond_gan.train(train_dataset, epochs=1)
     #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
+
+    for key in history.history.keys():
+        print(key)
 
     plt.figure("Evolution of losses per epochs")
     plt.plot(history.history["gener_loss"])
     plt.plot(history.history["discr_loss"])
+    plt.plot(history.history["energ_loss"])
     plt.show()
 
-    for key in history.history.keys():
-        print(key)
+    noise = cond_gan.generate_noise(4)
+    cond_gan.generate_and_save_images(noise)
+    #cond_gan.evaluate()
 
     #file_name = "cGAN.h5"
     #save_path = "model_saves"
@@ -110,7 +115,7 @@ def train_cgan(path=DPATH, verbose=False):
 
 if __name__=="__main__":
 
-    debug(verbose=True)
+    #debug(verbose=True)
 
     train_cgan(verbose=True)
 

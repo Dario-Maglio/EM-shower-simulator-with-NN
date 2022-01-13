@@ -59,20 +59,16 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
+    SIDE = 4
     N_FILTER = 32
     EMBED_DIM = 5
     KERNEL = (5, 5, 5)
-    SIDE = 12
     input_shape = (SIDE, SIDE, SIDE, 2 * N_FILTER)
     image_shape = (SIDE, SIDE, SIDE, N_FILTER)
 
     # Input[i] -> input[i] + 3convolution*(KERNEL- 1) = GEOMETRY[i]!
-    # Input[i] -> input[i] if padding = "same" and only assert 1 is required!
+    # Input[i] -> input[i] if padding = "same"!
     error = "ERROR building the generator: shape different from geometry!"
-    assert SIDE == GEOMETRY[0], error
-    #assert KERNEL[0] == (GEOMETRY[0] - input_shape[0])/3 + 1, error
-    #assert KERNEL[1] == (GEOMETRY[1] - input_shape[1])/3 + 1, error
-    #assert KERNEL[2] == (GEOMETRY[2] - input_shape[2])/3 + 1, error
 
     n_nodes = 1
     for cell in input_shape:
@@ -105,12 +101,12 @@ def make_generator_model():
     # Merge image gen and label input
     merge = Concatenate()([gen, li_en, li_pid])
 
-    gen = Conv3DTranspose(2*N_FILTER, KERNEL, padding="same")(merge) #, use_bias=False
+    gen = Conv3DTranspose(2*N_FILTER, KERNEL, use_bias=False)(merge)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(N_FILTER, KERNEL, padding="same")(gen) #, use_bias=False
+    gen = Conv3DTranspose(N_FILTER, KERNEL, use_bias=False)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)

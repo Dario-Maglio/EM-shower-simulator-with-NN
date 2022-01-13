@@ -11,13 +11,13 @@ class TestCore(unittest.TestCase):
         """Test that simulate_shower works correctly on default data."""
         self.assertEqual(EM.simulate(),0)
 
-    def test_debug_train(self):
+    def test_debug_models(self):
         """Test that the debug subroutins run without exceptions."""
         train_data = EM.debug_data_pull(EM.data_path, num_examples=5)
         train_images = train_data[0]
         EM.debug_shower(train_images)
         EM.debug_generator()
-        EM.debug_discriminator(train_data)
+        EM.debug_discriminator(train_images)
         train_images = train_images[0, :, :, :, :]
         self.assertEqual(train_images.shape , EM.GEOMETRY)
 

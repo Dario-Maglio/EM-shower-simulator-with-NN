@@ -20,7 +20,6 @@ from tensorflow.keras.layers import (Input,
                                      Dropout,
                                      Lambda,
                                      Concatenate,
-                                     Multiply,
                                      Flatten)
 
 #-------------------------------------------------------------------------------
@@ -28,7 +27,6 @@ from tensorflow.keras.layers import (Input,
 
 # Configuration parameters
 N_PID = 3
-N_ENER = 30 + 1
 NOISE_DIM = 1024
 MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 ENERGY_NORM = 6.503
@@ -61,7 +59,6 @@ def make_generator_model():
     """
     SIDE = 4
     N_FILTER = 32
-    EMBED_DIM = 5
     KERNEL = (5, 5, 5)
     input_shape = (SIDE, SIDE, SIDE, 2 * N_FILTER)
     image_shape = (SIDE, SIDE, SIDE, N_FILTER)
@@ -76,13 +73,13 @@ def make_generator_model():
 
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Dense(N_ENER*EMBED_DIM, activation="relu")(en_label)
+    li_en = Dense(n_nodes, activation="relu")(en_label)
     li_en = Dense(n_nodes, activation="relu")(li_en)
     li_en = Reshape(input_shape)(li_en)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particleID_input")
-    li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
+    li_pid = Embedding(N_PID, N_PID)(pid_label)
     li_pid = Dense(n_nodes)(li_pid)
     li_pid = Reshape(input_shape)(li_pid)
 
@@ -263,7 +260,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_ * classes.
     """
-    N_FILTER = 32
+    N_FILTER = 16
     KERNEL = (5, 5, 5)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
@@ -283,12 +280,12 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(2*N_FILTER, KERNEL, use_bias=False)(discr)
+    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(3*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
+    discr = Conv3D(N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
 
@@ -304,7 +301,7 @@ def make_discriminator_model():
     #discr_pID = Dense(N_FILTER)(discr_pID)
     #pID = Discretization(num_bins=3, epsilon=0.01)
 
-    model = Model(in_image, [output, energy], name='discriminator')
+    model = Model(in_image, [output, energy, energy], name='discriminator')
     return model
 
 def debug_discriminator(data, verbose=False):

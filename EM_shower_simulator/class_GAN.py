@@ -25,7 +25,6 @@ from IPython import display
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-S_EPOCH = 5
 PARAM_EN = 0.01
 NOISE_DIM = 1024
 ENERGY_NORM = 6.503
@@ -87,7 +86,7 @@ class ConditionalGAN(tf.keras.Model):
     """Class for a conditional GAN.
     It inherits keras.Model properties and functions.
     """
-    def __init__(self, gener, discr, learning_rate=2e-5):
+    def __init__(self, gener, discr, learning_rate=3e-5):
         """Constructor.
         Inputs:
         gener = generator network;
@@ -111,6 +110,7 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator_optimizer = Adam(learning_rate)
 
         # Manager to save rusults from training in form of checkpoints.
+        self.history = {}
         self.checkpoint = tf.train.Checkpoint(
                            generator=self.generator,
                            discriminator=self.discriminator,
@@ -221,21 +221,21 @@ class ConditionalGAN(tf.keras.Model):
         """Restore the last checkpoint and return the models."""
         if self.manager.latest_checkpoint:
             latest_check = self.manager.latest_checkpoint
-            if tf.train.get_checkpoint_state(latest_check):
+            try:
                self.checkpoint.restore(latest_check).expect_partial()
-            else:
+            except:
                raise Exception("Invalid checkpoint.")
             print(f"Restored from {latest_check}")
             return self.generator, self.discriminator
         else:
             raise Exception("No checkpoint found.")
 
-    def scheduler(self, epoch, logs):
+    def scheduler(self, epoch, logs, wake_up):
         """Starting from epoch S_EPOCH, the scheduler boosts the generator or
         discriminator learning rate depending on which is doing better. The
         comparison is made looking at the losses stored in logs.
         """
-        if (epoch == S_EPOCH):
+        if (epoch == wake_up):
            learning_rate_pro = self.generator_optimizer.lr * 6.
            if (logs["gener_loss"] > logs["discr_loss"]):
               self.generator_optimizer.lr = learning_rate_pro
@@ -245,15 +245,22 @@ class ConditionalGAN(tf.keras.Model):
               self.discriminator_optimizer.lr = learning_rate_pro
               self.switch = True
               print("Power to the discriminator!")
-        elif (epoch > S_EPOCH):
+        elif (epoch > wake_up):
+           decrease = np.exp(-(epoch-wake_up) / 15.)
+           gener_lr = self.generator_optimizer.lr.numpy()
+           discr_lr = self.discriminator_optimizer.lr.numpy()
+           self.learning_rate = self.learning_rate * decrease
+           self.generator_optimizer.lr = gener_lr * decrease
+           self.discriminator_optimizer.lr = discr_lr * decrease
+           logger.info(f"Learning rate setted to {self.learning_rate}.")
            if (logs["gener_loss"] > logs["discr_loss"]) & self.switch:
-              discr_lr = self.discriminator_optimizer.lr
+              discr_lr = self.discriminator_optimizer.lr.numpy()
               self.discriminator_optimizer.lr = self.learning_rate
               self.generator_optimizer.lr = discr_lr
               self.switch = False
               print(f"Learning rate switched: power to the generator!")
            elif (logs["gener_loss"] < logs["discr_loss"]) & (not self.switch):
-              gener_lr = self.generator_optimizer.lr
+              gener_lr = self.generator_optimizer.lr.numpy()
               self.generator_optimizer.lr = self.learning_rate
               self.discriminator_optimizer.lr = gener_lr
               self.switch = True
@@ -329,11 +336,13 @@ class ConditionalGAN(tf.keras.Model):
         dataset = dataset.batch(batch, drop_remainder=True)
         return super(ConditionalGAN, self).fit(dataset, epochs=epochs)
 
-    def train(self, dataset, epochs=1, batch=32, verbose=1):
+    def train(self, dataset, epochs=1, batch=32, wake_up=10, verbose=1):
         """Define the training function of the cGAN.
         Inputs:
         dataset = combined real images vectors and labels;
-        epochs = number of epochs for the training.
+        epochs = number of epochs for the training;
+        batch = number of batch in which dataset must be split;
+        wake_up = epoch in which learning rates start to switch and decrease.
 
         For each epoch:
         1) For each batch of the dataset, run the custom "train_step" function;
@@ -342,6 +351,12 @@ class ConditionalGAN(tf.keras.Model):
         4) Print out the completed epoch no. and the time spent;
         5) Then generate a final image after the training is completed.
         """
+        if verbose :
+            logger.setLevel(logging.DEBUG)
+            logger.info('Logging level set on DEBUG.')
+        else:
+            logger.setLevel(logging.WARNING)
+            logger.info('Logging level set on WARNING.')
         dataset = dataset.batch(batch, drop_remainder=True)
 
         # Call checkpoint manager to load the state or restart from scratch
@@ -349,11 +364,11 @@ class ConditionalGAN(tf.keras.Model):
         if switch=='y':
            if self.manager.latest_checkpoint:
               latest_check = self.manager.latest_checkpoint
-              if tf.train.get_checkpoint_state(latest_check):
+              try:
                  self.checkpoint.restore(latest_check).expect_partial()
-              else:
-                 raise Exception("Invalid checkpoint: init from scratch.")
-              print(f"Restored from {latest_check}")
+                 print(f"Restored from {latest_check}")
+              except:
+                 print("Invalid checkpoint: init from scratch.")
            else:
               print("No checkpoint found: initializing from scratch.")
         else:
@@ -361,7 +376,6 @@ class ConditionalGAN(tf.keras.Model):
 
         # Start training operations
         display.clear_output(wait=True)
-        history = {}
         for epoch in range(epochs):
            print(f"Running EPOCH = {epoch + 1}/{epochs}")
 
@@ -390,6 +404,6 @@ class ConditionalGAN(tf.keras.Model):
 
            # Update history and call the scheduler
            for key, value in logs.items():
-               history.setdefault(key, []).append(value)
-           self.scheduler(epoch, logs)
-        return history
+               self.history.setdefault(key, []).append(value)
+           self.scheduler(epoch + 1, logs, wake_up=wake_up)
+        return self.history

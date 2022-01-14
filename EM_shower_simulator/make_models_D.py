@@ -17,6 +17,7 @@ from tensorflow.keras.layers import (Input,
                                      Reshape,
                                      Conv3DTranspose,
                                      Conv3D,
+                                     MaxPooling3D,
                                      Dropout,
                                      Lambda,
                                      Concatenate,
@@ -190,53 +191,6 @@ def compute_energy(in_images):
     en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
     return en_images
 
-def auxiliary_condition(layer):
-    """Auxiliary condition for energy deposition:
-    Compute the conditioned probability output_pdf for a generator event given
-    the initial energy label. The distribition is assumed to be a Gaussian
-    centered in en_label with a std deviation of en_label/10, scalata per 0.2 e
-    sommata a 0.8. Fatto per rendere possibile il train del generatore: se fosse
-    solo la gaussiana, il discriminatore sarebbe troppo intelligente e userebbe
-    solo questa informazione per disciminare esempi veri da falsi.
-    """
-    BIAS = 0.
-    GAUS_NORM = 1.
-
-    en_label = layer[0]
-    en_label = tf.cast(en_label, tf.float32)
-    #print(f"LABELS SHAPE {en_label.shape}")
-    #print(f"Initial energy = \t{en_label}")
-    en_image = layer[1]
-    en_image = tf.cast(en_image, tf.float32)
-    #print(f"SUMMED ENERGY SHAPE {en_image.shape}")
-    #print(f"Total energy = \t{en_image}")
-
-    #output_1 = tf.math.pow((en_label-en_image)/(50) , 2) #en_label*0.4
-    #output_1 = tf.math.multiply(output_1, -0.5)
-    #output_1 = tf.math.exp(output_1)
-    #output_1 = tf.math.multiply(output_1, GAUS_NORM)
-
-    #output_2 = tf.math.pow((en_label-en_image)/(en_label*0.5) , 2) #en_label*0.4
-    #output_2 = tf.math.multiply(output_2, -0.5)
-    #output_2 = tf.math.exp(output_2)
-    #output_2 = tf.math.multiply(output_2, GAUS_NORM)
-
-    output_3 = tf.math.pow((en_label-en_image)/(2) , 2) #en_label*0.4
-    output_3 = tf.math.multiply(output_3, -0.5)
-    output_3 = tf.math.exp(output_3)
-    output_3 = tf.math.multiply(output_3, GAUS_NORM )
-
-    #aux_output = tf.math.add(output_1, output_3)
-    #aux_output = tf.math.add(aux_output,output_3)
-    #aux_output = tf.math.add(output_3, BIAS)
-
-    aux_output = tf.math.multiply(output_3, 1./(BIAS+GAUS_NORM))
-    #print(aux_output)
-    # make a "potential" well: gradients look for minimization
-    aux_output = (1 - aux_output)
-    #print(f"Auxiliary output = \t{aux_output}")
-    return aux_output
-
 def make_discriminator_model():
     """Define discriminator model:
     Input 1) Vector of images associated to the given labels;
@@ -248,7 +202,7 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     N_FILTER = 16
-    KERNEL = (5, 5, 5)
+    KERNEL = (2, 2, 2)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
@@ -269,6 +223,7 @@ def make_discriminator_model():
     discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
+    discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
     discr = Dropout(0.3)(discr)
 
     discr = Conv3D(N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
@@ -276,7 +231,7 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
     discr = Conv3D(2*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
@@ -292,12 +247,6 @@ def make_discriminator_model():
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
     #total_energy = Lambda(compute_energy, name="total_energy")(in_image)
-
-    #aux_output = Lambda(auxiliary_condition, name="aux_condition")([en_label,total_energy])
-
-    #output = Concatenate()([output_conv, aux_output])
-
-    #output = Dense(1, activation="sigmoid", name="final_decision")(output)
 
     discr_id = Dense(N_FILTER, activation="relu")(discr)
     discr_id = Dense(N_FILTER, activation="sigmoid")(discr_id)

@@ -16,7 +16,7 @@ class TestCore(unittest.TestCase):
         train_data = EM.debug_data_pull(EM.data_path, num_examples=5)
         train_images = train_data[0]
         EM.debug_shower(train_images)
-        EM.debug_generator()
+        EM.debug_generator(EM.test_noise)
         EM.debug_discriminator(train_images)
         train_images = train_images[0, :, :, :, :]
         self.assertEqual(train_images.shape , EM.GEOMETRY)

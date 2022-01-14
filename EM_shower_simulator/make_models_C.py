@@ -34,16 +34,8 @@ ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 12, 12, 1)
 
-# Create a random seed, to be used during the evaluation of the cGAN.
-tf.random.set_seed(42)
-num_examples = 6
-test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
-              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
-              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
-
 # Define logger and handler
 logger = logging.getLogger("ModelsLogger")
-
 
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
@@ -58,15 +50,17 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    SIDE = 4
-    N_FILTER = 16
-    KERNEL = (5, 5, 5)
-    input_shape = (SIDE, SIDE, SIDE, 2 * N_FILTER)
-    image_shape = (SIDE, SIDE, SIDE, N_FILTER)
+    N_FILTER = 1
+    EMBED_DIM = 1
+    KERNEL = (4, 4, 4)
+    input_shape = (3, 3, 3, 3 * N_FILTER)
+    image_shape = (3, 3, 3, N_FILTER)
 
-    # Input[i] -> input[i] + 3convolution*(KERNEL- 1) = GEOMETRY[i]!
-    # Input[i] -> input[i] if padding = "same"!
+    # Input[i] -> input[i] + 3 convolution * (KERNEL-1) = GEOMETRY[i]!
     error = "ERROR building the generator: shape different from geometry!"
+    assert KERNEL[0] == (GEOMETRY[0] - input_shape[0])/3 + 1, error
+    assert KERNEL[1] == (GEOMETRY[1] - input_shape[1])/3 + 1, error
+    assert KERNEL[2] == (GEOMETRY[2] - input_shape[2])/3 + 1, error
 
     n_nodes = 1
     for cell in input_shape:
@@ -74,13 +68,14 @@ def make_generator_model():
 
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Dense(n_nodes, activation="relu")(en_label)
+    li_en = Dense(N_ENER*EMBED_DIM, activation="relu")(en_label)
+    li_en = Dense(n_nodes, activation="relu")(li_en)
     li_en = Reshape(input_shape)(li_en)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particleID_input")
-    li_pid = Embedding(N_PID, N_PID)(pid_label)
-    li_pid = Dense(n_nodes)(li_pid)
+    li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
+    li_pid = Dense(n_nodes, activation="relu")(li_pid)
     li_pid = Reshape(input_shape)(li_pid)
 
     n_nodes = 1
@@ -89,8 +84,7 @@ def make_generator_model():
 
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
-    gen = Dense(NOISE_DIM, activation="relu", use_bias=False)(in_lat)
-    gen = BatchNormalization()(gen)
+    gen = Dense(n_nodes, activation="relu")(in_lat)
     gen = LeakyReLU(alpha=0.2)(gen)
     gen = Reshape(image_shape)(gen)
 
@@ -107,8 +101,8 @@ def make_generator_model():
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    output = (Conv3DTranspose(1, KERNEL, use_bias=False, padding="same",
-                                 activation="tanh", name="Fake_image")(gen))
+    output = (Conv3DTranspose(1, KERNEL, use_bias=False,
+                              activation="tanh", name="Fake_image")(gen))
 
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
@@ -116,14 +110,24 @@ def make_generator_model():
     model = Model([in_lat, en_label, pid_label], output, name='generator')
     return model
 
-def debug_generator(noise=test_noise, verbose=False):
+def compute_energy(in_images):
+    """Compute energy deposited in detector."""
+    in_images = tf.cast(in_images, tf.float32)
+
+    en_images = tf.math.multiply(in_images, ENERGY_NORM)
+    en_images = tf.math.pow(10., en_images)
+    en_images = tf.math.divide(en_images, ENERGY_SCALE)
+    en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
+    return en_images
+
+def debug_generator(noise, verbose=False):
     """Uses the random seeds to generate fake samples and plots them."""
     if verbose :
         logger.setLevel(logging.DEBUG)
-        logger.info('Logging level set on DEBUG.')
+        logger.info("Logging level set on DEBUG.")
     else:
         logger.setLevel(logging.WARNING)
-        logger.info('Logging level set on WARNING.')
+        logger.info("Logging level set on WARNING.")
     logger.info("Start debugging the generator model.")
 
     generator = make_generator_model()
@@ -144,17 +148,10 @@ def debug_generator(noise=test_noise, verbose=False):
     plt.show()
 
     for example in range(len(noise[0]) ):
-      print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
-           +f"\nInitial energy = {noise[1][example][0]}"
-           +f"\tGenerated energy = {energy[example][0]}")
+      print(f"{example+1})\nPrimary particle = {int(noise[2][example][0])}"
+           +f"\tInitial energy = {noise[1][example][0]}"
+           +f"\tGenerated energy = {energy[example]}")
 
-    if verbose :
-        save_path = 'model_plot'
-        if not os.path.isdir(save_path):
-           os.makedirs(save_path)
-        file_name = "debug_generator.png"
-        path = os.path.join(save_path, file_name)
-        plot_model(generator, to_file=path, show_shapes=True)
     logger.info("Debug of the generator model finished.")
 
 #-------------------------------------------------------------------------------
@@ -191,19 +188,8 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         # Append as new fmap.
         return tf.concat([discr, minib], axis=-1)
 
-def compute_energy(in_images):
-    """Compute energy deposited in detector
-    """
-    in_images = tf.cast(in_images, tf.float32)
-
-    en_images = tf.math.multiply(in_images, ENERGY_NORM)
-    en_images = tf.math.pow(10., en_images)
-    en_images = tf.math.divide(en_images, ENERGY_SCALE)
-    en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
-    return en_images
-
 def auxiliary_condition(layer):
-    """Auxiliary condition for energy deposition:
+    """Auxiliary condition for energy deposition.
     Compute the conditioned probability output_pdf for a generator event given
     the initial energy label. The distribition is assumed to be a Gaussian
     centered in en_label with a std deviation of en_label/10, scalata per 0.2 e
@@ -223,26 +209,26 @@ def auxiliary_condition(layer):
     #print(f"SUMMED ENERGY SHAPE {en_image.shape}")
     #print(f"Total energy = \t{en_image}")
 
-    output_1 = tf.math.pow((en_label-en_image)/(50) , 2) #en_label*0.4
-    output_1 = tf.math.multiply(output_1, -0.5)
-    output_1 = tf.math.exp(output_1)
-    output_1 = tf.math.multiply(output_1, GAUS_NORM)
+    #output_1 = tf.math.pow((en_label-en_image)/(50) , 2) #en_label*0.4
+    #output_1 = tf.math.multiply(output_1, -0.5)
+    #output_1 = tf.math.exp(output_1)
+    #output_1 = tf.math.multiply(output_1, GAUS_NORM)
 
     #output_2 = tf.math.pow((en_label-en_image)/(en_label*0.5) , 2) #en_label*0.4
     #output_2 = tf.math.multiply(output_2, -0.5)
     #output_2 = tf.math.exp(output_2)
     #output_2 = tf.math.multiply(output_2, GAUS_NORM)
 
-    output_3 = tf.math.pow((en_label-en_image)/(3) , 2) #en_label*0.4
+    output_3 = tf.math.pow((en_label-en_image)/(2) , 2) #en_label*0.4
     output_3 = tf.math.multiply(output_3, -0.5)
     output_3 = tf.math.exp(output_3)
-    output_3 = tf.math.multiply(output_3, 2.*GAUS_NORM )
+    output_3 = tf.math.multiply(output_3, GAUS_NORM )
 
-    aux_output = tf.math.add(output_1, output_3)
+    #aux_output = tf.math.add(output_1, output_3)
     #aux_output = tf.math.add(aux_output,output_3)
     #aux_output = tf.math.add(output_3, BIAS)
 
-    aux_output = tf.math.multiply(aux_output, 1./(BIAS+3.*GAUS_NORM))
+    aux_output = tf.math.multiply(output_3, 1./(BIAS+GAUS_NORM))
     #print(aux_output)
     # make a "potential" well: gradients look for minimization
     aux_output = (1 - aux_output)
@@ -259,7 +245,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 16
+    N_FILTER = 1
     KERNEL = (5, 5, 5)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
@@ -267,9 +253,10 @@ def make_discriminator_model():
     # Here we use padding default = "valid" (=0 above) and strides = 1 !
     # GEOMETRY[i] -> GEOMETRY[i] - 3convolution * (KERNEL[i] - 1) > 0 !
     error = "ERROR building the discriminator: smaller KERNEL is required!"
-    #assert KERNEL[0] < GEOMETRY[0]/3 + 1, error
-    #assert KERNEL[1] < GEOMETRY[1]/3 + 1, error
-    #assert KERNEL[2] < GEOMETRY[2]/3 + 1, error
+
+    n_nodes = 1
+    for cell in GEOMETRY:
+        n_nodes = n_nodes * cell
 
     # Image input
     in_image = Input(shape=GEOMETRY, name="input_image")
@@ -279,28 +266,31 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(discr)
+    discr = Conv3D(N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
+    discr = Conv3D(2*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
 
-    discr_conv = Dense(2*N_FILTER, activation="relu")(discr)
+    discr_conv = Dense(N_FILTER, activation="relu")(discr)
     discr_conv = Dense(N_FILTER, activation="relu")(discr_conv)
-    output = Dense(1, activation="sigmoid", name="decision")(discr_conv)
+    output_conv = Dense(1, activation="sigmoid", name="decision")(discr_conv)
 
-    discr_ener = Dense(2*N_FILTER, activation="relu",)(discr)
-    discr_ener = Dense(N_FILTER, activation="relu",)(discr_ener)
-    energy = Dense(1, activation="relu", name="energy")(discr_ener)
+    discr_en = Dense(N_FILTER, activation="relu")(discr)
+    discr_en = Dense(N_FILTER, activation="relu")(discr_en)
+    output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
-    #discr_pID = Dense(2*N_FILTER)(discr)
-    #discr_pID = Dense(N_FILTER)(discr_pID)
-    #pID = Discretization(num_bins=3, epsilon=0.01)
+    discr_pid = Dense(N_FILTER, activation="relu")(discr)
+    discr_pid = Dense(N_FILTER, activation="relu")(discr_pid)
+    output_pid = Dense(1, activation="relu", name="pid_label")(discr_pid)
 
-    model = Model(in_image, [output, energy, energy], name='discriminator')
+    #total_energy = Lambda(compute_energy, name="total_energy")(in_image)
+
+    output = [output_conv, output_en, output_pid]
+    model = Model(in_image, output, name='discriminator')
     return model
 
 def debug_discriminator(data, verbose=False):
@@ -313,14 +303,7 @@ def debug_discriminator(data, verbose=False):
         logger.info('Logging level set on WARNING.')
     logger.info("Start debugging discriminator model.")
 
-    save_path = 'model_plot'
-    if not os.path.isdir(save_path):
-       os.makedirs(save_path)
-
     discriminator = make_discriminator_model()
     decision = discriminator(data)
     logger.info(f"\nDecision per raw:\n {decision[0]}")
-    if verbose :
-        file_name = "debug_discriminator.png"
-        path = os.path.join(save_path, file_name)
-        plot_model(discriminator, to_file=path, show_shapes=True)
+    logger.info("Debug of the discriminator model finished.")

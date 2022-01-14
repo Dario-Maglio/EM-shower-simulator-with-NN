@@ -17,7 +17,7 @@ from class_GAN import logger as logGAN
 from dataset import debug_data_pull, debug_shower
 from make_models_D import debug_generator, debug_discriminator
 from make_models_D import make_generator_model, make_discriminator_model
-from class_GAN import ConditionalGAN
+from class_GAN import test_noise, ConditionalGAN, compute_energy
 
 # Creation of the default dataset path
 # In the project folder
@@ -60,7 +60,7 @@ def debug(path=DPATH, num_examples=5, verbose=False):
     #Execute debug subroutines
     train_images = train_data[0]
     debug_shower(train_images, verbose)
-    debug_generator(verbose=verbose)
+    debug_generator(test_noise, verbose=verbose)
     debug_discriminator(train_images, verbose)
 
 def debug_cgan(cond_gan, path=DPATH, num_examples=5):
@@ -71,6 +71,7 @@ def debug_cgan(cond_gan, path=DPATH, num_examples=5):
     # Fake showers
     predictions = gener(noise, training=False)
     decisions = discr(predictions, training=False)
+    energy = compute_energy(predictions)
 
     k=0
     fig = plt.figure("Fake generated showers", figsize=(20,10))
@@ -82,31 +83,34 @@ def debug_cgan(cond_gan, path=DPATH, num_examples=5):
           plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
           plt.axis("off")
 
-    for example in range(len(noise[0]) ):
+    for example in range(len(noise[0])):
         print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
              +f"\nInitial energy = {noise[1][example][0]}   "
-             +f"Generated energy = {decisions[1][example][0]}   "
-             +f"Predicted energy = {decisions[2][example][0]}   "
+             +f"Generated energy = {energy[example][0]}   "
+             +f"Predicted energy = {decisions[1][example][0]}   "
              +f"Decision = {decisions[0][example][0]}")
 
     # True showers
     predictions = debug_data_pull(path, num_examples)
-    decisions = discr(predictions[0], training=False)
+    images = predictions[0]
+    decisions = discr(images, training=False)
+    energy = compute_energy(images)
+
     k=0
     plt.figure("Real generated showers", figsize=(20,10))
-    num_examples = predictions[0].shape[0]
+    num_examples = images.shape[0]
     for i in range(num_examples):
-       for j in range(predictions[0].shape[1]):
+       for j in range(images.shape[1]):
           k=k+1
-          plt.subplot(num_examples, predictions[0].shape[1], k)
-          plt.imshow(predictions[0][i,j,:,:,0]) #, cmap="gray")
+          plt.subplot(num_examples, images.shape[1], k)
+          plt.imshow(images[i,j,:,:,0]) #, cmap="gray")
           plt.axis("off")
 
     for example in range(num_examples):
         print(f"{example+1}) Primary particle = {int(predictions[2][example][0])}"
              +f"\nInitial energy = {predictions[1][example][0]}   "
-             +f"Generated energy = {decisions[1][example][0]}   "
-             +f"Predicted energy = {decisions[2][example][0]}   "
+             +f"Generated energy = {energy[example][0]}   "
+             +f"Predicted energy = {decisions[1][example][0]}   "
              +f"Decision = {decisions[0][example][0]}")
 
     plt.show()

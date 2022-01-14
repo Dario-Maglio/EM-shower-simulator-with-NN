@@ -381,7 +381,7 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
 
   ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
-  const char *input="data_MVA_linear_normalized.root";
+  const char *input="data_MVA_normalized.root";
   TChain *h = new TChain("h");
   h->Add(input);
 

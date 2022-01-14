@@ -75,10 +75,17 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 @tf.function
-def energy_loss(en_label, total_energy):
+def energy_loss(en_label, energy):
     #msle = tf.keras.losses.MeanSquaredLogarithmicError()
     msle = tf.keras.losses.MeanSquaredError()
-    return msle(en_label, total_energy) * PARAM_EN
+    return msle(en_label, energy) * PARAM_EN
+
+@tf.function
+def particle_loss(pid_labels, fake_labels):
+    labels = tf.math.add(pid_labels, -1)
+    labels = tf.math.abs(labels)
+    cross_entropy = tf.keras.losses.BinaryCrossentropy()
+    return cross_entropy(labels, fake_labels)
 
 #-------------------------------------------------------------------------------
 
@@ -101,6 +108,7 @@ class ConditionalGAN(tf.keras.Model):
         self.gener_loss_tracker = Mean(name="generator_loss")
         self.discr_loss_tracker = Mean(name="discriminator_loss")
         self.energ_loss_tracker = Mean(name="energy_loss")
+        self.parID_loss_tracker = Mean(name="particle_loss")
         self.label_loss_tracker = Mean(name="label_loss")
 
         # Scheduler attributes and optimizers
@@ -126,6 +134,7 @@ class ConditionalGAN(tf.keras.Model):
         return [self.gener_loss_tracker,
                 self.discr_loss_tracker,
                 self.energ_loss_tracker,
+                self.parID_loss_tracker,
                 self.label_loss_tracker]
 
     def summary(self):
@@ -204,6 +213,7 @@ class ConditionalGAN(tf.keras.Model):
 
         for example in range(len(noise[0]) ):
             print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
+                 +f"   Predicted particle = {decisions[2][example][0]}"
                  +f"\nInitial energy = {noise[1][example][0]}   "
                  +f"Generated energy = {energies[example][0]}   "
                  +f"Predicted energy = {decisions[1][example][0]}   "
@@ -296,18 +306,21 @@ class ConditionalGAN(tf.keras.Model):
 
             generated_images = self.generator(generator_input, training=True)
 
-            #real_sample = [real_images, en_labels, pid_labels]
+            energies = compute_energy(generated_images)
+
             real_output = self.discriminator(real_images, training=True)
 
-            #fake_sample = [generated_images, en_labels, pid_labels]
             fake_output = self.discriminator(generated_images, training=True)
 
-            label_loss = energy_loss(en_labels, fake_output[2])
-            energ_loss = energy_loss(en_labels, fake_output[1])
             gener_loss = generator_loss(fake_output[0])
-            gener_total_loss = gener_loss + label_loss
+            label_loss = energy_loss(en_labels, energies)
+
             discr_loss = discriminator_loss(real_output[0], fake_output[0])
-            discr_total_loss = discr_loss + energ_loss
+            energ_loss = energy_loss(en_labels, fake_output[1])
+            parID_loss = particle_loss(pid_labels, fake_output[2])
+
+            gener_total_loss = gener_loss + label_loss
+            discr_total_loss = discr_loss + energ_loss + parID_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
@@ -323,12 +336,14 @@ class ConditionalGAN(tf.keras.Model):
         self.gener_loss_tracker.update_state(gener_loss)
         self.discr_loss_tracker.update_state(discr_loss)
         self.energ_loss_tracker.update_state(energ_loss)
+        self.parID_loss_tracker.update_state(parID_loss)
         self.label_loss_tracker.update_state(label_loss)
 
         return{
             "gener_loss": self.gener_loss_tracker.result(),
             "discr_loss": self.discr_loss_tracker.result(),
             "energ_loss": self.energ_loss_tracker.result(),
+            "parID_loss": self.parID_loss_tracker.result(),
             "label_loss": self.label_loss_tracker.result()
         }
 

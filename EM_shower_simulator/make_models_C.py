@@ -50,7 +50,7 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 1
+    N_FILTER = 32
     EMBED_DIM = 1
     KERNEL = (4, 4, 4)
     input_shape = (3, 3, 3, 3 * N_FILTER)
@@ -245,7 +245,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 1
+    N_FILTER = 16
     KERNEL = (5, 5, 5)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
@@ -283,13 +283,11 @@ def make_discriminator_model():
     discr_en = Dense(N_FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
-    discr_pid = Dense(N_FILTER, activation="relu")(discr)
-    discr_pid = Dense(N_FILTER, activation="relu")(discr_pid)
-    output_pid = Dense(1, activation="relu", name="pid_label")(discr_pid)
+    discr_id = Dense(N_FILTER, activation="relu")(discr)
+    discr_id = Dense(N_FILTER, activation="relu")(discr_id)
+    output_id = Dense(1, activation="sigmoid", name="one_hot")(discr_id)
 
-    #total_energy = Lambda(compute_energy, name="total_energy")(in_image)
-
-    output = [output_conv, output_en, output_pid]
+    output = [output_conv, output_en, output_id]
     model = Model(in_image, output, name='discriminator')
     return model
 

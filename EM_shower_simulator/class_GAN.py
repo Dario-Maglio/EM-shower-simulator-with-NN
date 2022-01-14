@@ -320,7 +320,7 @@ class ConditionalGAN(tf.keras.Model):
             parID_loss = particle_loss(pid_labels, fake_output[2])
 
             gener_total_loss = gener_loss + label_loss
-            discr_total_loss = discr_loss - energ_loss - parID_loss
+            discr_total_loss = discr_loss + energ_loss + parID_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)

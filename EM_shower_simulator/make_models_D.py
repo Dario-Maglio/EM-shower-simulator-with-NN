@@ -291,7 +291,7 @@ def make_discriminator_model():
     discr_en = Dense(N_FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
-    total_energy = Lambda(compute_energy, name="total_energy")(in_image)
+    #total_energy = Lambda(compute_energy, name="total_energy")(in_image)
 
     #aux_output = Lambda(auxiliary_condition, name="aux_condition")([en_label,total_energy])
 
@@ -299,7 +299,11 @@ def make_discriminator_model():
 
     #output = Dense(1, activation="sigmoid", name="final_decision")(output)
 
-    model = Model(in_image, [output_conv, output_en, total_energy], name='discriminator')#, pid_label
+    discr_id = Dense(N_FILTER, activation="relu")(discr)
+    discr_id = Dense(N_FILTER, activation="sigmoid")(discr_id)
+    output_id = Dense(1, activation="sigmoid", name="one_hot")(discr_id)
+
+    model = Model(in_image, [output_conv, output_en, output_id], name='discriminator')#, pid_label
     return model
 
 def debug_discriminator(data, verbose=False):

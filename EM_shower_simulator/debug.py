@@ -10,13 +10,13 @@ from dataset import data_path
 
 # Logger import
 from dataset import logger as logData
-from make_models_D import logger as logMod
+from make_models import logger as logMod
 from class_GAN import logger as logGAN
 
 # Debug import
 from dataset import debug_data_pull, debug_shower
-from make_models_D import debug_generator, debug_discriminator
-from make_models_D import make_generator_model, make_discriminator_model
+from make_models import debug_generator, debug_discriminator
+from make_models import make_generator_model, make_discriminator_model
 from class_GAN import test_noise, ConditionalGAN, compute_energy
 
 # Creation of the default dataset path

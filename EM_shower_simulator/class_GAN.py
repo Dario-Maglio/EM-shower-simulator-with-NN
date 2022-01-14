@@ -46,8 +46,7 @@ logger = logging.getLogger("CGANLogger")
 
 @tf.function
 def compute_energy(in_images):
-    """Compute energy deposited in detector
-    """
+    """Compute energy deposited in detector."""
     in_images = tf.cast(in_images, tf.float32)
 
     en_images = tf.math.multiply(in_images, ENERGY_NORM)

@@ -151,13 +151,6 @@ def debug_generator(noise=test_noise, verbose=False):
            +f"\tInitial energy ={noise[1][example][0]}"
            +f"\tGenerated energy ={energy[example]}")
 
-    if verbose :
-        save_path = 'model_plot'
-        if not os.path.isdir(save_path):
-           os.makedirs(save_path)
-        file_name = "debug_generator.png"
-        path = os.path.join(save_path, file_name)
-        plot_model(generator, to_file=path, show_shapes=True)
     logger.info("Debug of the generator model finished.")
 
 #-------------------------------------------------------------------------------
@@ -327,14 +320,7 @@ def debug_discriminator(data, verbose=False):
         logger.info('Logging level set on WARNING.')
     logger.info("Start debugging discriminator model.")
 
-    save_path = 'model_plot'
-    if not os.path.isdir(save_path):
-       os.makedirs(save_path)
-
     discriminator = make_discriminator_model()
     decision = discriminator(data)
     logger.info(f"\nDecision per raw:\n {decision[0]}")
-    if verbose :
-        file_name = "debug_discriminator.png"
-        path = os.path.join(save_path, file_name)
-        plot_model(discriminator, to_file=path, show_shapes=True)
+    logger.info("Debug of the discriminator model finished.")

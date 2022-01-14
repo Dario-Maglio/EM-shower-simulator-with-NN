@@ -14,7 +14,7 @@ from make_models import logger as logMod
 from class_GAN import logger as logGAN
 
 # Train import
-from dataset import data_pull, debug_data_pull
+from dataset import data_pull
 from make_models import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
 
@@ -53,20 +53,6 @@ def train_cgan(cond_gan, train_dataset):
     plt.show()
     logger.info("The cGAN model has been trained correctly.")
 
-def restore_and_predict(cond_gan):
-    logger.info("Testing the cGAN model on noise and real samples.")
-    gener, discr = cond_gan.evaluate()
-    noise = cond_gan.generate_noise(num_examples=5)
-    real_data = debug_data_pull(path, num_examples=5)
-
-    cond_gan.generate_and_save_images(noise)
-    logger.info("The cGAN model has been tested correctly on noise.")
-
-    predictions = discr(real_data[0])
-    print(predictions[0])
-    logger.info("The cGAN model has been tested correctly on real_images.")
-
-
 if __name__=="__main__":
     """Creation and training of the conditional GAN."""
     if verbose :
@@ -88,7 +74,7 @@ if __name__=="__main__":
 
     train_cgan(cond_gan, train_dataset)
 
-    restore_and_predict(cond_gan)
+    debug_cgan(cond_gan)
 
     logger.info("The work is done.")
     logger.handlers.clear()

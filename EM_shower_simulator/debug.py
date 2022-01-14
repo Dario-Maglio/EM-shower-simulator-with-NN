@@ -39,7 +39,7 @@ logGAN.addHandler(ch)
 
 #-------------------------------------------------------------------------------
 
-def debug(path=DPATH, verbose=False):
+def debug(path=DPATH, num_examples=5, verbose=False):
     """Debug subroutines for the training of the cGAN with dataset in path."""
     if verbose :
         logger.setLevel(logging.DEBUG)
@@ -49,7 +49,7 @@ def debug(path=DPATH, verbose=False):
         logger.info('Logging level set on WARNING.')
 
     try:
-        train_data = debug_data_pull(path, 6)
+        train_data = debug_data_pull(path, num_examples)
     except AssertionError as e:
         print(f"An error occurred while loading the dataset: \n{e}")
         exit()
@@ -57,12 +57,61 @@ def debug(path=DPATH, verbose=False):
         print(f"Error: Invalid path or corrupted file. \n{e}")
         exit()
 
-    if verbose :
-        #Execute debug subroutines
-        train_images = train_data[0]
-        debug_shower(train_images, verbose)
-        debug_generator(verbose=verbose)
-        debug_discriminator(train_images, verbose)
+    #Execute debug subroutines
+    train_images = train_data[0]
+    debug_shower(train_images, verbose)
+    debug_generator(verbose=verbose)
+    debug_discriminator(train_images, verbose)
+
+def debug_cgan(cond_gan, path=DPATH, num_examples=5):
+    logger.info("Testing the cGAN methods on noise and real samples.")
+    gener, discr = cond_gan.evaluate()
+    noise = cond_gan.generate_noise(num_examples)
+
+    # Fake showers
+    predictions = gener(noise, training=False)
+    decisions = self.discriminator(predictions, training=False)
+
+    k=0
+    fig = plt.figure("Fake generated showers", figsize=(20,10))
+    num_examples = predictions.shape[0]
+    for i in range(num_examples):
+       for j in range(predictions.shape[1]):
+          k=k+1
+          plt.subplot(num_examples, predictions.shape[1], k)
+          plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
+          plt.axis("off")
+
+    for example in range(len(noise[0]) ):
+        print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
+             +f"\nInitial energy = {noise[1][example][0]}   "
+             +f"Generated energy = {decisions[1][example][0]}   "
+             +f"Predicted energy = {decisions[2][example][0]}   "
+             +f"Decision = {decisions[0][example][0]}")
+
+    # True showers
+    predictions = debug_data_pull(path, num_examples)
+    decisions = self.discriminator(predictions, training=False)
+    k=0
+    plt.figure("Real generated showers", figsize=(20,10))
+    num_examples = predictions.shape[0]
+    for i in range(num_examples):
+       for j in range(predictions.shape[1]):
+          k=k+1
+          plt.subplot(num_examples, predictions.shape[1], k)
+          plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
+          plt.axis("off")
+
+    for example in range(len(noise[0]) ):
+        print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
+             +f"\nInitial energy = {noise[1][example][0]}   "
+             +f"Generated energy = {decisions[1][example][0]}   "
+             +f"Predicted energy = {decisions[2][example][0]}   "
+             +f"Decision = {decisions[0][example][0]}")
+
+    plt.show()
+    logger.info("Debug of the cGAN methods finished.")
+
 
 if __name__=="__main__":
 
@@ -78,6 +127,8 @@ if __name__=="__main__":
     cond_gan.summary()
     cond_gan.plot_model()
     logger.info("The cGAN model has been plotted correctly.")
+
+    debug_cgan(cond_gan)
 
     logger.info("The work is done.")
     logger.handlers.clear()

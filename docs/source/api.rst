@@ -7,6 +7,7 @@ EM shower simulator module
 .. automodule:: EM_shower_simulator.shower_simulator
    :members:
 
+
 Dataset menagement module
 -------------------------
 
@@ -14,8 +15,15 @@ Dataset menagement module
    :members:
 
 
-Network Class and methods
--------------------------
+Conditional GAN Class and methods
+---------------------------------
 
 .. automodule:: EM_shower_simulator.class_GAN
+   :members:
+
+
+Generator and discriminator models
+----------------------------------
+
+.. automodule:: EM_shower_simulator.make_models
    :members:

@@ -257,7 +257,7 @@ def make_discriminator_model():
 
     Labels are given as scalars in input; then they are passed to an embedding
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
-    categorizes the labels in N_CLASSES_ * classes.
+    categorizes the labels in N_CLASSES * classes.
     """
     N_FILTER = 16
     KERNEL = (5, 5, 5)

@@ -11,10 +11,22 @@ EM shower simulator with Neural Network
 
 
 
-In this project we are involved in the design of a neural network capable of
-generating Monte Carlo simulations of electromagnetic swarms. The reference
-data and on which the network is trained were generated through a Monte Carlo
-simulation with Geant4, with an ideal detector.
+Recent developments in calorimeter physics are leading to a new paradigm in 
+calorimeters' design. The aim is to reconstruct the whole spatial distribution
+of the shower instead of extracting information only about the energy deposition
+inside calorimeter cells. Many collaborations are designing highly-segmented
+calorimeters (for instance, CMS High-Granularity CAL and ALICE FoCAL) to reach
+this goal. In this project, our goal is to build a neural network to simulate
+electromagnetic shower energy deposition inside a toy segmented calorimeter.
+Taking inspiration from recent works in this field, like the CaloGAN network,
+we have built a conditional GAN with auxiliary conditions based on total energy
+deposition and particle IDs. The neural network was trained with a dataset
+created on purpose with the Geant4 simulation toolkit. Simulations involve
+electrons, positrons and photons with energies from 1 to 30 GeV that strike on a
+CsI calorimeter with 12 layers and 12x12 cells. The results are further analyzed
+with ROOT to evaluate GAN's performances. Due to time, dataset and hardware
+constraints, this project must be considered an exploratory work whose results
+can even improve with more resources.
 
 Installation
 ------------

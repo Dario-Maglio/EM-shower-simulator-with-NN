@@ -34,16 +34,8 @@ ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 12, 12, 1)
 
-# Create a random seed, to be used during the evaluation of the cGAN.
-tf.random.set_seed(42)
-num_examples = 6
-test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
-              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
-              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
-
 # Define logger and handler
 logger = logging.getLogger("ModelsLogger")
-
 
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
@@ -119,7 +111,7 @@ def make_generator_model():
     model = Model([in_lat, en_label, pid_label], output, name='generator')
     return model
 
-def debug_generator(noise=test_noise, verbose=False):
+def debug_generator(noise, verbose=False):
     """Uses the random seeds to generate fake samples and plots them."""
     if verbose :
         logger.setLevel(logging.DEBUG)
@@ -253,7 +245,7 @@ def make_discriminator_model():
 
     Labels are given as scalars in input; then they are passed to an embedding
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
-    categorizes the labels in N_CLASSES_ * classes.
+    categorizes the labels in N_CLASSES * classes.
     """
     N_FILTER = 16
     KERNEL = (5, 5, 5)
@@ -307,7 +299,7 @@ def make_discriminator_model():
 
     #output = Dense(1, activation="sigmoid", name="final_decision")(output)
 
-    model = Model(in_image, [output_conv, total_energy, output_en], name='discriminator')#, pid_label
+    model = Model(in_image, [output_conv, output_en, total_energy], name='discriminator')#, pid_label
     return model
 
 def debug_discriminator(data, verbose=False):

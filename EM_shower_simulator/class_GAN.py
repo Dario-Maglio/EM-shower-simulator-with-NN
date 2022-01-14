@@ -206,7 +206,7 @@ class ConditionalGAN(tf.keras.Model):
             print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
                  +f"\nInitial energy = {noise[1][example][0]}   "
                  +f"Generated energy = {energies[example][0]}   "
-                 +f"Predicted energy = {decisions[2][example][0]}   "
+                 +f"Predicted energy = {decisions[1][example][0]}   "
                  +f"Decision = {decisions[0][example][0]}")
         plt.show()
 
@@ -305,9 +305,9 @@ class ConditionalGAN(tf.keras.Model):
             label_loss = energy_loss(en_labels, fake_output[2])
             energ_loss = energy_loss(en_labels, fake_output[1])
             gener_loss = generator_loss(fake_output[0])
-            gener_total_loss = gener_loss + energ_loss
+            gener_total_loss = gener_loss + label_loss
             discr_loss = discriminator_loss(real_output[0], fake_output[0])
-            discr_total_loss = discr_loss + label_loss
+            discr_total_loss = discr_loss + energ_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
@@ -381,7 +381,7 @@ class ConditionalGAN(tf.keras.Model):
            print(f"Running EPOCH = {epoch + 1}/{epochs}")
 
            # Define the progbar
-           progbar = tf.keras.utils.Progbar(len(dataset), verbose=verbose)
+           progbar = tf.keras.utils.Progbar(len(dataset), verbose=1)
 
            # Start iterate on batches
            start = time.time()

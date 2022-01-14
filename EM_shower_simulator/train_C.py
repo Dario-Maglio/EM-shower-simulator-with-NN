@@ -10,12 +10,12 @@ from dataset import data_path
 
 # Logger import
 from dataset import logger as logData
-from make_models_D import logger as logMod
+from make_models_C import logger as logMod
 from class_GAN import logger as logGAN
 
 # Train import
 from dataset import data_pull
-from make_models_D import make_generator_model, make_discriminator_model
+from make_models_C import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
 
 

@@ -50,7 +50,7 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 32
+    N_FILTER = 1
     EMBED_DIM = 1
     KERNEL = (4, 4, 4)
     input_shape = (3, 3, 3, 3 * N_FILTER)
@@ -245,7 +245,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 16
+    N_FILTER = 1
     KERNEL = (5, 5, 5)
 
     # padding="same" add a 0 to borders, "valid" use only available data !

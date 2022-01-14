@@ -25,7 +25,7 @@ from IPython import display
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-S_EPOCH = 10
+S_EPOCH = 5
 PARAM_EN = 0.01
 NOISE_DIM = 1024
 ENERGY_NORM = 6.503
@@ -44,6 +44,7 @@ logger = logging.getLogger("CGANLogger")
 
 #-------------------------------------------------------------------------------
 
+@tf.function
 def compute_energy(in_images):
     """Compute energy deposited in detector
     """
@@ -55,6 +56,7 @@ def compute_energy(in_images):
     en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
     return en_images
 
+@tf.function
 def generator_loss(fake_output):
     """Definie generator loss:
     successes on fake samples from the generator valued as true samples by
@@ -63,6 +65,7 @@ def generator_loss(fake_output):
     cross_entropy = tf.keras.losses.BinaryCrossentropy()
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
+@tf.function
 def discriminator_loss(real_output, fake_output):
     """Define discriminator loss:
     fails on fake samples (from generator) and successes on real samples.
@@ -73,6 +76,7 @@ def discriminator_loss(real_output, fake_output):
     total_loss = real_loss + fake_loss
     return total_loss
 
+@tf.function
 def energy_loss(en_label, total_energy):
     #msle = tf.keras.losses.MeanSquaredLogarithmicError()
     msle = tf.keras.losses.MeanSquaredError()
@@ -126,14 +130,23 @@ class ConditionalGAN(tf.keras.Model):
                 self.label_loss_tracker]
 
     def summary(self):
-        """Summary of the cGAN network."""
-        print("\n\n Conditional GAN summary:\n")
-        self.generator.summary()
-        print("\n")
-        self.discriminator.summary()
+        """Summary method of the cGAN network."""
+        print("\nPrinting conditional GAN summary to file.\n")
+        save_path = Path('model_plot').resolve()
+        if not os.path.isdir(save_path):
+           os.makedirs(save_path)
+        file_name = "cgan-summary.txt"
+        path = os.path.join(save_path, file_name)
+        with open(path, 'w') as file:
+           file.write('\nConditional GAN summary\n\n')
+           self.generator.summary(print_fn=lambda x: file.write(x + '\n'))
+           file.write('\n\n')
+           self.discriminator.summary(print_fn=lambda x: file.write(x + '\n'))
+           file.write('\n\n')
 
     def plot_model(self):
-        """Plot_model of the cGAN network."""
+        """Plot_model method of the cGAN network."""
+        print("\nPlotting and saving conditional GAN scheme.\n")
         save_path = Path('model_plot').resolve()
         if not os.path.isdir(save_path):
            os.makedirs(save_path)
@@ -157,13 +170,15 @@ class ConditionalGAN(tf.keras.Model):
         file_name = "cgan-scheme.png"
         path = os.path.join(save_path, file_name)
         fig.savefig(os.path.join(save_path, file_name))
-        plt.show()
+        plt.close()
 
-    def generate_noise(self, num_examples=num_examples):
-        """Generate a set of num_examples noise inputs for the generator."""
-        return [tf.random.normal([num_examples, NOISE_DIM]),
-                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
-                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
+    def compile(self):
+        """Compile method of the cGAN network.
+        Quite useless in this case because the training set up has been done in
+        the constructor of the class. It associate to the new abstract model an
+        optimizer attribute 'rmsprop', and loss, metrics=None.
+        """
+        super(ConditionalGAN, self).compile()
 
     def generate_and_save_images(self, noise, epoch=0):
         """Use the current status of the NN to generate images from the noise,
@@ -206,27 +221,23 @@ class ConditionalGAN(tf.keras.Model):
     def evaluate(self, num_examples=num_examples):
         """Restore the last checkpoint and return the models."""
         if self.manager.latest_checkpoint:
-            try:
-               self.checkpoint.restore(self.manager.latest_checkpoint)
-               print(f"Restored from {self.manager.latest_checkpoint}")
-               return self.generator, self.discriminator
-            except:
+            latest_check = self.manager.latest_checkpoint
+            if tf.train.get_checkpoint_state(latest_check):
+               self.checkpoint.restore(latest_check).expect_partial()
+            else:
                raise Exception("Invalid checkpoint.")
+            print(f"Restored from {latest_check}")
+            return self.generator, self.discriminator
         else:
             raise Exception("No checkpoint found.")
 
-    def compile(self):
-        """Wrap the default compile method of the network.
-        Quite useless in this case because the training set up has been done in
-        the constructor of the class. It associate to the new abstract model an
-        optimizer attribute 'rmsprop', and loss, metrics=None.
-        """
-        super(ConditionalGAN, self).compile()
-
     def scheduler(self, epoch, logs):
-        """Not yet my dear."""
+        """Starting from epoch S_EPOCH, the scheduler boosts the generator or
+        discriminator learning rate depending on which is doing better. The
+        comparison is made looking at the losses stored in logs.
+        """
         if (epoch == S_EPOCH):
-           learning_rate_pro = self.generator_optimizer.lr * 10.
+           learning_rate_pro = self.generator_optimizer.lr * 6.
            if (logs["gener_loss"] > logs["discr_loss"]):
               self.generator_optimizer.lr = learning_rate_pro
               self.switch = False
@@ -249,6 +260,13 @@ class ConditionalGAN(tf.keras.Model):
               self.switch = True
               print(f"Learning rate switched: power to the discriminator!")
 
+    @tf.function
+    def generate_noise(self, num_examples=num_examples):
+        """Generate a set of num_examples noise inputs for the generator."""
+        return [tf.random.normal([num_examples, NOISE_DIM]),
+                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
+                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
+
     def train_step(self, dataset):
         """Train step of the cGAN.
         Inputs:
@@ -262,7 +280,7 @@ class ConditionalGAN(tf.keras.Model):
         """
         real_images, en_labels, pid_labels = dataset
 
-        noise = tf.random.normal([real_images.shape[0], NOISE_DIM])
+        noise = self.generate_noise(num_examples=real_images.shape[0])[0]
 
         generator_input = [noise, en_labels, pid_labels]
 
@@ -330,14 +348,15 @@ class ConditionalGAN(tf.keras.Model):
         # Call checkpoint manager to load the state or restart from scratch
         switch = input("Do you want to restore the last checkpoint? [y/N]")
         if switch=='y':
-            if self.manager.latest_checkpoint:
-                try:
-                   self.checkpoint.restore(self.manager.latest_checkpoint)
-                   print(f"Restored from {self.manager.latest_checkpoint}")
-                except:
-                   print("Invalid checkpoint: initializing from scratch.")
-            else:
-                print("No checkpoint found: initializing from scratch.")
+           if self.manager.latest_checkpoint:
+              latest_check = self.manager.latest_checkpoint
+              if tf.train.get_checkpoint_state(latest_check):
+                 self.checkpoint.restore(latest_check).expect_partial()
+              else:
+                 raise Exception("Invalid checkpoint: init from scratch.")
+              print(f"Restored from {latest_check}")
+           else:
+              print("No checkpoint found: initializing from scratch.")
         else:
             print("Initializing from scratch.")
 
@@ -366,7 +385,7 @@ class ConditionalGAN(tf.keras.Model):
            self.generate_and_save_images(test_noise, epoch + 1)
 
            # Save checkpoint
-           if (epoch + 1) % 5 == 0:
+           if (epoch + 1) % 3 == 0:
               save_path = self.manager.save()
               print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
 

@@ -14,18 +14,20 @@ from make_models import logger as logMod
 from class_GAN import logger as logGAN
 
 # Train import
-from dataset import data_pull
+from dataset import data_pull, debug_data_pull
 from make_models import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
 
 
 # Creation of the default dataset path
 # In the project folder
-#DPATH = data_path
+#path = data_path
 # In colab after cloning the repository
-#DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
+#path = os.path.join("EM-shower-simulator-with-NN", data_path)
 # In this folder
-DPATH = os.path.join("..", data_path)
+path = os.path.join("..", data_path)
+
+verbose = True
 
 # Define logger and handler
 ch = logging.StreamHandler()
@@ -39,7 +41,33 @@ logGAN.addHandler(ch)
 
 #-------------------------------------------------------------------------------
 
-def train_cgan(path=DPATH, verbose=False):
+def train_cgan(cond_gan, train_dataset):
+    history = cond_gan.train(train_dataset, epochs=100, batch=64)
+    #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
+
+    plt.figure("Evolution of losses per epochs")
+    plt.plot(history["gener_loss"])
+    plt.plot(history["discr_loss"])
+    plt.plot(history["energ_loss"])
+    plt.plot(history["label_loss"])
+    plt.show()
+    logger.info("The cGAN model has been trained correctly.")
+
+def restore_and_predict(cond_gan):
+    logger.info("Testing the cGAN model on noise and real samples.")
+    gener, discr = cond_gan.evaluate()
+    noise = cond_gan.generate_noise(num_examples=5)
+    real_data = debug_data_pull(path, num_examples=5)
+
+    cond_gan.generate_and_save_images(noise)
+    logger.info("The cGAN model has been tested correctly on noise.")
+
+    predictions = discr(real_data[0])
+    print(predictions[0])
+    logger.info("The cGAN model has been tested correctly on real_images.")
+
+
+if __name__=="__main__":
     """Creation and training of the conditional GAN."""
     if verbose :
         logger.setLevel(logging.DEBUG)
@@ -58,35 +86,9 @@ def train_cgan(path=DPATH, verbose=False):
     cond_gan = ConditionalGAN(generator, discriminator)
     logger.info("The cGAN model has been built correctly.")
 
-    cond_gan.summary()
-    cond_gan.plot_model()
-    logger.info("The cGAN model has been plotted correctly.")
+    train_cgan(cond_gan, train_dataset)
 
-    history = cond_gan.train(train_dataset, epochs=100)
-    #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
-
-    for key in history.keys():
-        print(key)
-
-    plt.figure("Evolution of losses per epochs")
-    plt.plot(history["gener_loss"])
-    plt.plot(history["discr_loss"])
-    plt.plot(history["energ_loss"])
-    plt.plot(history["label_loss"])
-    plt.show()
-    logger.info("The cGAN model has been trained correctly.")
-
-    noise = cond_gan.generate_noise(4)
-    cond_gan.generate_and_save_images(noise)
-    logger.info("The cGAN model has been tested correctly.")
-
-    gener, discr = cond_gan.evaluate()
-    predictions = discr(train_dataset[0][0:2])
-    print(predictions)
-
-if __name__=="__main__":
-
-    train_cgan(verbose=True)
+    restore_and_predict(cond_gan)
 
     logger.info("The work is done.")
     logger.handlers.clear()

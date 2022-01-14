@@ -1,4 +1,4 @@
-""" Debug the GAN with the Geant generated dataset and save the model """
+""" Debug GAN, generator and discriminator and save the models """
 
 import os
 import logging
@@ -16,6 +16,8 @@ from class_GAN import logger as logGAN
 # Debug import
 from dataset import debug_data_pull, debug_shower
 from make_models import debug_generator, debug_discriminator
+from make_models import make_generator_model, make_discriminator_model
+from class_GAN import ConditionalGAN
 
 # Creation of the default dataset path
 # In the project folder
@@ -65,6 +67,17 @@ def debug(path=DPATH, verbose=False):
 if __name__=="__main__":
 
     debug(verbose=True)
+
+    generator = make_generator_model()
+
+    discriminator = make_discriminator_model()
+
+    cond_gan = ConditionalGAN(generator, discriminator)
+    logger.info("The cGAN model has been built correctly.")
+
+    cond_gan.summary()
+    cond_gan.plot_model()
+    logger.info("The cGAN model has been plotted correctly.")
 
     logger.info("The work is done.")
     logger.handlers.clear()

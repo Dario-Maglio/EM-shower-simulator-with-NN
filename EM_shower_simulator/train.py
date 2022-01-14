@@ -42,7 +42,11 @@ logGAN.addHandler(ch)
 #-------------------------------------------------------------------------------
 
 def train_cgan(cond_gan, train_dataset):
+<<<<<<< HEAD
     history = cond_gan.train(train_dataset, epochs=3, batch=128, wake_up=1)
+=======
+    history = cond_gan.train(train_dataset, epochs=500, batch=256, wake_up=10)
+>>>>>>> c1b351748ebfca250b9044c4fc1e97269c5f899c
     #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
 
     plt.figure("Evolution of losses per epochs")

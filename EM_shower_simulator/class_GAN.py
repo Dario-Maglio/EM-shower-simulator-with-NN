@@ -257,7 +257,7 @@ class ConditionalGAN(tf.keras.Model):
               print("Power to the discriminator!")
         elif (epoch > wake_up):
 
-           decrease = np.exp(-(epoch-wake_up) / (15.*5000))
+           decrease = np.exp(-(epoch-wake_up) / (15.*800))
            gener_lr = self.generator_optimizer.lr.numpy()
            discr_lr = self.discriminator_optimizer.lr.numpy()
            self.learning_rate = self.learning_rate * decrease

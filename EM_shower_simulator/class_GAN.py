@@ -206,7 +206,7 @@ class ConditionalGAN(tf.keras.Model):
             print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
                  +f"\nInitial energy = {noise[1][example][0]}   "
                  +f"Generated energy = {energies[example][0]}   "
-                 +f"Predicted energy = {decisions[1][example][0]}   "
+                 +f"Predicted energy = {decisions[2][example][0]}   "
                  +f"Decision = {decisions[0][example][0]}")
         plt.show()
 
@@ -246,7 +246,8 @@ class ConditionalGAN(tf.keras.Model):
               self.switch = True
               print("Power to the discriminator!")
         elif (epoch > wake_up):
-           decrease = np.exp(-(epoch-wake_up) / 15.)
+
+           decrease = np.exp(-(epoch-wake_up) / 15.*20000)
            gener_lr = self.generator_optimizer.lr.numpy()
            discr_lr = self.discriminator_optimizer.lr.numpy()
            self.learning_rate = self.learning_rate * decrease

@@ -245,6 +245,7 @@ class ConditionalGAN(tf.keras.Model):
         discriminator learning rate depending on which is doing better. The
         comparison is made looking at the losses stored in logs.
         """
+        # !!!!!!!!!!!!!! ATTENZIONE : PROBABILMENTE DA ELIMINARE  !!!!!!!!!!!!!!
         if (epoch == wake_up):
            learning_rate_pro = self.generator_optimizer.lr * 6.
            if (logs["gener_loss"] > logs["discr_loss"]):

@@ -201,9 +201,9 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 16
-    KERNEL = (2, 2, 2)
-
+    N_FILTER = 32
+    KERNEL = (3, 3, 3)
+    KERNEL_1 = (2,2, 2)
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
     # Here we use padding default = "valid" (=0 above) and strides = 1 !
@@ -226,15 +226,16 @@ def make_discriminator_model():
     discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
+    discr = Conv3D(2*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
+    discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
     discr = Dropout(0.3)(discr)
 
-    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
-    discr = Conv3D(2*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
+    discr = Conv3D(3*N_FILTER, KERNEL_1, padding="same", use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
 

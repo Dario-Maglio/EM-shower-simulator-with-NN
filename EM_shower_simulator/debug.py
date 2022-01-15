@@ -15,8 +15,8 @@ from class_GAN import logger as logGAN
 
 # Debug import
 from dataset import debug_data_pull, debug_shower
-from make_models import debug_generator, debug_discriminator
-from make_models import make_generator_model, make_discriminator_model
+from make_models_D import debug_generator, debug_discriminator
+from make_models_D import make_generator_model, make_discriminator_model
 from class_GAN import test_noise, ConditionalGAN, compute_energy
 
 # Creation of the default dataset path
@@ -132,7 +132,7 @@ if __name__=="__main__":
     cond_gan.plot_model()
     logger.info("The cGAN model has been plotted correctly.")
 
-    debug_cgan(cond_gan)
+    #debug_cgan(cond_gan)
 
     logger.info("The work is done.")
     logger.handlers.clear()

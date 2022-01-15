@@ -71,7 +71,7 @@ def discriminator_loss(real_output, fake_output):
     cross_entropy = tf.keras.losses.BinaryCrossentropy()
     real_loss = cross_entropy(tf.ones_like(real_output), real_output)
     fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
-    total_loss = real_loss + fake_loss
+    total_loss = (real_loss + fake_loss) / 2.
     return total_loss
 
 @tf.function
@@ -315,10 +315,10 @@ class ConditionalGAN(tf.keras.Model):
             label_loss = energy_loss(en_labels, energies)
 
             discr_loss = discriminator_loss(real_output[0], fake_output[0])
-            energ_loss = energy_loss(en_labels, fake_output[1])
-                       + energy_loss(en_labels, real_output[1])
-            parID_loss = particle_loss(pid_labels, fake_output[2])
-                       + particle_loss(pid_labels, real_output[2])
+            energ_loss = (energy_loss(en_labels, fake_output[1])
+                               + energy_loss(en_labels, real_output[1])) / 2.
+            parID_loss = (particle_loss(pid_labels, fake_output[2])
+                               + particle_loss(pid_labels, real_output[2])) / 2.
 
             gener_total_loss = gener_loss + label_loss
             discr_total_loss = discr_loss + energ_loss + parID_loss

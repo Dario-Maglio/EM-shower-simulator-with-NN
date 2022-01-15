@@ -248,7 +248,7 @@ void MVA_processing_formatting_normalization(){
 
   double max = MVA_processing_normalization();
 
-  for(int evt=0; evt<h->GetEntries(); evt++){
+  for(evt=0; evt<h->GetEntries(); evt++){
     cout<<evt<<endl;
     h->GetEntry(evt);
     tree->GetEntry(evt);

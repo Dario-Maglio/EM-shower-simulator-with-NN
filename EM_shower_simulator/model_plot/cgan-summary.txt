@@ -5,7 +5,6 @@ Model: "generator"
 __________________________________________________________________________________________________
  Layer (type)                   Output Shape         Param #     Connected to                     
 ==================================================================================================
-<<<<<<< HEAD
  latent_input (InputLayer)      [(None, 1024)]       0           []                               
                                                                                                   
  dense_11 (Dense)               (None, 9408)         9633792     ['latent_input[0][0]']           
@@ -16,17 +15,11 @@ ________________________________________________________________________________
                                                                                                   
  batch_normalization_3 (BatchNo  (None, 9408)        37632       ['dense_11[0][0]']               
  rmalization)                                                                                     
-=======
- energy_input (InputLayer)      [(None, 1)]          0           []                               
                                                                                                   
- latent_input (InputLayer)      [(None, 1024)]       0           []                               
->>>>>>> 4d46acda00fc7f4d4d3822d2ae59f669663803f6
+ embedding_2 (Embedding)        (None, 1, 310)       9610        ['energy_input[0][0]']           
                                                                                                   
- dense_8 (Dense)                (None, 1024)         1024        ['energy_input[0][0]']           
+ embedding_3 (Embedding)        (None, 1, 30)        90          ['particleID_input[0][0]']       
                                                                                                   
- particle_input (InputLayer)    [(None, 1)]          0           []                               
-                                                                                                  
-<<<<<<< HEAD
  leaky_re_lu_5 (LeakyReLU)      (None, 9408)         0           ['batch_normalization_3[0][0]']  
                                                                                                   
  dense_9 (Dense)                (None, 1, 2352)      731472      ['embedding_2[0][0]']            
@@ -68,47 +61,6 @@ ________________________________________________________________________________
 Total params: 12,900,740
 Trainable params: 12,881,668
 Non-trainable params: 19,072
-=======
- multiply_1 (Multiply)          (None, 1024)         0           ['latent_input[0][0]',           
-                                                                  'dense_8[0][0]']                
-                                                                                                  
- embedding_1 (Embedding)        (None, 1, 15)        45          ['particle_input[0][0]']         
-                                                                                                  
- dense_9 (Dense)                (None, 1024)         1048576     ['multiply_1[0][0]']             
-                                                                                                  
- dense_10 (Dense)               (None, 1, 1024)      15360       ['embedding_1[0][0]']            
-                                                                                                  
- reshape_2 (Reshape)            (None, 4, 4, 4, 16)  0           ['dense_9[0][0]']                
-                                                                                                  
- reshape_3 (Reshape)            (None, 4, 4, 4, 16)  0           ['dense_10[0][0]']               
-                                                                                                  
- concatenate_1 (Concatenate)    (None, 4, 4, 4, 32)  0           ['reshape_2[0][0]',              
-                                                                  'reshape_3[0][0]']              
-                                                                                                  
- conv3d_transpose_2 (Conv3DTran  (None, 4, 4, 4, 64)  256064     ['concatenate_1[0][0]']          
- spose)                                                                                           
-                                                                                                  
- batch_normalization_2 (BatchNo  (None, 4, 4, 4, 64)  256        ['conv3d_transpose_2[0][0]']     
- rmalization)                                                                                     
-                                                                                                  
- leaky_re_lu_4 (LeakyReLU)      (None, 4, 4, 4, 64)  0           ['batch_normalization_2[0][0]']  
-                                                                                                  
- conv3d_transpose_3 (Conv3DTran  (None, 8, 8, 8, 32)  256000     ['leaky_re_lu_4[0][0]']          
- spose)                                                                                           
-                                                                                                  
- batch_normalization_3 (BatchNo  (None, 8, 8, 8, 32)  128        ['conv3d_transpose_3[0][0]']     
- rmalization)                                                                                     
-                                                                                                  
- leaky_re_lu_5 (LeakyReLU)      (None, 8, 8, 8, 32)  0           ['batch_normalization_3[0][0]']  
-                                                                                                  
- fake_image (Conv3DTranspose)   (None, 12, 12, 12,   4000        ['leaky_re_lu_5[0][0]']          
-                                1)                                                                
-                                                                                                  
-==================================================================================================
-Total params: 1,581,453
-Trainable params: 1,581,261
-Non-trainable params: 192
->>>>>>> 4d46acda00fc7f4d4d3822d2ae59f669663803f6
 __________________________________________________________________________________________________
 
 
@@ -119,7 +71,6 @@ ________________________________________________________________________________
  input_image (InputLayer)       [(None, 12, 25, 25,  0           []                               
                                  1)]                                                              
                                                                                                   
-<<<<<<< HEAD
  conv3d_3 (Conv3D)              (None, 8, 21, 21, 3  4000        ['input_image[0][0]']            
                                 2)                                                                
                                                                                                   
@@ -163,45 +114,6 @@ ________________________________________________________________________________
 ==================================================================================================
 Total params: 438,467
 Trainable params: 438,467
-=======
- conv3d_3 (Conv3D)              (None, 8, 8, 8, 32)  4000        ['input_image[0][0]']            
-                                                                                                  
- leaky_re_lu_6 (LeakyReLU)      (None, 8, 8, 8, 32)  0           ['conv3d_3[0][0]']               
-                                                                                                  
- dropout_2 (Dropout)            (None, 8, 8, 8, 32)  0           ['leaky_re_lu_6[0][0]']          
-                                                                                                  
- conv3d_4 (Conv3D)              (None, 8, 8, 8, 32)  128000      ['dropout_2[0][0]']              
-                                                                                                  
- leaky_re_lu_7 (LeakyReLU)      (None, 8, 8, 8, 32)  0           ['conv3d_4[0][0]']               
-                                                                                                  
- dropout_3 (Dropout)            (None, 8, 8, 8, 32)  0           ['leaky_re_lu_7[0][0]']          
-                                                                                                  
- conv3d_5 (Conv3D)              (None, 8, 8, 8, 64)  256000      ['dropout_3[0][0]']              
-                                                                                                  
- max_pooling3d_1 (MaxPooling3D)  (None, 2, 2, 2, 64)  0          ['conv3d_5[0][0]']               
-                                                                                                  
- flatten_1 (Flatten)            (None, 512)          0           ['max_pooling3d_1[0][0]']        
-                                                                                                  
- dense_11 (Dense)               (None, 32)           16416       ['flatten_1[0][0]']              
-                                                                                                  
- dense_13 (Dense)               (None, 32)           16416       ['flatten_1[0][0]']              
-                                                                                                  
- dense_12 (Dense)               (None, 32)           1056        ['dense_11[0][0]']               
-                                                                                                  
- dense_14 (Dense)               (None, 32)           1056        ['dense_13[0][0]']               
-                                                                                                  
- dense_15 (Dense)               (None, 32)           16416       ['flatten_1[0][0]']              
-                                                                                                  
- decision (Dense)               (None, 1)            33          ['dense_12[0][0]']               
-                                                                                                  
- energy_label (Dense)           (None, 1)            33          ['dense_14[0][0]']               
-                                                                                                  
- particle_label (Dense)         (None, 1)            33          ['dense_15[0][0]']               
-                                                                                                  
-==================================================================================================
-Total params: 439,459
-Trainable params: 439,459
->>>>>>> 4d46acda00fc7f4d4d3822d2ae59f669663803f6
 Non-trainable params: 0
 __________________________________________________________________________________________________
 

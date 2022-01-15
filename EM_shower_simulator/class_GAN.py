@@ -25,7 +25,7 @@ from IPython import display
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-PARAM_EN = 0.01
+PARAM_EN = 0.1
 NOISE_DIM = 1024
 ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
@@ -85,7 +85,7 @@ def particle_loss(pid_labels, fake_labels):
     labels = tf.math.add(pid_labels, -1)
     labels = tf.math.abs(labels)
     cross_entropy = tf.keras.losses.BinaryCrossentropy()
-    return cross_entropy(labels, fake_labels)
+    return cross_entropy(labels, fake_labels) * PARAM_EN
 
 #-------------------------------------------------------------------------------
 
@@ -245,7 +245,6 @@ class ConditionalGAN(tf.keras.Model):
         discriminator learning rate depending on which is doing better. The
         comparison is made looking at the losses stored in logs.
         """
-        # !!!!!!!!!!!!!! ATTENZIONE : PROBABILMENTE DA ELIMINARE  !!!!!!!!!!!!!!
         if (epoch == wake_up):
            learning_rate_pro = self.generator_optimizer.lr * 6.
            if (logs["gener_loss"] > logs["discr_loss"]):
@@ -422,5 +421,5 @@ class ConditionalGAN(tf.keras.Model):
            # Update history and call the scheduler
            for key, value in logs.items():
                self.history.setdefault(key, []).append(value)
-           self.scheduler(epoch + 1, logs, wake_up=wake_up)
+           #self.scheduler(epoch + 1, logs, wake_up=wake_up)
         return self.history

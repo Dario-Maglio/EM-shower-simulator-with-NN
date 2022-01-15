@@ -16,6 +16,7 @@ from tensorflow.keras.layers import (Input,
                                      LeakyReLU,
                                      Reshape,
                                      Conv3DTranspose,
+                                     MaxPooling3D,
                                      Conv3D,
                                      Dropout,
                                      Lambda,
@@ -188,12 +189,13 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(discr)
+    discr = Conv3D(N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
     discr = Conv3D(2*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
+    discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
 

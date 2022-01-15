@@ -81,13 +81,15 @@ ________________________________________________________________________________
                                                                                                   
  conv3d_5 (Conv3D)              (None, 4, 4, 4, 64)  256000      ['dropout_3[0][0]']              
                                                                                                   
- flatten_1 (Flatten)            (None, 4096)         0           ['conv3d_5[0][0]']               
+ max_pooling3d_1 (MaxPooling3D)  (None, 1, 1, 1, 64)  0          ['conv3d_5[0][0]']               
                                                                                                   
- dense_16 (Dense)               (None, 32)           131104      ['flatten_1[0][0]']              
+ flatten_1 (Flatten)            (None, 64)           0           ['max_pooling3d_1[0][0]']        
                                                                                                   
- dense_18 (Dense)               (None, 32)           131104      ['flatten_1[0][0]']              
+ dense_16 (Dense)               (None, 32)           2080        ['flatten_1[0][0]']              
                                                                                                   
- dense_20 (Dense)               (None, 32)           131104      ['flatten_1[0][0]']              
+ dense_18 (Dense)               (None, 32)           2080        ['flatten_1[0][0]']              
+                                                                                                  
+ dense_20 (Dense)               (None, 32)           2080        ['flatten_1[0][0]']              
                                                                                                   
  dense_17 (Dense)               (None, 32)           1056        ['dense_16[0][0]']               
                                                                                                   
@@ -102,8 +104,8 @@ ________________________________________________________________________________
  one_hot (Dense)                (None, 1)            33          ['dense_21[0][0]']               
                                                                                                   
 ==================================================================================================
-Total params: 784,579
-Trainable params: 784,579
+Total params: 397,507
+Trainable params: 397,507
 Non-trainable params: 0
 __________________________________________________________________________________________________
 

@@ -25,7 +25,7 @@ from IPython import display
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-PARAM_EN = 0.1
+PARAM_EN = 0.05
 NOISE_DIM = 1024
 ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
@@ -93,7 +93,7 @@ class ConditionalGAN(tf.keras.Model):
     """Class for a conditional GAN.
     It inherits keras.Model properties and functions.
     """
-    def __init__(self, gener, discr, learning_rate=3e-5):
+    def __init__(self, gener, discr, learning_rate=2e-5):
         """Constructor.
         Inputs:
         gener = generator network;
@@ -246,7 +246,7 @@ class ConditionalGAN(tf.keras.Model):
         comparison is made looking at the losses stored in logs.
         """
         if (epoch == wake_up):
-           learning_rate_pro = self.generator_optimizer.lr * 6.
+           learning_rate_pro = self.generator_optimizer.lr * 3.
            if (logs["gener_loss"] > logs["discr_loss"]):
               self.generator_optimizer.lr = learning_rate_pro
               self.switch = False
@@ -256,8 +256,7 @@ class ConditionalGAN(tf.keras.Model):
               self.switch = True
               print("Power to the discriminator!")
         elif (epoch > wake_up):
-
-           decrease = np.exp(-(epoch-wake_up) / (15.*800))
+           decrease = 0.999
            gener_lr = self.generator_optimizer.lr.numpy()
            discr_lr = self.discriminator_optimizer.lr.numpy()
            self.learning_rate = self.learning_rate * decrease
@@ -421,5 +420,5 @@ class ConditionalGAN(tf.keras.Model):
            # Update history and call the scheduler
            for key, value in logs.items():
                self.history.setdefault(key, []).append(value)
-           #self.scheduler(epoch + 1, logs, wake_up=wake_up)
+           self.scheduler(epoch + 1, logs, wake_up=wake_up)
         return self.history

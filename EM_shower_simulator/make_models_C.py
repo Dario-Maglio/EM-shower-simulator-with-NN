@@ -55,8 +55,8 @@ def make_generator_model():
     EMBED_DIM = 5
     KERNEL = (5, 5, 5)
     SIDE_L = 4
-    input_shape = (SIDE_L, SIDE_L, SIDE_L, N_FILTER)
-    image_shape = (SIDE_L, SIDE_L, SIDE_L, N_FILTER / 2)
+    input_shape = (SIDE_L, SIDE_L, SIDE_L, 2 * N_FILTER)
+    image_shape = (SIDE_L, SIDE_L, SIDE_L, N_FILTER)
 
     # Input[i] -> input[i] + convolution * (KERNEL-1)
     error = "ERROR building the generator: shape different from geometry!"

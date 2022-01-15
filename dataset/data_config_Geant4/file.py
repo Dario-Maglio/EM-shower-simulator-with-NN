@@ -1,11 +1,11 @@
 #Geometry parameters
 spazio = 0.0 #cm
 n_layers = 13
-n_z = 13
-n_y = 13
+n_z = 26
+n_y = 26
 X_DIM = 5. #cm
-Y_DIM = 2. #cm
-Z_DIM = 2. #cm
+Y_DIM = 1. #cm
+Z_DIM = 1. #cm
 
 #write to file positioning and color information
 

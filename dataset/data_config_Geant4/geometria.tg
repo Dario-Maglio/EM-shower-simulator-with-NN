@@ -3,8 +3,8 @@
 
 // geometry parameters
 :P X 5*cm //pixel lenght
-:P Y 2.*cm //pixel width
-:P Z 2.*cm //pixel height
+:P Y 1.*cm //pixel width
+:P Z 1.*cm //pixel height
 :P X_TOT 80*cm // total lenght
 :P Y_TOT 20*cm // total width
 :P Z_TOT 20*cm // total height

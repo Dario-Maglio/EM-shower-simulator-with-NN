@@ -33,7 +33,7 @@ NOISE_DIM = 1024
 MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
-GEOMETRY = (12, 12, 12, 1)
+GEOMETRY = (12, 25, 25, 1)
 
 # Define logger and handler
 logger = logging.getLogger("ModelsLogger")
@@ -51,17 +51,17 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 32
+    N_FILTER = 16
     EMBED_DIM = 10
-    KERNEL = (4, 4, 4)
-    input_shape = (3, 3, 3, N_FILTER)
-    image_shape = (3, 3, 3, 4*N_FILTER)
+    KERNEL = (4, 7, 7)
+    input_shape = (3, 7, 7, N_FILTER)
+    image_shape = (3, 7, 7, 4*N_FILTER)
 
     # Input[i] -> input[i] + 3 convolution * (KERNEL-1) = GEOMETRY[i]!
     error = "ERROR building the generator: shape different from geometry!"
-    assert KERNEL[0] == (GEOMETRY[0] - input_shape[0])/3 + 1, error
-    assert KERNEL[1] == (GEOMETRY[1] - input_shape[1])/3 + 1, error
-    assert KERNEL[2] == (GEOMETRY[2] - input_shape[2])/3 + 1, error
+    #assert KERNEL[0] == (GEOMETRY[0] - input_shape[0])/3 + 1, error
+    #assert KERNEL[1] == (GEOMETRY[1] - input_shape[1])/3 + 1, error
+    #assert KERNEL[2] == (GEOMETRY[2] - input_shape[2])/3 + 1, error
 
     n_nodes = 1
     for cell in input_shape:
@@ -201,9 +201,10 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 64
-    KERNEL = (3, 3, 3)
-    KERNEL_1 = (2,2, 2)
+    N_FILTER = 32
+    KERNEL = (5, 5, 5)
+    KERNEL_1 = (3, 3, 3)
+    KERNEL_2 = (2, 2, 2)
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
     # Here we use padding default = "valid" (=0 above) and strides = 1 !

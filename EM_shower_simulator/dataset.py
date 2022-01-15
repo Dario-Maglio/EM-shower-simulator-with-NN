@@ -11,13 +11,14 @@ from tensorflow.data import Dataset
 #-------------------------------------------------------------------------------
 
 # Creation of the default dataset path
-data_path = os.path.join("dataset","filtered_data","data_MVA_normalized.root")
+# "data_MVA_normalized.root"
+data_path = os.path.join("dataset","filtered_data","data_MVA_24pixel_normalized.root")
 DPATH = os.path.join("..", data_path)
 
 # Configuration of the dataset structure
 ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000
-GEOMETRY = (12, 12, 12, 1)
+GEOMETRY = (12, 25, 25, 1) # (12, 12, 12, 1)
 BUFFER_SIZE = 10400
 
 # Define logger

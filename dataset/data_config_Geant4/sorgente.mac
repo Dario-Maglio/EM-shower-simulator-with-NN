@@ -1,13 +1,13 @@
 
 # gamma
-/gps/source/intensity 0.34
+/gps/source/intensity 0.5
 /gps/particle gamma
 
 /gps/pos/type Volume
 /gps/pos/shape Cylinder
 /gps/pos/radius 0.01 cm
 /gps/pos/halfz 0.01 cm
-/gps/pos/centre -20 11 11 cm
+/gps/pos/centre -20 12. 12. cm
 
 /gps/direction 1 0 0 # beam normal to the detector plane
 
@@ -23,14 +23,14 @@
 #-------------------------------------------------------------------------------
 
 # elettrone
-/gps/source/add 0.33
+/gps/source/add 0.25
 /gps/particle e-
 
 /gps/pos/type Volume
 /gps/pos/shape Cylinder
 /gps/pos/radius 0.01 cm
 /gps/pos/halfz 0.01 cm
-/gps/pos/centre -20 11 11 cm
+/gps/pos/centre -20 12. 12. cm
 
 /gps/direction 1 0 0 # beam normal to the detector plane
 
@@ -45,14 +45,14 @@
 #-------------------------------------------------------------------------------
 
 # positrone
-/gps/source/add 0.33
+/gps/source/add 0.25
 /gps/particle e+
 
 /gps/pos/type Volume
 /gps/pos/shape Cylinder
 /gps/pos/radius 0.01 cm
 /gps/pos/halfz 0.01 cm
-/gps/pos/centre -20 11 11 cm
+/gps/pos/centre -20 12. 12. cm
 
 /gps/direction 1 0 0 # beam normal to the detector plane
 

@@ -57,5 +57,5 @@
 /run/printProgress 1000
 
 # start simulation
-/analysis/setFileName shower
+/analysis/setFileName shower_1
 /run/beamOn 10000

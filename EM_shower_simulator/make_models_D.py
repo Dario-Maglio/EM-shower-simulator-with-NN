@@ -52,10 +52,10 @@ def make_generator_model():
     categorizes the labels in N_CLASSES_* classes.
     """
     N_FILTER = 32
-    EMBED_DIM = 5
+    EMBED_DIM = 10
     KERNEL = (4, 4, 4)
-    input_shape = (3, 3, 3, 3 * N_FILTER)
-    image_shape = (3, 3, 3, N_FILTER)
+    input_shape = (3, 3, 3, N_FILTER)
+    image_shape = (3, 3, 3, 4*N_FILTER)
 
     # Input[i] -> input[i] + 3 convolution * (KERNEL-1) = GEOMETRY[i]!
     error = "ERROR building the generator: shape different from geometry!"
@@ -93,12 +93,12 @@ def make_generator_model():
     # Merge image gen and label input
     merge = Concatenate()([gen, li_en, li_pid])
 
-    gen = Conv3DTranspose(3*N_FILTER, KERNEL, use_bias=False)(merge)
+    gen = Conv3DTranspose(6*N_FILTER, KERNEL, use_bias=False)(merge)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(N_FILTER, KERNEL, use_bias=False)(gen)
+    gen = Conv3DTranspose(2*N_FILTER, KERNEL, use_bias=False)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
@@ -201,7 +201,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 32
+    N_FILTER = 64
     KERNEL = (3, 3, 3)
     KERNEL_1 = (2,2, 2)
     # padding="same" add a 0 to borders, "valid" use only available data !
@@ -229,13 +229,13 @@ def make_discriminator_model():
     discr = Conv3D(2*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
-    discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
     discr = Dropout(0.3)(discr)
 
     # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
     discr = Conv3D(3*N_FILTER, KERNEL_1, padding="same", use_bias=False)(discr)
+    discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
 

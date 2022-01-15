@@ -168,7 +168,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 64
+    N_FILTER = 32
     KERNEL = (5, 5, 5)
 
     # padding="same" add a 0 to borders, "valid" use only available data !

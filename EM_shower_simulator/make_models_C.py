@@ -51,12 +51,12 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 16
+    N_FILTER = 32
     EMBED_DIM = 5
     KERNEL = (5, 5, 5)
     SIDE_L = 4
     input_shape = (SIDE_L, SIDE_L, SIDE_L, N_FILTER)
-    image_shape = (SIDE_L, SIDE_L, SIDE_L, 2 * N_FILTER)
+    image_shape = (SIDE_L, SIDE_L, SIDE_L, N_FILTER / 2)
 
     # Input[i] -> input[i] + convolution * (KERNEL-1)
     error = "ERROR building the generator: shape different from geometry!"
@@ -84,7 +84,7 @@ def make_generator_model():
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
     gen = Dense(n_nodes, activation="linear")(in_lat)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    gen = BatchNormalization()(gen) #gen = LeakyReLU(alpha=0.2)(gen)
     gen = Reshape(image_shape)(gen)
 
     # Merge image gen and label input
@@ -97,8 +97,8 @@ def make_generator_model():
 
     gen = Conv3DTranspose(N_FILTER, KERNEL, use_bias=False)(gen)
     logger.info(gen.get_shape())
-    #gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    gen = BatchNormalization()(gen)
+    #gen = LeakyReLU(alpha=0.2)(gen)
 
     gen = Dense(N_FILTER, activation="linear")(gen)
 
@@ -168,7 +168,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 32
+    N_FILTER = 64
     KERNEL = (5, 5, 5)
 
     # padding="same" add a 0 to borders, "valid" use only available data !

@@ -93,7 +93,7 @@ class ConditionalGAN(tf.keras.Model):
     """Class for a conditional GAN.
     It inherits keras.Model properties and functions.
     """
-    def __init__(self, gener, discr, learning_rate=2e-5):
+    def __init__(self, gener, discr, learning_rate=5e-5):
         """Constructor.
         Inputs:
         gener = generator network;
@@ -420,5 +420,5 @@ class ConditionalGAN(tf.keras.Model):
            # Update history and call the scheduler
            for key, value in logs.items():
                self.history.setdefault(key, []).append(value)
-           self.scheduler(epoch + 1, logs, wake_up=wake_up)
+           #self.scheduler(epoch + 1, logs, wake_up=wake_up)
         return self.history

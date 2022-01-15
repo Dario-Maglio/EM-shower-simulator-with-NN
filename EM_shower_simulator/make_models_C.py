@@ -21,6 +21,7 @@ from tensorflow.keras.layers import (Input,
                                      Dropout,
                                      Lambda,
                                      Concatenate,
+                                     Multiply,
                                      Flatten)
 
 #-------------------------------------------------------------------------------
@@ -49,48 +50,43 @@ def make_generator_model():
 
     Labels are given as scalars in input; then they are passed to an embedding
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
-    categorizes the labels in N_CLASSES_* classes.
+    categorizes the labels in N_CLASSES * classes.
     """
+    SIDE = 4
+    IN_NODES = 16
     N_FILTER = 32
     EMBED_DIM = 5
     KERNEL = (5, 5, 5)
-    SIDE_L = 4
-    input_shape = (SIDE_L, SIDE_L, SIDE_L, 2 * N_FILTER)
-    image_shape = (SIDE_L, SIDE_L, SIDE_L, N_FILTER)
-
-    # Input[i] -> input[i] + convolution * (KERNEL-1)
-    error = "ERROR building the generator: shape different from geometry!"
-
-    n_nodes = 1
-    for cell in input_shape:
-        n_nodes = n_nodes * cell
-
-    # Energy label input
-    en_label = Input(shape=(1,), name="energy_input")
-    li_en = Dense(N_ENER*EMBED_DIM, activation="relu")(en_label)
-    li_en = Dense(n_nodes, activation="linear")(li_en)
-    li_en = Reshape(input_shape)(li_en)
-
-    # ParticleID label input
-    pid_label = Input(shape=(1,), name="particle_input")
-    li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
-    li_pid = Dense(n_nodes, activation="linear")(li_pid)
-    li_pid = Reshape(input_shape)(li_pid)
+    image_shape = (SIDE, SIDE, SIDE, IN_NODES)
 
     n_nodes = 1
     for cell in image_shape:
         n_nodes = n_nodes * cell
 
+    # Input[i] -> input[i] + convolution * (KERNEL-1)
+    error = "ERROR building the generator: shape different from geometry!"
+
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
-    gen = Dense(n_nodes, activation="linear")(in_lat)
-    gen = BatchNormalization()(gen) #gen = LeakyReLU(alpha=0.2)(gen)
+
+    # Energy label input
+    en_label = Input(shape=(1,), name="energy_input")
+    li_en = Dense(NOISE_DIM, activation="relu", use_bias=False)(en_label)
+
+    # Combine energy and noise
+    gen = Multiply()([in_lat, li_en])
+    gen = Dense(n_nodes, activation="linear", use_bias=False)(gen)
     gen = Reshape(image_shape)(gen)
 
-    # Merge image gen and label input
-    merge = Concatenate()([gen, li_en, li_pid])
+    # ParticleID label input
+    pid_label = Input(shape=(1,), name="particle_input")
+    li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
+    li_pid = Dense(n_nodes, activation="tanh", use_bias=False)(li_pid)
+    li_pid = Reshape(image_shape)(li_pid)
 
-    gen = Conv3DTranspose(2*N_FILTER, KERNEL, use_bias=False)(merge)
+    # Merge image gen and label input
+    merge = Concatenate()([gen, li_pid])
+    gen = Conv3DTranspose(2*N_FILTER, KERNEL, padding="same")(merge)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
@@ -98,12 +94,10 @@ def make_generator_model():
     gen = Conv3DTranspose(N_FILTER, KERNEL, use_bias=False)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
-    #gen = LeakyReLU(alpha=0.2)(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Dense(N_FILTER, activation="linear")(gen)
-
-    output = (Conv3DTranspose(1, KERNEL, use_bias=False, padding="same",
-                                 activation="tanh", name="fake_image")(gen))
+    output = (Conv3DTranspose(1, KERNEL, use_bias=False, activation="tanh",
+                                                        name="fake_image")(gen))
 
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
@@ -208,8 +202,7 @@ def make_discriminator_model():
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
     discr_id = Dense(N_FILTER, activation="relu")(discr)
-    discr_id = Dense(N_FILTER, activation="relu")(discr_id)
-    output_id = Dense(1, activation="sigmoid", name="one_hot")(discr_id)
+    output_id = Dense(1, activation="sigmoid", name="particle_label")(discr_id)
 
     output = [output_conv, output_en, output_id]
     model = Model(in_image, output, name='discriminator')

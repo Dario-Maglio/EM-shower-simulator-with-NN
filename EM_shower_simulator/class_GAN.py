@@ -32,7 +32,7 @@ ENERGY_SCALE = 1000000.
 
 
 # Create a random seed, to be used during the evaluation of the cGAN.
-tf.random.set_seed(42)
+tf.random.set_seed(12)
 num_examples = 6
 test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
@@ -85,7 +85,7 @@ def particle_loss(pid_labels, fake_labels):
     labels = tf.math.add(pid_labels, -1)
     labels = tf.math.abs(labels)
     cross_entropy = tf.keras.losses.BinaryCrossentropy()
-    return cross_entropy(labels, fake_labels)
+    return cross_entropy(labels, fake_labels) * PARAM_EN
 
 #-------------------------------------------------------------------------------
 
@@ -93,7 +93,7 @@ class ConditionalGAN(tf.keras.Model):
     """Class for a conditional GAN.
     It inherits keras.Model properties and functions.
     """
-    def __init__(self, gener, discr, learning_rate=3e-5):
+    def __init__(self, gener, discr, learning_rate=2e-5):
         """Constructor.
         Inputs:
         gener = generator network;
@@ -112,9 +112,9 @@ class ConditionalGAN(tf.keras.Model):
         self.label_loss_tracker = Mean(name="label_loss")
 
         # Scheduler attributes and optimizers
-        self.switch = None
+        self.switch = True
         self.learning_rate = learning_rate
-        self.generator_optimizer = Adam(learning_rate)
+        self.generator_optimizer = Adam(learning_rate * 10)
         self.discriminator_optimizer = Adam(learning_rate)
 
         # Manager to save rusults from training in form of checkpoints.
@@ -245,9 +245,15 @@ class ConditionalGAN(tf.keras.Model):
         discriminator learning rate depending on which is doing better. The
         comparison is made looking at the losses stored in logs.
         """
-        # !!!!!!!!!!!!!! ATTENZIONE : PROBABILMENTE DA ELIMINARE  !!!!!!!!!!!!!!
+
+        if (epoch > wake_up) & (logs["gener_loss"] < 1.5) & self.switch:
+           self.generator_optimizer.lr = self.learning_rate
+           self.switch = False
+           print("Restored normality!")
+
+        """
         if (epoch == wake_up):
-           learning_rate_pro = self.generator_optimizer.lr * 6.
+           learning_rate_pro = self.generator_optimizer.lr * 3.
            if (logs["gener_loss"] > logs["discr_loss"]):
               self.generator_optimizer.lr = learning_rate_pro
               self.switch = False
@@ -257,8 +263,7 @@ class ConditionalGAN(tf.keras.Model):
               self.switch = True
               print("Power to the discriminator!")
         elif (epoch > wake_up):
-
-           decrease = np.exp(-(epoch-wake_up) / (15.*800))
+           decrease = 0.999
            gener_lr = self.generator_optimizer.lr.numpy()
            discr_lr = self.discriminator_optimizer.lr.numpy()
            self.learning_rate = self.learning_rate * decrease
@@ -277,6 +282,7 @@ class ConditionalGAN(tf.keras.Model):
               self.discriminator_optimizer.lr = gener_lr
               self.switch = True
               print(f"Learning rate switched: power to the discriminator!")
+        """
 
     @tf.function
     def generate_noise(self, num_examples=num_examples):
@@ -317,8 +323,10 @@ class ConditionalGAN(tf.keras.Model):
             label_loss = energy_loss(en_labels, energies)
 
             discr_loss = discriminator_loss(real_output[0], fake_output[0])
-            energ_loss = energy_loss(en_labels, fake_output[1])
-            parID_loss = particle_loss(pid_labels, fake_output[2])
+            energ_loss = energy_loss(en_labels, fake_output[1]) / 2.
+            energ_loss = energ_loss + energy_loss(en_labels, real_output[1])
+            parID_loss = particle_loss(pid_labels, fake_output[2]) / 2.
+            parID_loss = parID_loss + particle_loss(pid_labels, real_output[2])
 
             gener_total_loss = gener_loss + label_loss
             discr_total_loss = discr_loss + energ_loss + parID_loss
@@ -422,5 +430,5 @@ class ConditionalGAN(tf.keras.Model):
            # Update history and call the scheduler
            for key, value in logs.items():
                self.history.setdefault(key, []).append(value)
-           self.scheduler(epoch + 1, logs, wake_up=wake_up)
+           #self.scheduler(epoch + 1, logs, wake_up=wake_up)
         return self.history

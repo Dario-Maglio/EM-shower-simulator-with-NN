@@ -324,7 +324,7 @@ class ConditionalGAN(tf.keras.Model):
 
             discr_loss = discriminator_loss(real_output[0], fake_output[0])
             energ_loss = energy_loss(en_labels, fake_output[1]) / 2.
-            energ_loss = energ_loss + energy_loss(en_labels, real_output[1]))
+            energ_loss = energ_loss + energy_loss(en_labels, real_output[1])
             parID_loss = particle_loss(pid_labels, fake_output[2]) / 2.
             parID_loss = parID_loss + particle_loss(pid_labels, real_output[2])
 

@@ -96,20 +96,21 @@ def make_generator_model():
     gen = Conv3DTranspose(3 * FILTER, KERNEL, use_bias=False)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
-    #gen = LeakyReLU(alpha=0.2)(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
     gen = Dense(2 * FILTER, activation="relu", use_bias=False)(gen)
 
     gen = Conv3DTranspose(2 * FILTER, KERNEL, use_bias=False)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
-    #gen = LeakyReLU(alpha=0.2)(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
     gen = Dense(FILTER, activation="relu", use_bias=False)(gen)
 
     gen = Conv3DTranspose(FILTER, KERNEL, use_bias=False)(gen)
     logger.info(gen.get_shape())
-    #gen = BatchNormalization()(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
     gen = Dense(FILTER, activation="relu", use_bias=False)(gen)
 
@@ -224,7 +225,7 @@ def make_discriminator_model():
     output_conv = Dense(1, activation="sigmoid", name="decision")(discr_conv)
 
     discr_en = Dense(2*FILTER, activation="relu", use_bias=False)(discr)
-    discr_en = Dense(FILTER, activation="exponential", use_bias=False)(discr_en)
+    discr_en = Dense(FILTER, activation="relu", use_bias=False)(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
     discr_id = Dense(FILTER, activation="relu", use_bias=False)(discr)

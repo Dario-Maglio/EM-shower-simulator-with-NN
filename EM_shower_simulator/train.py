@@ -6,7 +6,7 @@ from sys import exit
 
 import matplotlib.pyplot as plt
 
-from dataset import data_path
+from dataset import data_path_1, data_path_2
 
 # Logger import
 from dataset import logger as logData
@@ -25,7 +25,8 @@ from class_GAN import ConditionalGAN
 # In colab after cloning the repository
 #path = os.path.join("EM-shower-simulator-with-NN", data_path)
 # In this folder
-path = os.path.join("..", data_path)
+path_1 = os.path.join("..", data_path_1)
+path_2 = os.path.join("..", data_path_2)
 
 verbose = True
 
@@ -63,7 +64,7 @@ if __name__=="__main__":
         logger.info('Logging level set on WARNING.')
 
     logger.info("Start building operations.")
-    train_dataset = data_pull(path)
+    train_dataset = data_pull(path_1, path_2)
 
     generator = make_generator_model()
 

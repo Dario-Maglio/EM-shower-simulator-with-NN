@@ -12,11 +12,13 @@ from tensorflow.data import Dataset
 
 # Creation of the default dataset path
 # "data_MVA_normalized.root"
-data_path = os.path.join("dataset","filtered_data","data_MVA_24pixel_normalized.root")
-DPATH = os.path.join("..", data_path)
+data_path_1 = os.path.join("dataset","filtered_data","data_MVA_24pixel_parte1.root")
+DPATH_1 = os.path.join("..", data_path_1)
 
+data_path_2 = os.path.join("dataset","filtered_data","data_MVA_24pixel_parte2.root")
+DPATH_2 = os.path.join("..", data_path_2)
 # Configuration of the dataset structure
-ENERGY_NORM = 6.503
+ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000
 GEOMETRY = (12, 25, 25, 1) # (12, 12, 12, 1)
 BUFFER_SIZE = 10400
@@ -26,7 +28,7 @@ logger = logging.getLogger("DataLogger")
 
 #-------------------------------------------------------------------------------
 
-def data_pull(path, verbose=False):
+def data_pull(path_1, path_2, verbose=False):
     """Organize and reshape the dataset for the cGan training.
     Inputs:
     path = path to a .root file containing the dataset.
@@ -44,35 +46,65 @@ def data_pull(path, verbose=False):
 
     logger.info("Loading the training dataset.")
     try:
-       with up.open(path) as file:
-           branches = file["h"].arrays()
+       with up.open(path_1) as file_1:
+           branches_1 = file_1["h"].arrays()
     except Exception as e:
        print("Error: Invalid path or corrupted file.")
        raise e
 
-    train_images = np.array(branches["shower"]).astype("float32")
+    try:
+       with up.open(path_2) as file_2:
+           branches_2 = file_2["h"].arrays()
+    except Exception as e:
+       print("Error: Invalid path or corrupted file.")
+       raise e
+
+    train_images_1 = np.array(branches_1["shower"]).astype("float32")
     # Images in log10 scale, empty pixels are set to -5,
     # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
-    N_EVENT = train_images.shape[0]
+    N_EVENT = train_images_1.shape[0]
     # Normalize the images to [-1, 1] and reshape
-    train_images = np.reshape(train_images, (N_EVENT, *GEOMETRY))
+    train_images_1 = np.reshape(train_images_1, (N_EVENT, *GEOMETRY))
 
-    en_labels = np.array(branches["en_in"]).astype("float32") / ENERGY_SCALE
-    en_labels = np.transpose(en_labels)
-    assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
-    en_labels = np.reshape(en_labels, (N_EVENT, 1))
+    en_labels_1 = np.array(branches_1["en_in"]).astype("float32") / ENERGY_SCALE
+    en_labels_1 = np.transpose(en_labels_1)
+    assert N_EVENT == en_labels_1.shape[0], "Dataset energy labels compromised!"
+    en_labels_1 = np.reshape(en_labels_1, (N_EVENT, 1))
 
     # Particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer
-    pid_labels = np.array(branches["primary"]) + 1
-    pid_labels = np.transpose(pid_labels)
-    assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
-    pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
+    pid_labels_1 = np.array(branches_1["primary"]) + 1
+    pid_labels_1 = np.transpose(pid_labels_1)
+    assert N_EVENT == pid_labels_1.shape[0], "Dataset PID labels compromised!"
+    pid_labels_1 = np.reshape(pid_labels_1, (N_EVENT, 1))
+
+    train_images_2 = np.array(branches_2["shower"]).astype("float32")
+    # Images in log10 scale, empty pixels are set to -5,
+    # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
+    N_EVENT = train_images_2.shape[0]
+    # Normalize the images to [-1, 1] and reshape
+    train_images_2 = np.reshape(train_images_2, (N_EVENT, *GEOMETRY))
+
+    en_labels_2 = np.array(branches_2["en_in"]).astype("float32") / ENERGY_SCALE
+    en_labels_2 = np.transpose(en_labels_2)
+    assert N_EVENT == en_labels_2.shape[0], "Dataset energy labels compromised!"
+    en_labels_2 = np.reshape(en_labels_2, (N_EVENT, 1))
+
+    # Particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer
+    pid_labels_2 = np.array(branches_2["primary"]) + 1
+    pid_labels_2 = np.transpose(pid_labels_2)
+    assert N_EVENT == pid_labels_2.shape[0], "Dataset PID labels compromised!"
+    pid_labels_2 = np.reshape(pid_labels_2, (N_EVENT, 1))
+
+
+    train_images = np.concatenate([train_images_1, train_images_2], axis=0)
+    en_labels = np.concatenate([en_labels_1, en_labels_2], axis=0)
+    pid_labels = np.concatenate([pid_labels_1,pid_labels_2],axis=0)
 
     dataset = Dataset.from_tensor_slices((train_images, en_labels, pid_labels))
     dataset = dataset.shuffle(BUFFER_SIZE)
     return dataset
 
-def debug_data_pull(path, num_examples=1, verbose=False):
+def debug_data_pull(path_1, path_2, num_examples=1, verbose=False):
     """Import data images from the dataset and test shapes.
     Inputs:
     path = path to a .root file containing the dataset;
@@ -91,29 +123,59 @@ def debug_data_pull(path, num_examples=1, verbose=False):
 
     logger.info("Start debugging the dataset loading subroutines.")
     try:
-       with up.open(path) as file:
-           branches = file["h"].arrays()
+       with up.open(path_1) as file_1:
+           branches_1 = file_1["h"].arrays()
     except Exception as e:
        print("Error: Invalid path or corrupted file.")
        raise e
 
-    train_images = np.array(branches["shower"]).astype("float32")
-    # Images in log10 scale, zeros like pixel are set to -5,
-    # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
-    N_EVENT = train_images.shape[0]
-    # Normalize the images to [-1, 1] and reshape
-    train_images = np.reshape(train_images, (N_EVENT, *GEOMETRY))
+    try:
+       with up.open(path_2) as file_2:
+           branches_2 = file_2["h"].arrays()
+    except Exception as e:
+       print("Error: Invalid path or corrupted file.")
+       raise e
 
-    en_labels = np.array(branches["en_in"]).astype("float32") / ENERGY_SCALE
-    en_labels = np.transpose(en_labels)
-    assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
-    en_labels = np.reshape(en_labels, (N_EVENT, 1))
+    train_images_1 = np.array(branches_1["shower"]).astype("float32")
+    # Images in log10 scale, empty pixels are set to -5,
+    # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
+    N_EVENT = train_images_1.shape[0]
+    # Normalize the images to [-1, 1] and reshape
+    train_images_1 = np.reshape(train_images_1, (N_EVENT, *GEOMETRY))
+
+    en_labels_1 = np.array(branches_1["en_in"]).astype("float32") / ENERGY_SCALE
+    en_labels_1 = np.transpose(en_labels_1)
+    assert N_EVENT == en_labels_1.shape[0], "Dataset energy labels compromised!"
+    en_labels_1 = np.reshape(en_labels_1, (N_EVENT, 1))
 
     # Particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer
-    pid_labels = np.array(branches["primary"]) + 1
-    pid_labels = np.transpose(pid_labels)
-    assert N_EVENT == pid_labels.shape[0], "Dataset PID labels compromised!"
-    pid_labels = np.reshape(pid_labels, (N_EVENT, 1))
+    pid_labels_1 = np.array(branches_1["primary"]) + 1
+    pid_labels_1 = np.transpose(pid_labels_1)
+    assert N_EVENT == pid_labels_1.shape[0], "Dataset PID labels compromised!"
+    pid_labels_1 = np.reshape(pid_labels_1, (N_EVENT, 1))
+
+    train_images_2 = np.array(branches_2["shower"]).astype("float32")
+    # Images in log10 scale, empty pixels are set to -5,
+    # maximum of pixel is 2.4E5 keV => maximum<7 in log scale
+    N_EVENT = train_images_2.shape[0]
+    # Normalize the images to [-1, 1] and reshape
+    train_images_2 = np.reshape(train_images_2, (N_EVENT, *GEOMETRY))
+
+    en_labels_2 = np.array(branches_2["en_in"]).astype("float32") / ENERGY_SCALE
+    en_labels_2 = np.transpose(en_labels_2)
+    assert N_EVENT == en_labels_2.shape[0], "Dataset energy labels compromised!"
+    en_labels_2 = np.reshape(en_labels_2, (N_EVENT, 1))
+
+    # Particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer
+    pid_labels_2 = np.array(branches_2["primary"]) + 1
+    pid_labels_2 = np.transpose(pid_labels_2)
+    assert N_EVENT == pid_labels_2.shape[0], "Dataset PID labels compromised!"
+    pid_labels_2 = np.reshape(pid_labels_2, (N_EVENT, 1))
+
+
+    train_images = np.concatenate([train_images_1, train_images_2], axis=0)
+    en_labels = np.concatenate([en_labels_1, en_labels_2], axis=0)
+    pid_labels = np.concatenate([pid_labels_1,pid_labels_2],axis=0)
 
     train_images = train_images[0:num_examples]
     en_labels = en_labels[0:num_examples]

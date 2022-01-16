@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from EM_shower_simulator import data_path, check_path
+from EM_shower_simulator import data_path_1, data_path_2, check_path
 
 class TestCore(unittest.TestCase):
     """Test methods class for configuration and dataset."""
@@ -14,7 +14,8 @@ class TestCore(unittest.TestCase):
 
     def test_dataset_path(self):
         """Test dataset path."""
-        self.assertIsFile(data_path)
+        self.assertIsFile(data_path_1)
+        self.assertIsFile(data_path_2)
 
     def test_model_checkpoint_path(self):
         """Test model checkpoints path for the weights upload."""

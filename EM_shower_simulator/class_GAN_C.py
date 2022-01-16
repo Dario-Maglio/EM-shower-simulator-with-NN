@@ -295,10 +295,11 @@ class ConditionalGAN(tf.keras.Model):
 
             # Compute GAN loss on decisions
             ones = tf.ones_like(real_output[0])
+            zeros = tf.zeros_like(real_output[0])
             real_loss = cross_entropy(ones, real_output[0])
-            fake_loss = cross_entropy(ones, fake_output[0])
-            gener_loss = fake_loss
-            discr_loss = real_loss - fake_loss
+            fake_loss = cross_entropy(zeros, fake_output[0])
+            gener_loss = -fake_loss
+            discr_loss = real_loss + fake_loss
 
             # Compute auxiliary energy and particle losses
             fake_energ_loss = mean_squared(en_labels, fake_output[1])
@@ -313,7 +314,7 @@ class ConditionalGAN(tf.keras.Model):
             aux_discr_loss = (real_energ_loss * 0.05 + real_parID_loss * 0.1)
 
             # Compute total losses
-            gener_total_loss = gener_loss + aux_gener_loss
+            gener_total_loss = gener_loss + aux_gener_loss + computed_loss
             discr_total_loss = discr_loss + aux_discr_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,

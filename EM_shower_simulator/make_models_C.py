@@ -79,7 +79,7 @@ def make_generator_model():
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particle_input")
     li_pid = Embedding(N_PID, EMBED_DIM)(pid_label)
-    li_pid = Dense(NOISE_DIM, activation="softmax", use_bias=False)(li_pid)
+    li_pid = Dense(NOISE_DIM, activation="relu", use_bias=False)(li_pid)
 
     # Combine at last particle ID
     gen = Multiply()([gen, li_pid])

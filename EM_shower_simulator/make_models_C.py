@@ -34,7 +34,7 @@ NOISE_DIM = 1024
 MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
-GEOMETRY = (12, 12, 12, 1)
+GEOMETRY = (12, 25, 25, 1)
 
 # Define logger and handler
 logger = logging.getLogger("ModelsLogger")
@@ -52,12 +52,11 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    SIDE = 4
-    IN_NODES = 16
+    SIDE = 3
     N_FILTER = 32
-    EMBED_DIM = 5
-    KERNEL = (5, 5, 5)
-    image_shape = (SIDE, SIDE, SIDE, IN_NODES)
+    EMBED_DIM = 50
+    KERNEL = (4, 5, 5)
+    image_shape = (SIDE, SIDE, SIDE, N_FILTER)
 
     n_nodes = 1
     for cell in image_shape:
@@ -68,33 +67,39 @@ def make_generator_model():
 
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
+    li_lat = Reshape((1,NOISE_DIM))(in_lat)
 
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Dense(NOISE_DIM, activation="relu", use_bias=False)(en_label)
+    li_en = Reshape((1, 1))(en_label)
 
-    # Combine energy and noise
-    gen = Multiply()([in_lat, li_en])
-    gen = Dense(n_nodes, activation="linear", use_bias=False)(gen)
-    gen = Reshape(image_shape)(gen)
+    # Combine noise and energy
+    gen = Multiply()([li_lat, li_en])
+    gen = Dense(NOISE_DIM, activation="linear", use_bias=False)(gen)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particle_input")
-    li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
-    li_pid = Dense(n_nodes, activation="tanh", use_bias=False)(li_pid)
-    li_pid = Reshape(image_shape)(li_pid)
+    li_pid = Embedding(N_PID, EMBED_DIM)(pid_label)
+    li_pid = Dense(EMBED_DIM, activation="relu", use_bias=False)(li_pid)
 
-    # Merge image gen and label input
+    # Merge image gen and label input  and at last particle ID
     merge = Concatenate()([gen, li_pid])
-    gen = Conv3DTranspose(2*N_FILTER, KERNEL, padding="same")(merge)
+    gen = Dense(n_nodes, activation="relu", use_bias=False)(merge)
+    gen = Reshape(image_shape)(gen)
+
+    gen = Conv3DTranspose(2 * N_FILTER, KERNEL, strides=(1,2,2), use_bias=False)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(N_FILTER, KERNEL, use_bias=False)(gen)
+    gen = Dense(2 * N_FILTER, activation="linear", use_bias=False)(gen)
+
+    gen = Conv3DTranspose(N_FILTER, KERNEL, strides=(1,2,2), use_bias=False)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Dense(N_FILTER, activation="linear", use_bias=False)(gen)
 
     output = (Conv3DTranspose(1, KERNEL, use_bias=False, activation="tanh",
                                                         name="fake_image")(gen))
@@ -145,7 +150,7 @@ def debug_generator(noise, verbose=False):
     for example in range(len(noise[0]) ):
       print(f"{example+1})\nPrimary particle = {int(noise[2][example][0])}"
            +f"\tInitial energy = {noise[1][example][0]}"
-           +f"\tGenerated energy = {energy[example]}")
+           +f"\tGenerated energy = {energy[example][0]}")
 
     logger.info("Debug of the generator model finished.")
 
@@ -163,7 +168,7 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     N_FILTER = 32
-    KERNEL = (5, 5, 5)
+    KERNEL = (5, 7, 7)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
@@ -183,7 +188,7 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
+    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)

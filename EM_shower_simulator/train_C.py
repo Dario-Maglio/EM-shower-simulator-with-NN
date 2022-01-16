@@ -11,12 +11,12 @@ from dataset import data_path_1, data_path_2
 # Logger import
 from dataset import logger as logData
 from make_models_C import logger as logMod
-from class_GAN import logger as logGAN
+from class_GAN_C import logger as logGAN
 
 # Train import
 from dataset import data_pull
 from make_models_C import make_generator_model, make_discriminator_model
-from class_GAN import ConditionalGAN
+from class_GAN_C import ConditionalGAN
 
 
 # Creation of the default dataset path
@@ -43,7 +43,7 @@ logGAN.addHandler(ch)
 #-------------------------------------------------------------------------------
 
 def train_cgan(cond_gan, train_dataset):
-    history = cond_gan.train(train_dataset, epochs=100, batch=64, wake_up=10)
+    history = cond_gan.train(train_dataset, epochs=100, batch=128, wake_up=15)
     #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
 
     plt.figure("Evolution of losses per epochs")

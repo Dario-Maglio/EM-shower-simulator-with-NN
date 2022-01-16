@@ -59,7 +59,7 @@ class ConditionalGAN(tf.keras.Model):
     """Class for a conditional GAN.
     It inherits keras.Model properties and functions.
     """
-    def __init__(self, gener, discr, learning_rate=2e-4):
+    def __init__(self, gener, discr, learning_rate=2e-5):
         """Constructor.
         Inputs:
         gener = generator network;

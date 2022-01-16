@@ -177,8 +177,8 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         # New tensor by replicating input multiples times.
         minib = tf.tile(minib, [group_size, 1 , shape[2], shape[3], 1])
         #print(f"SHAPE MINIBATCH {minib.shape}")
-        # Append as new fmap. # wich axis ????
-        return tf.concat([discr, minib], axis=1)
+        # Append as new fmap. # which axis ????
+        return tf.concat([discr, minib], axis=-1)
 
 def compute_energy(in_images):
     """Compute energy deposited in detector

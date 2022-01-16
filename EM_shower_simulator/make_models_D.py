@@ -31,7 +31,7 @@ N_PID = 3
 N_ENER = 30 + 1
 NOISE_DIM = 1024
 MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
-ENERGY_NORM = 6.503
+ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 25, 25, 1)
 
@@ -177,8 +177,8 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         # New tensor by replicating input multiples times.
         minib = tf.tile(minib, [group_size, 1 , shape[2], shape[3], 1])
         #print(f"SHAPE MINIBATCH {minib.shape}")
-        # Append as new fmap.
-        return tf.concat([discr, minib], axis=-1)
+        # Append as new fmap. # wich axis ????
+        return tf.concat([discr, minib], axis=1)
 
 def compute_energy(in_images):
     """Compute energy deposited in detector
@@ -232,11 +232,12 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
-    # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
-
     discr = Conv3D(3*N_FILTER, KERNEL_1, padding="same", use_bias=False)(discr)
     discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
+
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
 

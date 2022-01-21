@@ -31,7 +31,7 @@ ENERGY_SCALE = 1000000.
 
 
 # Create a random seed, to be used during the evaluation of the cGAN.
-tf.random.set_seed(12)
+tf.random.set_seed(3)
 num_examples = 6
 test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
@@ -78,7 +78,7 @@ class ConditionalGAN(tf.keras.Model):
         self.computed_loss_tracker = Mean(name="computed_en_loss")
 
         # Scheduler attributes and optimizers
-        self.generator_optimizer = Adam(learning_rate * 10)
+        self.generator_optimizer = Adam(learning_rate * 6)
         self.discriminator_optimizer = Adam(learning_rate)
 
         # Manager to save rusults from training in form of checkpoints.

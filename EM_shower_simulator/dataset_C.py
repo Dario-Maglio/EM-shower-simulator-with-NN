@@ -101,7 +101,7 @@ def debug_data_pull(path, num_examples=1, verbose=False):
 
     en_labels = np.array(branches["en_in"]).astype("float32") / ENERGY_SCALE
     en_labels = np.transpose(en_labels)
-    assert N_EVENT == en_labels_1.shape[0], "Dataset energy labels compromised!"
+    assert N_EVENT == en_labels.shape[0], "Dataset energy labels compromised!"
     en_labels = np.reshape(en_labels, (N_EVENT, 1))
 
     # Particle labels are -1, 0, 1 ==> 0, 1, 2 for embedding layer

@@ -31,7 +31,7 @@ ENERGY_SCALE = 1000000.
 
 
 # Create a random seed, to be used during the evaluation of the cGAN.
-tf.random.set_seed(3)
+tf.random.set_seed(7)
 num_examples = 6
 test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
@@ -78,7 +78,7 @@ class ConditionalGAN(tf.keras.Model):
         self.computed_loss_tracker = Mean(name="computed_en_loss")
 
         # Scheduler attributes and optimizers
-        self.generator_optimizer = Adam(learning_rate * 6)
+        self.generator_optimizer = Adam(learning_rate * 7)
         self.discriminator_optimizer = Adam(learning_rate)
 
         # Manager to save rusults from training in form of checkpoints.
@@ -289,17 +289,17 @@ class ConditionalGAN(tf.keras.Model):
 
             fake_output = self.discriminator(generated_images, training=True)
 
-            # Label of the real computed energies
+            # Generated and computed energies
             energies = compute_energy(generated_images)
             computed_loss = mean_squared(en_labels, energies)
 
             # Compute GAN loss on decisions
             ones = tf.ones_like(real_output[0])
             zeros = tf.zeros_like(real_output[0])
-            gener_loss = cross_entropy(ones, fake_output[0])
-            real_loss = cross_entropy(ones, real_output[0])
             fake_loss = cross_entropy(zeros, fake_output[0])
+            real_loss = cross_entropy(ones, real_output[0])
             discr_loss = real_loss + fake_loss
+            gener_loss = -fake_loss
 
             # Compute auxiliary energy and particle losses
             fake_energ_loss = mean_squared(en_labels, fake_output[1])
@@ -314,7 +314,7 @@ class ConditionalGAN(tf.keras.Model):
             aux_discr_loss = (real_energ_loss * 0.05 + real_parID_loss * 0.1)
 
             # Compute total losses
-            gener_total_loss = gener_loss + aux_gener_loss + computed_loss
+            gener_total_loss = gener_loss + aux_gener_loss + computed_loss* 0.05
             discr_total_loss = discr_loss + aux_discr_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,

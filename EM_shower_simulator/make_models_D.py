@@ -235,8 +235,8 @@ def make_discriminator_model():
     discr = Conv3D(3*N_FILTER, KERNEL_1, padding="same", use_bias=False)(discr)
     discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
 
-    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
-    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    #minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    #logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
     logger.info(discr.get_shape())
     discr = Flatten()(discr)

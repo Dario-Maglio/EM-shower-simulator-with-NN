@@ -112,8 +112,6 @@ class ConditionalGAN(tf.keras.Model):
         self.label_loss_tracker = Mean(name="label_loss")
 
         # Scheduler attributes and optimizers
-        self.switch = True
-        self.learning_rate = learning_rate
         self.generator_optimizer = Adam(learning_rate * 10)
         self.discriminator_optimizer = Adam(learning_rate)
 
@@ -246,10 +244,14 @@ class ConditionalGAN(tf.keras.Model):
         comparison is made looking at the losses stored in logs.
         """
 
-        if (epoch > wake_up) & (logs["gener_loss"] < 1.5) & self.switch:
-           self.generator_optimizer.lr = self.learning_rate
-           self.switch = False
-           print("Restored normality!")
+        if (epoch > wake_up):
+           decrease = 0.999
+           gener_lr = self.generator_optimizer.lr.numpy()
+           discr_lr = self.discriminator_optimizer.lr.numpy()
+           self.generator_optimizer.lr = gener_lr * decrease
+           self.discriminator_optimizer.lr = discr_lr * decrease
+           logger.info(f"Gener learning rate setted to {gener_lr * decrease}.")
+           logger.info(f"Discr learning rate setted to {discr_lr * decrease}.")
 
         """
         if (epoch == wake_up):
@@ -320,16 +322,16 @@ class ConditionalGAN(tf.keras.Model):
             fake_output = self.discriminator(generated_images, training=True)
 
             gener_loss = generator_loss(fake_output[0])
-            label_loss = energy_loss(en_labels, energies)
-
             discr_loss = discriminator_loss(real_output[0], fake_output[0])
-            energ_loss = energy_loss(en_labels, fake_output[1]) / 2.
-            energ_loss = energ_loss + energy_loss(en_labels, real_output[1])
-            parID_loss = particle_loss(pid_labels, fake_output[2]) / 2.
-            parID_loss = parID_loss + particle_loss(pid_labels, real_output[2])
 
-            gener_total_loss = gener_loss + label_loss
-            discr_total_loss = discr_loss + energ_loss + parID_loss
+            label_loss = energy_loss(en_labels, energies)
+            fake_energ_loss = energy_loss(en_labels, fake_output[1])
+            real_energ_loss = energy_loss(en_labels, real_output[1])
+            fake_parID_loss = particle_loss(pid_labels, fake_output[2])
+            real_parID_loss = particle_loss(pid_labels, real_output[2])
+
+            gener_total_loss = gener_loss + label_loss + fake_energ_loss + fake_parID_loss
+            discr_total_loss = discr_loss + real_energ_loss + real_parID_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
@@ -344,8 +346,8 @@ class ConditionalGAN(tf.keras.Model):
         # Monitor losses
         self.gener_loss_tracker.update_state(gener_loss)
         self.discr_loss_tracker.update_state(discr_loss)
-        self.energ_loss_tracker.update_state(energ_loss)
-        self.parID_loss_tracker.update_state(parID_loss)
+        self.energ_loss_tracker.update_state(real_energ_loss)
+        self.parID_loss_tracker.update_state(real_parID_loss)
         self.label_loss_tracker.update_state(label_loss)
 
         return{
@@ -430,5 +432,5 @@ class ConditionalGAN(tf.keras.Model):
            # Update history and call the scheduler
            for key, value in logs.items():
                self.history.setdefault(key, []).append(value)
-           #self.scheduler(epoch + 1, logs, wake_up=wake_up)
+           self.scheduler(epoch + 1, logs, wake_up=wake_up)
         return self.history

@@ -286,27 +286,26 @@ class ConditionalGAN(tf.keras.Model):
             generated_images = self.generator(generator_input, training=True)
 
             real_output = self.discriminator(real_images, training=True)
-
             fake_output = self.discriminator(generated_images, training=True)
-
-            # Generated and computed energies
-            energies = compute_energy(generated_images)
-            computed_loss = mean_squared(en_labels, energies)
 
             # Compute GAN loss on decisions
             fake_loss = c_entropy(tf.zeros_like(real_output[0]), fake_output[0])
             real_loss = c_entropy(tf.ones_like(real_output[0]), real_output[0])
 
+            # Generated and computed energies
+            energies = compute_energy(generated_images)
+            computed_loss = mean_squared(en_labels, energies)
+
             # Compute auxiliary energy and particle losses
-            fake_energ_loss = mean_squared(en_labels, fake_output[1])
-            real_energ_loss = mean_squared(en_labels, real_output[1])
+            fake_energ = mean_squared(energies, fake_output[1])
+            real_energ = mean_squared(en_labels, real_output[1])
 
             parID = tf.math.abs(tf.math.add(pid_labels, -1))
-            fake_parID_loss = c_entropy(parID, fake_output[2])
-            real_parID_loss = c_entropy(parID, real_output[2])
+            fake_parID = c_entropy(parID, fake_output[2]) * 0.1
+            real_parID = c_entropy(parID, real_output[2]) * 0.1
 
-            aux_gener_loss = computed_loss*0.01 #+ (fake_energ_loss * 0.01 + fake_parID_loss * 0.1)
-            aux_discr_loss = real_energ_loss * 0.05 + real_parID_loss * 0.1
+            aux_gener_loss = computed_loss * 0.01 #+ fake_parID
+            aux_discr_loss = (fake_energ + real_energ) * 0.05 + real_parID
 
             # Compute total losses
             gener_loss = aux_gener_loss - fake_loss
@@ -325,8 +324,8 @@ class ConditionalGAN(tf.keras.Model):
         # Monitor losses
         self.gener_loss_tracker.update_state(gener_loss)
         self.discr_loss_tracker.update_state(discr_loss)
-        self.energ_loss_tracker.update_state(real_energ_loss)
-        self.parID_loss_tracker.update_state(real_parID_loss)
+        self.energ_loss_tracker.update_state(real_energ)
+        self.parID_loss_tracker.update_state(real_parID)
         self.computed_loss_tracker.update_state(computed_loss)
 
         return{

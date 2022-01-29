@@ -6,20 +6,19 @@ from sys import exit
 
 import matplotlib.pyplot as plt
 
-from dataset import data_path
-
 # Logger import
-from dataset import logger as logData
+from dataset_C import logger as logData
 from make_models_C import logger as logMod
-from class_GAN import logger as logGAN
+from class_GAN_C import logger as logGAN
 
 # Debug import
-from dataset import debug_data_pull, debug_shower
+from dataset_C import debug_data_pull, debug_shower
 from make_models_C import debug_generator, debug_discriminator
 from make_models_C import make_generator_model, make_discriminator_model
-from class_GAN import test_noise, ConditionalGAN, compute_energy
+from class_GAN_C import test_noise, ConditionalGAN, compute_energy
 
 # Creation of the default dataset path
+data_path = os.path.join("dataset","filtered_data","data_MVA.root")
 # In the project folder
 #DPATH = data_path
 # In colab after cloning the repository

@@ -1,2 +1,2 @@
 EM_shower_simulator/_version.py export-subst
-# *.root filter=lfs diff=lfs merge=lfs -text
+dataset/filtered_data/*.root filter=lfs diff=lfs merge=lfs -text

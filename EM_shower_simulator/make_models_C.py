@@ -52,14 +52,13 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    SIDE = 4
-    IN_NODES = 16
-    N_FILTER = 32
-    EMBED_DIM = 5
-    KERNEL = (5, 5, 5)
-    image_shape = (SIDE, SIDE, SIDE, IN_NODES)
+    BASE = 2
+    FILTER = 16
+    EMBED_DIM = 32
+    KERNEL = (1, 3, 3)
 
     n_nodes = 1
+    image_shape = (GEOMETRY[0], BASE, BASE, BASE*FILTER)
     for cell in image_shape:
         n_nodes = n_nodes * cell
 
@@ -68,36 +67,50 @@ def make_generator_model():
 
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
+    li_lat = Reshape((1, NOISE_DIM))(in_lat)
 
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Dense(NOISE_DIM, activation="relu", use_bias=False)(en_label)
+    li_en = Reshape((1, 1))(en_label)
 
-    # Combine energy and noise
-    gen = Multiply()([in_lat, li_en])
-    gen = Dense(n_nodes, activation="linear", use_bias=False)(gen)
-    gen = Reshape(image_shape)(gen)
+    # Combine noise and energy
+    gen = Multiply()([li_lat, li_en])
+    gen = Reshape((NOISE_DIM,))(gen)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particle_input")
-    li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
-    li_pid = Dense(n_nodes, activation="tanh", use_bias=False)(li_pid)
-    li_pid = Reshape(image_shape)(li_pid)
+    li_pid = Embedding(N_PID, EMBED_DIM)(pid_label)
+    li_pid = Reshape((EMBED_DIM,))(li_pid)
 
-    # Merge image gen and label input
-    merge = Concatenate()([gen, li_pid])
-    gen = Conv3DTranspose(2*N_FILTER, KERNEL, padding="same")(merge)
+    # Combine at last particle ID
+    gen = Concatenate()([gen, li_pid])
+    logger.info(gen.get_shape())
+    gen = Dense(n_nodes, activation="relu")(gen)
+    gen = Reshape(image_shape)(gen)
+
+    gen = Conv3DTranspose(4*FILTER, KERNEL)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(N_FILTER, KERNEL, use_bias=False)(gen)
+    gen = Conv3DTranspose(3*FILTER, KERNEL)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    output = (Conv3DTranspose(1, KERNEL, use_bias=False, activation="tanh",
-                                                        name="fake_image")(gen))
+    gen = Conv3DTranspose(2*FILTER, KERNEL)(gen)
+    logger.info(gen.get_shape())
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Conv3DTranspose(FILTER, KERNEL)(gen)
+    logger.info(gen.get_shape())
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Dense(FILTER, activation="relu")(gen)
+
+    output = (Conv3DTranspose(1, KERNEL, activation="tanh", name="fake_image")(gen))
 
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
@@ -145,7 +158,7 @@ def debug_generator(noise, verbose=False):
     for example in range(len(noise[0]) ):
       print(f"{example+1})\nPrimary particle = {int(noise[2][example][0])}"
            +f"\tInitial energy = {noise[1][example][0]}"
-           +f"\tGenerated energy = {energy[example]}")
+           +f"\tGenerated energy = {energy[example][0]}")
 
     logger.info("Debug of the generator model finished.")
 
@@ -162,8 +175,12 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 32
-    KERNEL = (5, 5, 5)
+    FILTER = 32
+    KERNEL = (1, 3, 3)
+
+    n_nodes = 1
+    for cell in GEOMETRY:
+        n_nodes = n_nodes * cell
 
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
@@ -171,37 +188,45 @@ def make_discriminator_model():
     # GEOMETRY[i] -> GEOMETRY[i] - 3convolution * (KERNEL[i] - 1) > 0 !
     error = "ERROR building the discriminator: smaller KERNEL is required!"
 
-    n_nodes = 1
-    for cell in GEOMETRY:
-        n_nodes = n_nodes * cell
-
     # Image input
     in_image = Input(shape=GEOMETRY, name="input_image")
 
-    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)
+    discr = Conv3D(FILTER, KERNEL, use_bias=False)(in_image)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
-    discr = Dropout(0.3)(discr)
+    discr = Dropout(0.2)(discr)
 
-    discr = Conv3D(N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
+    discr = Conv3D(2*FILTER, KERNEL, use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
-    discr = Dropout(0.3)(discr)
+    discr = Dropout(0.2)(discr)
 
-    discr = Conv3D(2*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
-    discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
+    discr = Conv3D(4*FILTER, KERNEL, use_bias=False)(discr)
+    logger.info(discr.get_shape())
+    discr = LeakyReLU()(discr)
+    discr = Dropout(0.2)(discr)
+
+    discr = Conv3D(2*FILTER, KERNEL, use_bias=False)(discr)
+    logger.info(discr.get_shape())
+    discr = LeakyReLU()(discr)
+    discr = Dropout(0.2)(discr)
+
+    discr = Conv3D(1, KERNEL, use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
 
-    discr_conv = Dense(N_FILTER, activation="relu")(discr)
-    discr_conv = Dense(N_FILTER, activation="relu")(discr_conv)
+    discr = Dense(3*FILTER, use_bias=False)(discr)
+
+    discr_conv = Dense(2*FILTER, activation="relu")(discr)
+    discr_conv = Dense(FILTER, activation="relu")(discr_conv)
     output_conv = Dense(1, activation="sigmoid", name="decision")(discr_conv)
 
-    discr_en = Dense(N_FILTER, activation="relu")(discr)
-    discr_en = Dense(N_FILTER, activation="relu")(discr_en)
+    discr_en = Dense(2*FILTER, activation="relu")(discr)
+    discr_en = Dense(FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
-    discr_id = Dense(N_FILTER, activation="relu")(discr)
+    discr_id = Dense(2*FILTER, activation="relu")(discr)
+    discr_id = Dense(FILTER, activation="relu")(discr_id)
     output_id = Dense(1, activation="sigmoid", name="particle_label")(discr_id)
 
     output = [output_conv, output_en, output_id]

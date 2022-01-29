@@ -18,7 +18,7 @@ from class_GAN_C import ConditionalGAN
 
 
 # Creation of the default dataset path
-data_path = os.path.join("dataset","filtered_data","data_MVA.root")
+data_path = os.path.join("dataset","filtered_data","data_MVA_normalized.root")
 # In the project folder
 #DPATH = data_path
 # In colab after cloning the repository
@@ -41,7 +41,7 @@ logGAN.addHandler(ch)
 #-------------------------------------------------------------------------------
 
 def train_cgan(cond_gan, train_dataset):
-    history = cond_gan.train(train_dataset, epochs=300, batch=64, wake_up=50)
+    history = cond_gan.train(train_dataset, epochs=300, batch=32, wake_up=50)
     #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
 
     plt.figure("Evolution of losses per epochs")

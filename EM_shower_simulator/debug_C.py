@@ -18,7 +18,7 @@ from make_models_C import make_generator_model, make_discriminator_model
 from class_GAN_C import test_noise, ConditionalGAN, compute_energy
 
 # Creation of the default dataset path
-data_path = os.path.join("dataset","filtered_data","data_MVA.root")
+data_path = os.path.join("dataset","filtered_data","data_MVA_normalized.root")
 # In the project folder
 #DPATH = data_path
 # In colab after cloning the repository

@@ -90,7 +90,7 @@ class ConditionalGAN(tf.keras.Model):
                            discriminator_optimizer=self.discriminator_optimizer)
 
         self.manager = tf.train.CheckpointManager(self.checkpoint,
-                                        './training_checkpoints', max_to_keep=3)
+                                        './training_checkpoints', max_to_keep=4)
 
     @property
     def metrics(self):
@@ -276,7 +276,7 @@ class ConditionalGAN(tf.keras.Model):
 
         generator_input = [noise, en_labels, pid_labels]
 
-        cross_entropy = tf.keras.losses.BinaryCrossentropy()
+        c_entropy = tf.keras.losses.BinaryCrossentropy()
         mean_squared = tf.keras.losses.MeanSquaredError()
 
         # GradientTape method records operations for automatic differentiation.
@@ -294,10 +294,8 @@ class ConditionalGAN(tf.keras.Model):
             computed_loss = mean_squared(en_labels, energies)
 
             # Compute GAN loss on decisions
-            ones = tf.ones_like(real_output[0])
-            zeros = tf.zeros_like(real_output[0])
-            fake_loss = cross_entropy(zeros, fake_output[0])
-            real_loss = cross_entropy(ones, real_output[0])
+            fake_loss = c_entropy(tf.zeros_like(real_output[0]), fake_output[0])
+            real_loss = c_entropy(tf.ones_like(real_output[0]), real_output[0])
             discr_loss = real_loss - fake_loss
             gener_loss = fake_loss
 
@@ -307,14 +305,14 @@ class ConditionalGAN(tf.keras.Model):
 
             pid_labels = tf.math.add(pid_labels, -1)
             pid_labels = tf.math.abs(pid_labels)
-            fake_parID_loss = cross_entropy(pid_labels, fake_output[2])
-            real_parID_loss = cross_entropy(pid_labels, real_output[2])
+            fake_parID_loss = c_entropy(pid_labels, fake_output[2])
+            real_parID_loss = c_entropy(pid_labels, real_output[2])
 
-            aux_gener_loss = (fake_energ_loss * 0.05 + fake_parID_loss * 0.1)
-            aux_discr_loss = (real_energ_loss * 0.05 + real_parID_loss * 0.1)
+            aux_gener_loss = (fake_energ_loss * 0.01 + fake_parID_loss * 0.1)
+            aux_discr_loss = (real_energ_loss * 0.01 + real_parID_loss * 0.1)
 
             # Compute total losses
-            gener_total_loss = gener_loss + aux_gener_loss + computed_loss*0.05
+            gener_total_loss = gener_loss + aux_gener_loss + computed_loss*0.01
             discr_total_loss = discr_loss + aux_discr_loss
 
         grad_generator = gen_tape.gradient(gener_total_loss,
@@ -409,7 +407,7 @@ class ConditionalGAN(tf.keras.Model):
            self.generate_and_save_images(test_noise, epoch + 1)
 
            # Save checkpoint
-           if (epoch + 1) % 3 == 0:
+           if (epoch + 1) % 5 == 0:
               save_path = self.manager.save()
               print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
 

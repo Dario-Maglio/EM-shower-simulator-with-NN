@@ -296,31 +296,28 @@ class ConditionalGAN(tf.keras.Model):
             # Compute GAN loss on decisions
             fake_loss = c_entropy(tf.zeros_like(real_output[0]), fake_output[0])
             real_loss = c_entropy(tf.ones_like(real_output[0]), real_output[0])
-            discr_loss = real_loss - fake_loss
-            gener_loss = fake_loss
 
             # Compute auxiliary energy and particle losses
             fake_energ_loss = mean_squared(en_labels, fake_output[1])
             real_energ_loss = mean_squared(en_labels, real_output[1])
 
-            pid_labels = tf.math.add(pid_labels, -1)
-            pid_labels = tf.math.abs(pid_labels)
-            fake_parID_loss = c_entropy(pid_labels, fake_output[2])
-            real_parID_loss = c_entropy(pid_labels, real_output[2])
+            parID = tf.math.abs(tf.math.add(pid_labels, -1))
+            fake_parID_loss = c_entropy(parID, fake_output[2])
+            real_parID_loss = c_entropy(parID, real_output[2])
 
-            aux_gener_loss = (fake_energ_loss * 0.01 + fake_parID_loss * 0.1)
-            aux_discr_loss = (real_energ_loss * 0.01 + real_parID_loss * 0.1)
+            aux_gener_loss = computed_loss*0.01 #+ (fake_energ_loss * 0.01 + fake_parID_loss * 0.1)
+            aux_discr_loss = real_energ_loss * 0.05 + real_parID_loss * 0.1
 
             # Compute total losses
-            gener_total_loss = gener_loss + aux_gener_loss + computed_loss*0.01
-            discr_total_loss = discr_loss + aux_discr_loss
+            gener_loss = aux_gener_loss - fake_loss
+            discr_loss = aux_discr_loss + real_loss + fake_loss
 
-        grad_generator = gen_tape.gradient(gener_total_loss,
+        grad_generator = gen_tape.gradient(gener_loss,
                                         self.generator.trainable_variables)
         self.generator_optimizer.apply_gradients(zip(grad_generator,
                                         self.generator.trainable_variables))
 
-        grad_discriminator = disc_tape.gradient(discr_total_loss,
+        grad_discriminator = disc_tape.gradient(discr_loss,
                                         self.discriminator.trainable_variables)
         self.discriminator_optimizer.apply_gradients(zip(grad_discriminator,
                                         self.discriminator.trainable_variables))

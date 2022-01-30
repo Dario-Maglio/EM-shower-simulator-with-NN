@@ -53,8 +53,9 @@ def make_generator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     BASE = 4 # NOISE_DIM is multiple of BASE^3
-    FILTER = 16
+    FILTER = 32
     KERNEL = (3, 5, 5)
+    STRIDE = (2, 1, 1)
 
     EMBED_DIM = BASE*BASE*BASE
     image_shape = (BASE, BASE, BASE, -1)
@@ -83,30 +84,34 @@ def make_generator_model():
     gen = Concatenate()([gen, li_pid])
     logger.info(gen.get_shape())
 
-    gen = Conv3DTranspose(2*FILTER, KERNEL, padding="same", strides=(2,1,1))(gen)
-    logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    gen = Dense(FILTER, activation="relu")(gen)
+    gen = Dense(FILTER, activation="relu")(gen)
+    gen = Dense(FILTER, activation="relu")(gen)
 
-    gen = Conv3DTranspose(4*FILTER, KERNEL, padding="same")(gen)
+    gen = Conv3DTranspose(2*FILTER, KERNEL, padding="same", strides=STRIDE)(gen)
     logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(6*FILTER, KERNEL, padding="same")(gen)
+    gen = Conv3DTranspose(4*FILTER, KERNEL, padding="same", activation="relu")(gen)
     logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(3*FILTER, KERNEL, padding="same")(gen)
+    gen = Conv3DTranspose(4*FILTER, KERNEL, padding="same", activation="relu")(gen)
     logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(FILTER, KERNEL)(gen)
+    gen = Conv3DTranspose(2*FILTER, KERNEL, padding="same", activation="relu")(gen)
     logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Conv3DTranspose(FILTER, KERNEL, activation="relu")(gen)
+    logger.info(gen.get_shape())
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
 
     output = (Conv3DTranspose(1, KERNEL, activation="tanh", name="image")(gen))
 
@@ -173,7 +178,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    FILTER = 16
+    FILTER = 32
     KERNEL = (1, 4, 4)
     KERNEL2 = (6, 1, 1)
 
@@ -208,29 +213,19 @@ def make_discriminator_model():
     discr_en = Dense(2*FILTER, activation="relu")(discr)
     discr_en = Flatten()(discr_en)
     discr_en = Dense(FILTER, activation="relu")(discr_en)
-    discr_en = Dense(FILTER, activation="relu")(discr_en)
-    discr_en = Dense(FILTER, activation="relu")(discr_en)
-    discr_en = Dense(FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
     discr_id = Dense(2*FILTER, activation="relu")(discr)
     discr_id = Flatten()(discr_id)
     discr_id = Dense(FILTER, activation="relu")(discr_id)
-    discr_id = Dense(FILTER, activation="relu")(discr_id)
-    discr_id = Dense(FILTER, activation="relu")(discr_id)
-    discr_id = Dense(FILTER, activation="relu")(discr_id)
     output_id = Dense(1, activation="sigmoid", name="particle_label")(discr_id)
 
-    discr = Conv3D(2*FILTER, KERNEL2)(discr)
+    discr = Conv3D(2*FILTER, KERNEL2, activation="relu")(discr)
     logger.info(discr.get_shape())
-    discr = LeakyReLU()(discr)
-    discr = Dropout(0.2)(discr)
-    discr = Conv3D(FILTER, KERNEL2)(discr)
+    discr = Conv3D(FILTER, KERNEL2, activation="relu")(discr)
     logger.info(discr.get_shape())
-    discr = LeakyReLU()(discr)
-    discr = Dropout(0.2)(discr)
     discr = Flatten()(discr)
-    discr = Dense(FILTER, activation="relu")(discr)
+    discr = Dense(FILTER, activation="relu", name="conv_labels")(discr)
 
     merge = Concatenate()([discr, output_en, output_id])
     discr = Dense(FILTER, activation="relu")(merge)

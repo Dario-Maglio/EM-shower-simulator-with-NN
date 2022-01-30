@@ -52,15 +52,12 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    BASE = 4
-    FILTER = 8
-    EMBED_DIM = 8
-    KERNEL = (1, 3, 3)
+    BASE = 4 # NOISE_DIM is multiple of BASE^3
+    FILTER = 16
+    KERNEL = (3, 5, 5)
 
-    n_nodes = 1
-    image_shape = (GEOMETRY[0], BASE, BASE, FILTER)
-    for cell in image_shape:
-        n_nodes = n_nodes * cell
+    EMBED_DIM = BASE*BASE*BASE
+    image_shape = (BASE, BASE, BASE, -1)
 
     # Input[i] -> input[i] + convolution * (KERNEL-1)
     error = "ERROR building the generator: shape different from geometry!"
@@ -75,36 +72,43 @@ def make_generator_model():
 
     # Combine noise and energy
     gen = Multiply()([li_lat, li_en])
-    gen = Reshape((NOISE_DIM,))(gen)
+    gen = Reshape(image_shape)(gen)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particle_input")
     li_pid = Embedding(N_PID, EMBED_DIM)(pid_label)
-    li_pid = Reshape((EMBED_DIM,))(li_pid)
+    li_pid = Reshape(image_shape)(li_pid)
 
     # Combine at last particle ID
     gen = Concatenate()([gen, li_pid])
     logger.info(gen.get_shape())
-    gen = Dense(2*NOISE_DIM)(gen)
-    gen = Dense(n_nodes)(gen)
-    gen = Reshape(image_shape)(gen)
 
-    gen = Conv3DTranspose(4*FILTER, KERNEL)(gen)
+    gen = Conv3DTranspose(2*FILTER, KERNEL, padding="same", strides=(2,1,1))(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(8*FILTER, KERNEL)(gen)
+    gen = Conv3DTranspose(4*FILTER, KERNEL, padding="same")(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(4*FILTER, KERNEL)(gen)
+    gen = Conv3DTranspose(6*FILTER, KERNEL, padding="same")(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    output = (Conv3DTranspose(1, KERNEL, activation="tanh", name="fake_image")(gen))
+    gen = Conv3DTranspose(3*FILTER, KERNEL, padding="same")(gen)
+    logger.info(gen.get_shape())
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Conv3DTranspose(FILTER, KERNEL)(gen)
+    logger.info(gen.get_shape())
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
+
+    output = (Conv3DTranspose(1, KERNEL, activation="tanh", name="image")(gen))
 
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
@@ -170,7 +174,8 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     FILTER = 16
-    KERNEL = (1, 3, 3)
+    KERNEL = (1, 4, 4)
+    KERNEL2 = (6, 1, 1)
 
     n_nodes = 1
     for cell in GEOMETRY:
@@ -179,7 +184,7 @@ def make_discriminator_model():
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
     # Here we use padding default = "valid" (=0 above) and strides = 1 !
-    # GEOMETRY[i] -> GEOMETRY[i] - 3convolution * (KERNEL[i] - 1) > 0 !
+    # GEOMETRY[i] -> GEOMETRY[i] - 5convolution * (KERNEL[i] - 1) > 0 !
     error = "ERROR building the discriminator: smaller KERNEL is required!"
 
     # Image input
@@ -200,33 +205,35 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.2)(discr)
 
-    discr = Conv3D(6*FILTER, KERNEL, use_bias=False)(discr)
-    logger.info(discr.get_shape())
-    discr = LeakyReLU()(discr)
-    discr = Dropout(0.2)(discr)
-
-    discr = Conv3D(6*FILTER, KERNEL, use_bias=False)(discr)
-    logger.info(discr.get_shape())
-    discr = Flatten()(discr)
-
     discr_en = Dense(2*FILTER, activation="relu")(discr)
+    discr_en = Flatten()(discr_en)
+    discr_en = Dense(FILTER, activation="relu")(discr_en)
+    discr_en = Dense(FILTER, activation="relu")(discr_en)
     discr_en = Dense(FILTER, activation="relu")(discr_en)
     discr_en = Dense(FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
     discr_id = Dense(2*FILTER, activation="relu")(discr)
+    discr_id = Flatten()(discr_id)
+    discr_id = Dense(FILTER, activation="relu")(discr_id)
+    discr_id = Dense(FILTER, activation="relu")(discr_id)
     discr_id = Dense(FILTER, activation="relu")(discr_id)
     discr_id = Dense(FILTER, activation="relu")(discr_id)
     output_id = Dense(1, activation="sigmoid", name="particle_label")(discr_id)
 
-    discr_conv = Dense(2*FILTER, activation="relu")(discr)
-    discr_conv = Dense(FILTER, activation="relu")(discr_conv)
-    discr_conv = Dense(FILTER, activation="relu")(discr_conv)
-    conv = Dense(1, activation="sigmoid", name="shape_decision")(discr_conv)
-
-    merge = Concatenate()([conv, output_en, output_id])
-    discr = Dense(FILTER, activation="relu")(merge)
+    discr = Conv3D(2*FILTER, KERNEL2)(discr)
+    logger.info(discr.get_shape())
+    discr = LeakyReLU()(discr)
+    discr = Dropout(0.2)(discr)
+    discr = Conv3D(FILTER, KERNEL2)(discr)
+    logger.info(discr.get_shape())
+    discr = LeakyReLU()(discr)
+    discr = Dropout(0.2)(discr)
+    discr = Flatten()(discr)
     discr = Dense(FILTER, activation="relu")(discr)
+
+    merge = Concatenate()([discr, output_en, output_id])
+    discr = Dense(FILTER, activation="relu")(merge)
     output_conv = Dense(1, activation="sigmoid", name="decision")(discr)
 
     output = [output_conv, output_en, output_id]

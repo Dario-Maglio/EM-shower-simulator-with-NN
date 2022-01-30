@@ -32,8 +32,8 @@ ENERGY_SCALE = 1000000.
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
-num_examples = 8
-test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
+num_examples = 6
+test_noise = [tf.random.normal([num_examples, NOISE_DIM], stddev=0.3),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
@@ -301,14 +301,13 @@ class ConditionalGAN(tf.keras.Model):
             real_energ = mean_squared(en_labels, real_output[1])
 
             parID = tf.math.abs(tf.math.add(pid_labels, -1))
-            fake_parID = c_entropy(parID, fake_output[2])
+            # fake_parID = c_entropy(parID, fake_output[2])
             real_parID = c_entropy(parID, real_output[2])
 
-            aux_gener_loss = computed_loss * 0.05 #+ fake_parID
-            aux_discr_loss = (real_energ + fake_energ) * 0.025 + real_parID * 0.1
+            aux_discr_loss = (real_energ+fake_energ) * 0.025 + real_parID * 0.1
 
             # Compute total losses
-            gener_loss = aux_gener_loss - fake_loss
+            gener_loss =  computed_loss * 0.05 - fake_loss
             discr_loss = aux_discr_loss + real_loss + fake_loss
 
         grad_generator = gen_tape.gradient(gener_loss,

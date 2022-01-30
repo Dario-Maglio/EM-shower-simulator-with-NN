@@ -30,7 +30,7 @@ from tensorflow.keras.layers import (Input,
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-NOISE_DIM = 1024
+NOISE_DIM = 512
 MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
@@ -52,13 +52,13 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    BASE = 2
-    FILTER = 16
-    EMBED_DIM = 32
+    BASE = 4
+    FILTER = 8
+    EMBED_DIM = 8
     KERNEL = (1, 3, 3)
 
     n_nodes = 1
-    image_shape = (GEOMETRY[0], BASE, BASE, BASE*FILTER)
+    image_shape = (GEOMETRY[0], BASE, BASE, FILTER)
     for cell in image_shape:
         n_nodes = n_nodes * cell
 
@@ -85,7 +85,8 @@ def make_generator_model():
     # Combine at last particle ID
     gen = Concatenate()([gen, li_pid])
     logger.info(gen.get_shape())
-    gen = Dense(n_nodes, activation="relu")(gen)
+    gen = Dense(2*NOISE_DIM)(gen)
+    gen = Dense(n_nodes)(gen)
     gen = Reshape(image_shape)(gen)
 
     gen = Conv3DTranspose(4*FILTER, KERNEL)(gen)
@@ -93,22 +94,15 @@ def make_generator_model():
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(3*FILTER, KERNEL)(gen)
+    gen = Conv3DTranspose(8*FILTER, KERNEL)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(2*FILTER, KERNEL)(gen)
+    gen = Conv3DTranspose(4*FILTER, KERNEL)(gen)
     logger.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Conv3DTranspose(FILTER, KERNEL)(gen)
-    logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Dense(FILTER, activation="relu")(gen)
 
     output = (Conv3DTranspose(1, KERNEL, activation="tanh", name="fake_image")(gen))
 
@@ -175,7 +169,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    FILTER = 32
+    FILTER = 16
     KERNEL = (1, 3, 3)
 
     n_nodes = 1
@@ -206,28 +200,34 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.2)(discr)
 
-    discr = Conv3D(2*FILTER, KERNEL, use_bias=False)(discr)
+    discr = Conv3D(6*FILTER, KERNEL, use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.2)(discr)
 
-    discr = Conv3D(1, KERNEL, use_bias=False)(discr)
+    discr = Conv3D(6*FILTER, KERNEL, use_bias=False)(discr)
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
 
-    discr = Dense(3*FILTER, use_bias=False)(discr)
-
-    discr_conv = Dense(2*FILTER, activation="relu")(discr)
-    discr_conv = Dense(FILTER, activation="relu")(discr_conv)
-    output_conv = Dense(1, activation="sigmoid", name="decision")(discr_conv)
-
     discr_en = Dense(2*FILTER, activation="relu")(discr)
+    discr_en = Dense(FILTER, activation="relu")(discr_en)
     discr_en = Dense(FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
     discr_id = Dense(2*FILTER, activation="relu")(discr)
     discr_id = Dense(FILTER, activation="relu")(discr_id)
+    discr_id = Dense(FILTER, activation="relu")(discr_id)
     output_id = Dense(1, activation="sigmoid", name="particle_label")(discr_id)
+
+    discr_conv = Dense(2*FILTER, activation="relu")(discr)
+    discr_conv = Dense(FILTER, activation="relu")(discr_conv)
+    discr_conv = Dense(FILTER, activation="relu")(discr_conv)
+    conv = Dense(1, activation="sigmoid", name="shape_decision")(discr_conv)
+
+    merge = Concatenate()([conv, output_en, output_id])
+    discr = Dense(FILTER, activation="relu")(merge)
+    discr = Dense(FILTER, activation="relu")(discr)
+    output_conv = Dense(1, activation="sigmoid", name="decision")(discr)
 
     output = [output_conv, output_en, output_id]
     model = Model(in_image, output, name='discriminator')

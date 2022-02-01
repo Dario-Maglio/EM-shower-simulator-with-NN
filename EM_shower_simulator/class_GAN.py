@@ -23,7 +23,18 @@ from IPython import display
 """Constant parameters of configuration and definition of global objects."""
 
 # Configuration parameters
-from constants import *
+#from constants import *
+ENERGY_NORM = 6.7404
+ENERGY_SCALE = 1000000
+
+N_PID = 3                               # number of pid classes
+N_ENER = 30 + 1                         # number of en classes
+PARAM_EN = 0.01                         # parameter in energy losses computation
+NOISE_DIM = 1024
+BUFFER_SIZE = 10400
+
+MBSTD_GROUP_SIZE = 8                    #minibatch dimension
+
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(12)

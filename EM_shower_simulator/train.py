@@ -12,13 +12,13 @@ from make_models import logger as logMod
 from class_GAN import logger as logGAN
 
 # Train import
-from dataset import data_pull
+from dataset import PATH_LIST, data_pull
 from make_models import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
 
 
 # Creation of the default dataset path
-from constants import *
+#from constants import *
 
 verbose = True
 

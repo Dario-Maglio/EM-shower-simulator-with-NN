@@ -234,7 +234,7 @@ def make_discriminator_model():
     discr = Dropout(0.3)(discr)
 
     discr = Conv3D(3*N_FILTER, (2,2,2), padding="same", use_bias=False)(discr)
-    discr = MaxPooling3D(pool_size = (1,3,3) , padding ="valid")(discr)
+    discr = MaxPooling3D(pool_size = (1,3,3) , padding ="same")(discr)
 
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     logger.info(f"Minibatch shape: {minibatch.get_shape()}")

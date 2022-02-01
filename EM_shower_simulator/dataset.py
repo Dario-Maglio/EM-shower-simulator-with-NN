@@ -11,7 +11,19 @@ from tensorflow.data import Dataset
 #-------------------------------------------------------------------------------
 
 # Creation of the default dataset path and configuration of the dataset structure
-from constants import *
+# from constants import *
+data_path = os.path.join("dataset","filtered_data","data_MVA_normalized.root")
+DPATH = os.path.join("..", data_path)
+# PATH_LIST = [ DPATH ]
+
+data_path_1 = os.path.join("dataset","filtered_data","data_MVA_24pixel_parte1.root")
+DPATH_1 = os.path.join("..", data_path_1)
+
+data_path_2 = os.path.join("dataset","filtered_data","data_MVA_24pixel_parte2.root")
+DPATH_2 = os.path.join("..", data_path_2)
+
+PATH_LIST = [ DPATH_1, DPATH_2 ]
+
 
 # Define logger
 logger = logging.getLogger("DataLogger")

@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 
 # Logger import
 from dataset import logger as logData
-from make_models import logger as logMod
+from make_models_D import logger as logMod
 from class_GAN import logger as logGAN
 
 # Train import
 from dataset import PATH_LIST, data_pull
-from make_models import make_generator_model, make_discriminator_model
+from make_models_D import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
 
 

@@ -30,7 +30,7 @@ from tensorflow.keras.layers import (Input,
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-NOISE_DIM = 1024
+NOISE_DIM = 512
 MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 ENERGY_NORM = 6.503
 ENERGY_SCALE = 1000000.
@@ -52,15 +52,13 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    BASE = 2
-    FILTER = 16
-    EMBED_DIM = 32
-    KERNEL = (1, 3, 3)
+    BASE = 4 # NOISE_DIM is multiple of BASE^3
+    FILTER = 32
+    KERNEL = (3, 5, 5)
+    STRIDE = (2, 1, 1)
 
-    n_nodes = 1
-    image_shape = (GEOMETRY[0], BASE, BASE, BASE*FILTER)
-    for cell in image_shape:
-        n_nodes = n_nodes * cell
+    EMBED_DIM = BASE*BASE*BASE
+    image_shape = (BASE, BASE, BASE, -1)
 
     # Input[i] -> input[i] + convolution * (KERNEL-1)
     error = "ERROR building the generator: shape different from geometry!"
@@ -75,42 +73,47 @@ def make_generator_model():
 
     # Combine noise and energy
     gen = Multiply()([li_lat, li_en])
-    gen = Reshape((NOISE_DIM,))(gen)
+    gen = Reshape(image_shape)(gen)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particle_input")
     li_pid = Embedding(N_PID, EMBED_DIM)(pid_label)
-    li_pid = Reshape((EMBED_DIM,))(li_pid)
+    li_pid = Reshape(image_shape)(li_pid)
 
     # Combine at last particle ID
     gen = Concatenate()([gen, li_pid])
     logger.info(gen.get_shape())
-    gen = Dense(n_nodes, activation="relu")(gen)
-    gen = Reshape(image_shape)(gen)
-
-    gen = Conv3DTranspose(4*FILTER, KERNEL)(gen)
-    logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Conv3DTranspose(3*FILTER, KERNEL)(gen)
-    logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Conv3DTranspose(2*FILTER, KERNEL)(gen)
-    logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Conv3DTranspose(FILTER, KERNEL)(gen)
-    logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
 
     gen = Dense(FILTER, activation="relu")(gen)
+    gen = Dense(FILTER, activation="relu")(gen)
+    gen = Dense(FILTER, activation="relu")(gen)
 
-    output = (Conv3DTranspose(1, KERNEL, activation="tanh", name="fake_image")(gen))
+    gen = Conv3DTranspose(2*FILTER, KERNEL, padding="same", strides=STRIDE)(gen)
+    logger.info(gen.get_shape())
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Conv3DTranspose(4*FILTER, KERNEL, padding="same", activation="relu")(gen)
+    logger.info(gen.get_shape())
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Conv3DTranspose(4*FILTER, KERNEL, padding="same", activation="relu")(gen)
+    logger.info(gen.get_shape())
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Conv3DTranspose(2*FILTER, KERNEL, padding="same", activation="relu")(gen)
+    logger.info(gen.get_shape())
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
+
+    gen = Conv3DTranspose(FILTER, KERNEL, activation="relu")(gen)
+    logger.info(gen.get_shape())
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
+
+    output = (Conv3DTranspose(1, KERNEL, activation="tanh", name="image")(gen))
 
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
@@ -176,7 +179,8 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     FILTER = 32
-    KERNEL = (1, 3, 3)
+    KERNEL = (1, 4, 4)
+    KERNEL2 = (6, 1, 1)
 
     n_nodes = 1
     for cell in GEOMETRY:
@@ -185,7 +189,7 @@ def make_discriminator_model():
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
     # Here we use padding default = "valid" (=0 above) and strides = 1 !
-    # GEOMETRY[i] -> GEOMETRY[i] - 3convolution * (KERNEL[i] - 1) > 0 !
+    # GEOMETRY[i] -> GEOMETRY[i] - 5convolution * (KERNEL[i] - 1) > 0 !
     error = "ERROR building the discriminator: smaller KERNEL is required!"
 
     # Image input
@@ -206,28 +210,26 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.2)(discr)
 
-    discr = Conv3D(2*FILTER, KERNEL, use_bias=False)(discr)
-    logger.info(discr.get_shape())
-    discr = LeakyReLU()(discr)
-    discr = Dropout(0.2)(discr)
-
-    discr = Conv3D(1, KERNEL, use_bias=False)(discr)
-    logger.info(discr.get_shape())
-    discr = Flatten()(discr)
-
-    discr = Dense(3*FILTER, use_bias=False)(discr)
-
-    discr_conv = Dense(2*FILTER, activation="relu")(discr)
-    discr_conv = Dense(FILTER, activation="relu")(discr_conv)
-    output_conv = Dense(1, activation="sigmoid", name="decision")(discr_conv)
-
     discr_en = Dense(2*FILTER, activation="relu")(discr)
+    discr_en = Flatten()(discr_en)
     discr_en = Dense(FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
     discr_id = Dense(2*FILTER, activation="relu")(discr)
+    discr_id = Flatten()(discr_id)
     discr_id = Dense(FILTER, activation="relu")(discr_id)
     output_id = Dense(1, activation="sigmoid", name="particle_label")(discr_id)
+
+    discr = Conv3D(2*FILTER, KERNEL2, activation="relu")(discr)
+    logger.info(discr.get_shape())
+    discr = Conv3D(FILTER, KERNEL2, activation="relu")(discr)
+    logger.info(discr.get_shape())
+    discr = Flatten()(discr)
+    discr = Dense(FILTER, activation="relu", name="conv_labels")(discr)
+
+    merge = Concatenate()([discr, output_en, output_id])
+    discr = Dense(FILTER, activation="relu")(merge)
+    output_conv = Dense(1, activation="sigmoid", name="decision")(discr)
 
     output = [output_conv, output_en, output_id]
     model = Model(in_image, output, name='discriminator')

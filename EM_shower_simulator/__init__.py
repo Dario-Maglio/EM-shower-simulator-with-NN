@@ -2,7 +2,7 @@ import os
 from . import _version
 from .shower_simulator import simulate_shower as simulate
 
-from .constants import data_path, data_path_1, data_path_2
+from . import constants
 from .dataset import debug_data_pull, debug_shower
 from .make_models import debug_generator, debug_discriminator
 from .class_GAN import test_noise

@@ -23,13 +23,7 @@ from IPython import display
 """Constant parameters of configuration and definition of global objects."""
 
 # Configuration parameters
-N_PID = 3
-N_ENER = 30 + 1
-PARAM_EN = 0.01
-NOISE_DIM = 1024
-ENERGY_NORM = 6.7404
-ENERGY_SCALE = 1000000.
-
+from constants import *
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(12)

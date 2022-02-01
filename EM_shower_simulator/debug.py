@@ -6,8 +6,6 @@ from sys import exit
 
 import matplotlib.pyplot as plt
 
-from dataset import data_path_1, data_path_2
-
 # Logger import
 from dataset import logger as logData
 from make_models import logger as logMod
@@ -15,18 +13,12 @@ from class_GAN import logger as logGAN
 
 # Debug import
 from dataset import debug_data_pull, debug_shower
-from make_models_D import debug_generator, debug_discriminator
-from make_models_D import make_generator_model, make_discriminator_model
+from make_models import debug_generator, debug_discriminator
+from make_models import make_generator_model, make_discriminator_model
 from class_GAN import test_noise, ConditionalGAN, compute_energy
 
 # Creation of the default dataset path
-# In the project folder
-#DPATH = data_path
-# In colab after cloning the repository
-#DPATH = os.path.join("EM-shower-simulator-with-NN", data_path)
-# In this folder
-DPATH_1 = os.path.join("..", data_path_1)
-DPATH_2 = os.path.join("..", data_path_2)
+from constants import *
 
 # Define logger and handler
 ch = logging.StreamHandler()
@@ -40,7 +32,7 @@ logGAN.addHandler(ch)
 
 #-------------------------------------------------------------------------------
 
-def debug(path_1=DPATH_1, path_2=DPATH_2, num_examples=5, verbose=False):
+def debug(path_list = PATH_LIST, num_examples=5, verbose=False):
     """Debug subroutines for the training of the cGAN with dataset in path."""
     if verbose :
         logger.setLevel(logging.DEBUG)
@@ -50,7 +42,7 @@ def debug(path_1=DPATH_1, path_2=DPATH_2, num_examples=5, verbose=False):
         logger.info('Logging level set on WARNING.')
 
     try:
-        train_data = debug_data_pull(path_1, path_2, num_examples)
+        train_data = debug_data_pull(path_list, num_examples)
     except AssertionError as e:
         print(f"An error occurred while loading the dataset: \n{e}")
         exit()
@@ -64,7 +56,7 @@ def debug(path_1=DPATH_1, path_2=DPATH_2, num_examples=5, verbose=False):
     debug_generator(test_noise, verbose=verbose)
     debug_discriminator(train_images, verbose)
 
-def debug_cgan(cond_gan, path_1=DPATH_1, path_2=DPATH_2, num_examples=5):
+def debug_cgan(cond_gan, path_list = PATH_LIST, num_examples=5):
     logger.info("Testing the cGAN methods on noise and real samples.")
     gener, discr = cond_gan.evaluate()
     noise = cond_gan.generate_noise(num_examples)
@@ -92,7 +84,7 @@ def debug_cgan(cond_gan, path_1=DPATH_1, path_2=DPATH_2, num_examples=5):
              +f"Decision = {decisions[0][example][0]}")
 
     # True showers
-    predictions = debug_data_pull(path_1, path_2, num_examples)
+    predictions = debug_data_pull(path_list, num_examples)
     images = predictions[0]
     decisions = discr(images, training=False)
     energy = compute_energy(images)

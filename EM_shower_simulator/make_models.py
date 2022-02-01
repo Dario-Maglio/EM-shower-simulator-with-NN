@@ -27,13 +27,7 @@ from tensorflow.keras.layers import (Input,
 """Constant parameters of configuration and definition of global objects."""
 
 # Configuration parameters
-N_PID = 3
-N_ENER = 30 + 1
-NOISE_DIM = 1024
-MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
-ENERGY_NORM = 6.7404
-ENERGY_SCALE = 1000000.
-GEOMETRY = (12, 25, 25, 1)
+from constants import *
 
 # Define logger and handler
 logger = logging.getLogger("ModelsLogger")

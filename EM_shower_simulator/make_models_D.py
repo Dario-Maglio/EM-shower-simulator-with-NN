@@ -86,8 +86,8 @@ def make_generator_model():
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
     gen = Dense(n_nodes, use_bias=False)(in_lat)
-    #gen = BatchNormalization()(gen)
-    #gen = LeakyReLU(alpha=0.2)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
     gen = Reshape(image_shape)(gen)
 
     # Merge image gen and label input
@@ -109,7 +109,7 @@ def make_generator_model():
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
 
-    print(output)
+    # print(output)
 
     model = Model([in_lat, en_label, pid_label], output, name='generator')
     return model
@@ -171,7 +171,7 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         # Cast to FP32.
         minib = tf.cast(minib, tf.float32)
         # Calculate the std deviation for each pixel over minibatch
-        minib = tf.math.reduce_std(minib, axis=0)
+        minib = tf.math.reduce_std(minib + 1E-6, axis=0)
         # print(f"STD DEVIATION \n{minib}")
         # Take average over fmaps and pixels.
         minib = tf.reduce_mean(minib, axis=[2,3,4], keepdims=True)
@@ -225,16 +225,19 @@ def make_discriminator_model():
     # Image input
     in_image = Input(shape=GEOMETRY, name="input_image")
 
-    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
-    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
+    # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
-    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(minibatch)#in_image
+    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = MaxPooling3D(pool_size = (4,4,4), padding ="same")(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(2*N_FILTER, (2,2,2) , padding="same", use_bias=False)(discr)
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+
+    discr = Conv3D(2*N_FILTER, (2,2,2) , padding="same", use_bias=False)(minibatch)
     discr = MaxPooling3D(pool_size = (2,3,3) , padding ="same")(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)

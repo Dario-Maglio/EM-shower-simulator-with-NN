@@ -4,6 +4,7 @@
 # https://machinelearningmastery.com/how-to-develop-a-conditional-generative-adversarial-network-from-scratch/
 # https://keras.io/examples/generative/conditional_gan/
 
+import sys
 import os
 import time
 import logging
@@ -325,7 +326,7 @@ class ConditionalGAN(tf.keras.Model):
             real_output = self.discriminator(real_images, training=True)
             # print("*************************************************************")
             # print("\nGENERATED IMAGES")
-            print(generated_images)
+            # print(generated_images)
             fake_output = self.discriminator(generated_images, training=True)
             # print("*************************************************************")
 
@@ -340,6 +341,22 @@ class ConditionalGAN(tf.keras.Model):
 
             gener_total_loss = gener_loss + label_loss + fake_energ_loss + fake_parID_loss
             discr_total_loss = discr_loss + real_energ_loss + real_parID_loss
+
+            if np.isnan(label_loss):
+                print(generated_images)
+                raise AssertionError("ERROR IN COMPUTING LABEL LOSS: NAN VALUE")
+            elif np.isnan(fake_energ_loss):
+                raise AssertionError("ERROR IN COMPUTING FAKE ENERG LOSS: NAN VALUE")
+            elif np.isnan(real_energ_loss):
+                raise AssertionError("ERROR IN COMPUTING REAL ENERG LOSS: NAN VALUE")
+            elif np.isnan(fake_parID_loss):
+                raise AssertionError("ERROR IN COMPUTING FAKE PARID LOSS: NAN VALUE")
+            elif np.isnan(real_parID_loss):
+                raise AssertionError("ERROR IN COMPUTING REAL PARID LOSS: NAN VALUE")
+            elif np.isnan(gener_loss):
+                raise AssertionError("ERROR IN COMPUTING GENER LOSS: NAN VALUE")
+            elif np.isnan(discr_loss) :
+                raise AssertionError("ERROR IN COMPUTING DISCR LOSS: NAN VALUE")
 
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
@@ -357,6 +374,21 @@ class ConditionalGAN(tf.keras.Model):
         self.energ_loss_tracker.update_state(real_energ_loss)
         self.parID_loss_tracker.update_state(real_parID_loss)
         self.label_loss_tracker.update_state(label_loss)
+
+        if np.isnan(label_loss):
+            raise AssertionError("ERROR IN MINIMIZATION LABEL LOSS: NAN VALUE")
+        elif np.isnan(fake_energ_loss):
+            raise AssertionError("ERROR IN MINIMIZATION FAKE ENERG LOSS: NAN VALUE")
+        elif np.isnan(real_energ_loss):
+            raise AssertionError("ERROR IN MINIMIZATION REAL ENERG LOSS: NAN VALUE")
+        elif np.isnan(fake_parID_loss):
+            raise AssertionError("ERROR IN MINIMIZATION FAKE PARID LOSS: NAN VALUE")
+        elif np.isnan(real_parID_loss):
+            raise AssertionError("ERROR IN MINIMIZATION REAL PARID LOSS: NAN VALUE")
+        elif np.isnan(gener_loss):
+            raise AssertionError("ERROR IN MINIMIZATION GENER LOSS: NAN VALUE")
+        elif np.isnan(discr_loss) :
+            raise AssertionError("ERROR IN MINIMIZATION DISCR LOSS: NAN VALUE")
 
         return{
             "gener_loss": self.gener_loss_tracker.result(),
@@ -420,7 +452,11 @@ class ConditionalGAN(tf.keras.Model):
            # Start iterate on batches
            start = time.time()
            for index, image_batch in enumerate(dataset):
-              logs = self.train_step(image_batch)
+              try:
+                  logs = self.train_step(image_batch)
+              except AssertionError as error:
+                  print(f"Epoch {epoch}, batch {index}: {error}")
+                  sys.exit()
               progbar.update(index, zip(logs.keys(), logs.values()))
            end = time.time() - start
 

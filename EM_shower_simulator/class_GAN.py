@@ -321,12 +321,14 @@ class ConditionalGAN(tf.keras.Model):
             generated_images = self.generator(generator_input, training=True)
 
             energies = compute_energy(generated_images)
-
-            real_output = self.discriminator(real_images, training=True)
             print("REAL IMAGES")
-
-            fake_output = self.discriminator(generated_images, training=True)
+            print("*************************************************************")
+            real_output = self.discriminator(real_images, training=True)
+            print("*************************************************************")
             print("GENERATED IMAGES")
+            print("*************************************************************")
+            fake_output = self.discriminator(generated_images, training=True)
+            print("*************************************************************")
 
             gener_loss = generator_loss(fake_output[0])
             discr_loss = discriminator_loss(real_output[0], fake_output[0])

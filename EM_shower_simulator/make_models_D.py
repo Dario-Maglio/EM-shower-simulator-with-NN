@@ -86,8 +86,8 @@ def make_generator_model():
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
     gen = Dense(n_nodes, use_bias=False)(in_lat)
-    #gen = BatchNormalization()(gen)
-    #gen = LeakyReLU(alpha=0.2)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
     gen = Reshape(image_shape)(gen)
 
     # Merge image gen and label input
@@ -100,7 +100,7 @@ def make_generator_model():
 
     gen = Conv3DTranspose(2*N_FILTER, KERNEL, use_bias=False)(gen)
     logger.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
+    #gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
     output = (Conv3DTranspose(1, KERNEL, use_bias=False,

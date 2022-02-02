@@ -222,8 +222,8 @@ def make_discriminator_model():
     # Image input
     in_image = Input(shape=GEOMETRY, name="input_image")
 
-    #minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
-    #logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
+    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
     discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
     logger.info(discr.get_shape())

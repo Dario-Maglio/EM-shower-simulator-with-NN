@@ -239,7 +239,7 @@ def make_discriminator_model():
     in_image = Input(shape=GEOMETRY, name="input_image")
 
     energies = Lambda(energies_per_layer, name="energies_per_layer")(in_image)
-
+    energies = Dense(N_FILTER, activation="relu")(energies)
     # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
     # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 

@@ -195,6 +195,19 @@ def compute_energy(in_images):
     en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
     return en_images
 
+def energies_per_layer(in_images):
+    """Compute energy deposited in detector for each layer
+    """
+    in_images = tf.cast(in_images, tf.float32)
+
+    en_images = tf.math.multiply(in_images, ENERGY_NORM)
+    en_images = tf.math.pow(10., en_images)
+    en_images = tf.math.divide(en_images, ENERGY_SCALE)
+    en_images = tf.math.reduce_sum(en_images, axis=[2,3,4])
+    #output: (None, 12)
+    return en_images
+
+
 def make_discriminator_model():
     """Define discriminator model:
     Input 1) Vector of images associated to the given labels;
@@ -205,7 +218,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 32
+    N_FILTER = 64
     KERNEL = (5, 5, 5)
     KERNEL_1 = (3, 3, 3)
     KERNEL_2 = (2, 2, 2)
@@ -225,6 +238,8 @@ def make_discriminator_model():
     # Image input
     in_image = Input(shape=GEOMETRY, name="input_image")
 
+    energies = Lambda(energies_per_layer, name="energies_per_layer")(in_image)
+
     # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
     # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
@@ -237,20 +252,23 @@ def make_discriminator_model():
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
-    discr = Conv3D(2*N_FILTER, (2,2,2) , padding="same", use_bias=False)(minibatch)
-    discr = MaxPooling3D(pool_size = (2,3,3) , padding ="same")(discr)
-    logger.info(discr.get_shape())
+    # discr = Conv3D(2*N_FILTER, (2,2,2) , padding="same", use_bias=False)(minibatch)
+    # discr = MaxPooling3D(pool_size = (2,3,3) , padding ="same")(discr)
+    # logger.info(discr.get_shape())
+    # discr = LeakyReLU()(discr)
+    # discr = Dropout(0.3)(discr)
+
+    discr = Conv3D(3*N_FILTER, (3,3,3), padding="same", use_bias=False)(discr)
+    discr = MaxPooling3D(pool_size = (2,3,3) , padding ="valid")(discr)
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
-
-    discr = Conv3D(3*N_FILTER, (2,2,2), padding="same", use_bias=False)(discr)
-    discr = MaxPooling3D(pool_size = (1,3,3) , padding ="same")(discr)
 
     # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
+    discr = Concatenate()([discr, energies])
 
     discr_conv = Dense(N_FILTER, activation="relu")(discr)
     discr_conv = Dense(N_FILTER, activation="relu")(discr_conv)

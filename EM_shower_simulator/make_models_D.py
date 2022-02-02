@@ -170,9 +170,10 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         minib = tf.cast(minib, tf.float32)
         # Calculate the std deviation for each pixel over minibatch
         minib = tf.math.reduce_std(minib, axis=0)
+        print(f"STD DEVIATION \n{minib}")
         # Take average over fmaps and pixels.
         minib = tf.reduce_mean(minib, axis=[2,3,4], keepdims=True)
-        print(minib)
+        print(f"MEAN \n{minib}")
         # Cast back to original data type.
         minib = tf.cast(minib, discr.dtype)
         # New tensor by replicating input multiples times.

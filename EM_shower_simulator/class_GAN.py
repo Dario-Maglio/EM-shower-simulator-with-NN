@@ -325,6 +325,7 @@ class ConditionalGAN(tf.keras.Model):
             real_output = self.discriminator(real_images, training=True)
             print("*************************************************************")
             print("\nGENERATED IMAGES")
+            print(generated_images)
             fake_output = self.discriminator(generated_images, training=True)
             print("*************************************************************")
 

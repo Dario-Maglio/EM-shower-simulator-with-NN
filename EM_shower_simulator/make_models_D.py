@@ -218,7 +218,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 32
+    N_FILTER = 64
     KERNEL = (5, 5, 5)
     KERNEL_1 = (3, 3, 3)
     KERNEL_2 = (2, 2, 2)
@@ -245,21 +245,21 @@ def make_discriminator_model():
 
     discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
     logger.info(discr.get_shape())
+    discr = MaxPooling3D(pool_size = (2,2,2), padding ="same")(discr)
     discr = LeakyReLU()(discr)
-    discr = MaxPooling3D(pool_size = (4,4,4), padding ="same")(discr)
     discr = Dropout(0.3)(discr)
 
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
     discr = Conv3D(2*N_FILTER, (2,2,2) , padding="same", use_bias=False)(minibatch)
-    discr = MaxPooling3D(pool_size = (2,3,3) , padding ="same")(discr)
+    discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
     discr = Conv3D(3*N_FILTER, (2,2,2), padding="same", use_bias=False)(discr)
-    discr = MaxPooling3D(pool_size = (1,3,3) , padding ="valid")(discr)
+    discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 

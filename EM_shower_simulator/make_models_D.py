@@ -225,7 +225,7 @@ def make_discriminator_model():
     #minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
     #logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
-    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(minibatch)#in_image
+    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = MaxPooling3D(pool_size = (4,4,4), padding ="same")(discr)

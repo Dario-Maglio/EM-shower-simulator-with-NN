@@ -86,8 +86,8 @@ def make_generator_model():
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
     gen = Dense(n_nodes, use_bias=False)(in_lat)
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    #gen = BatchNormalization()(gen)
+    #gen = LeakyReLU(alpha=0.2)(gen)
     gen = Reshape(image_shape)(gen)
 
     # Merge image gen and label input
@@ -108,6 +108,8 @@ def make_generator_model():
 
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
+
+    print(output)
 
     model = Model([in_lat, en_label, pid_label], output, name='generator')
     return model
@@ -170,10 +172,10 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         minib = tf.cast(minib, tf.float32)
         # Calculate the std deviation for each pixel over minibatch
         minib = tf.math.reduce_std(minib, axis=0)
-        print(f"STD DEVIATION \n{minib}")
+        # print(f"STD DEVIATION \n{minib}")
         # Take average over fmaps and pixels.
         minib = tf.reduce_mean(minib, axis=[2,3,4], keepdims=True)
-        print(f"MEAN \n{minib}")
+        # print(f"MEAN \n{minib}")
         # Cast back to original data type.
         minib = tf.cast(minib, discr.dtype)
         # New tensor by replicating input multiples times.

@@ -100,7 +100,7 @@ def make_generator_model():
 
     gen = Conv3DTranspose(2*N_FILTER, KERNEL, use_bias=False)(gen)
     logger.info(gen.get_shape())
-    #gen = BatchNormalization()(gen)
+    gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
     output = (Conv3DTranspose(1, KERNEL, use_bias=False,
@@ -222,7 +222,10 @@ def make_discriminator_model():
     # Image input
     in_image = Input(shape=GEOMETRY, name="input_image")
 
-    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
+    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+
+    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(minibatch)#in_image
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = MaxPooling3D(pool_size = (4,4,4), padding ="same")(discr)
@@ -237,11 +240,11 @@ def make_discriminator_model():
     discr = Conv3D(3*N_FILTER, (2,2,2), padding="same", use_bias=False)(discr)
     discr = MaxPooling3D(pool_size = (1,3,3) , padding ="same")(discr)
 
-    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
-    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
     logger.info(discr.get_shape())
-    discr = Flatten()(minibatch)
+    discr = Flatten()(discr)
 
     discr_conv = Dense(N_FILTER, activation="relu")(discr)
     discr_conv = Dense(N_FILTER, activation="relu")(discr_conv)

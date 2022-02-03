@@ -31,7 +31,7 @@ from tensorflow.keras.layers import (Input,
 N_PID = 3
 N_ENER = 30 + 1
 NOISE_DIM = 2048
-MBSTD_GROUP_SIZE = 16                                     #minibatch dimension
+MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 25, 25, 1)
@@ -250,7 +250,7 @@ def make_discriminator_model():
 
     discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
     logger.info(discr.get_shape())
-    discr = MaxPooling3D(pool_size = (2,2,2), padding ="valid")(discr)
+    discr = AveragePooling3D(pool_size = (2,2,2), padding ="valid")(discr)
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
@@ -258,7 +258,7 @@ def make_discriminator_model():
     logger.info(f"Minibatch shape: {discr.get_shape()}")
 
     discr = Conv3D(2*N_FILTER, (2,2,2) , padding="valid", use_bias=False)(minibatch)
-    discr = AveragePooling3D(pool_size = (2,2,2) , padding ="valid")(discr)
+    discr = MaxPooling3D(pool_size = (2,2,2) , padding ="valid")(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)

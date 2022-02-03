@@ -29,7 +29,7 @@ from tensorflow.keras.layers import (Input,
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-NOISE_DIM = 1024
+NOISE_DIM = 512
 MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
@@ -188,7 +188,7 @@ def compute_energy(in_images):
     """Compute energy deposited in detector
     """
     in_images = tf.cast(in_images, tf.float32)
-    
+
     en_images = tf.math.multiply(in_images, ENERGY_NORM)
     en_images = tf.math.pow(10., en_images)
     en_images = tf.math.divide(en_images, ENERGY_SCALE)
@@ -204,11 +204,11 @@ def energies_per_layer(in_images):
     en_images = tf.math.multiply(in_images, ENERGY_NORM)
     en_images = tf.math.pow(10., en_images)
     en_images = tf.math.divide(en_images, ENERGY_SCALE)
-    en_images = tf.math.reduce_sum(en_images, axis=[2,3,4], keepdims=True)
+    en_images = tf.math.reduce_sum(en_images, axis=[2,3,4])#, keepdims=True)
 
-    en_images = tf.tile(en_images, [1, 1 , shape[2], shape[3], 1])
+    #en_images = tf.tile(en_images, [1, 1 , shape[2], shape[3], 1])
     #output: (None, 12)
-    return  tf.concat([in_images, en_images], axis=-1)
+    return  en_images#tf.concat([in_images, en_images], axis=-1)
 
 
 def make_discriminator_model():
@@ -242,12 +242,12 @@ def make_discriminator_model():
     in_image = Input(shape=GEOMETRY, name="input_image")
 
     energies = Lambda(energies_per_layer, name="energies_per_layer")(in_image)
-    # energies = Dense(2*N_FILTER, activation="relu")(energies)
+    energies = Dense(2*N_FILTER, activation="relu")(energies)
 
     # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
     # logger.info(f"Minibatch shape: {discr.get_shape()}")
 
-    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(energies)#in_image
+    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
     logger.info(discr.get_shape())
     discr = MaxPooling3D(pool_size = (2,2,2), padding ="same")(discr)
     discr = LeakyReLU()(discr)
@@ -272,7 +272,7 @@ def make_discriminator_model():
 
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
-    # discr = Concatenate()([discr, energies])
+    discr = Concatenate()([discr, energies])
 
     discr_conv = Dense(N_FILTER, activation="relu")(discr)
     discr_conv = Dense(N_FILTER, activation="relu")(discr_conv)

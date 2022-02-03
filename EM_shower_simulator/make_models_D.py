@@ -69,8 +69,8 @@ def make_generator_model():
 
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
-    li_en = Dense(n_nodes)(li_en)
+    # li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
+    li_en = Dense(n_nodes)(en_label)
     li_en = Reshape(input_shape)(li_en)
 
     # ParticleID label input
@@ -250,8 +250,8 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Lambda(minibatch_stddev_layer, name="minibatch_med")(discr)
-    logger.info(f"Minibatch shape: {discr.get_shape()}")
+    # discr = Lambda(minibatch_stddev_layer, name="minibatch_med")(discr)
+    # logger.info(f"Minibatch shape: {discr.get_shape()}")
 
     discr = Conv3D(2*N_FILTER, (2,2,2) , padding="same", use_bias=False)(discr)
     discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)

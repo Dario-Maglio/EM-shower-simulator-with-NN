@@ -69,8 +69,8 @@ def make_generator_model():
 
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
-    # li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
-    li_en = Dense(n_nodes)(en_label)
+    li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
+    li_en = Dense(n_nodes)(li_en)
     li_en = Reshape(input_shape)(li_en)
 
     # ParticleID label input
@@ -188,7 +188,7 @@ def compute_energy(in_images):
     """Compute energy deposited in detector
     """
     in_images = tf.cast(in_images, tf.float32)
-
+    
     en_images = tf.math.multiply(in_images, ENERGY_NORM)
     en_images = tf.math.pow(10., en_images)
     en_images = tf.math.divide(en_images, ENERGY_SCALE)
@@ -199,13 +199,16 @@ def energies_per_layer(in_images):
     """Compute energy deposited in detector for each layer
     """
     in_images = tf.cast(in_images, tf.float32)
+    shape = in_images.shape
 
     en_images = tf.math.multiply(in_images, ENERGY_NORM)
     en_images = tf.math.pow(10., en_images)
     en_images = tf.math.divide(en_images, ENERGY_SCALE)
-    en_images = tf.math.reduce_sum(en_images, axis=[2,3,4])
+    en_images = tf.math.reduce_sum(en_images, axis=[2,3,4], keepdims=True)
+
+    en_images = tf.tile(en_images, [1, 1 , shape[2], shape[3], 1])
     #output: (None, 12)
-    return en_images
+    return  tf.concat([in_images, en_images], axis=-1)
 
 
 def make_discriminator_model():
@@ -239,21 +242,21 @@ def make_discriminator_model():
     in_image = Input(shape=GEOMETRY, name="input_image")
 
     energies = Lambda(energies_per_layer, name="energies_per_layer")(in_image)
-    energies = Dense(2*N_FILTER, activation="relu")(energies)
+    # energies = Dense(2*N_FILTER, activation="relu")(energies)
 
-    discr = Lambda(minibatch_stddev_layer, name="minibatch_in")(in_image)
-    logger.info(f"Minibatch shape: {discr.get_shape()}")
+    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
+    # logger.info(f"Minibatch shape: {discr.get_shape()}")
 
-    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(discr)#in_image
+    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(energies)#in_image
     logger.info(discr.get_shape())
     discr = MaxPooling3D(pool_size = (2,2,2), padding ="same")(discr)
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    # discr = Lambda(minibatch_stddev_layer, name="minibatch_med")(discr)
-    # logger.info(f"Minibatch shape: {discr.get_shape()}")
+    minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    logger.info(f"Minibatch shape: {discr.get_shape()}")
 
-    discr = Conv3D(2*N_FILTER, (2,2,2) , padding="same", use_bias=False)(discr)
+    discr = Conv3D(2*N_FILTER, (2,2,2) , padding="same", use_bias=False)(minibatch)
     discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
@@ -269,7 +272,7 @@ def make_discriminator_model():
 
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
-    discr = Concatenate()([discr, energies])
+    # discr = Concatenate()([discr, energies])
 
     discr_conv = Dense(N_FILTER, activation="relu")(discr)
     discr_conv = Dense(N_FILTER, activation="relu")(discr_conv)

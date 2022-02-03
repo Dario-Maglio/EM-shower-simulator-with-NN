@@ -18,6 +18,7 @@ from tensorflow.keras.layers import (Input,
                                      Conv3DTranspose,
                                      Conv3D,
                                      MaxPooling3D,
+                                     AveragePooling3D,
                                      Dropout,
                                      Lambda,
                                      Concatenate,
@@ -29,7 +30,7 @@ from tensorflow.keras.layers import (Input,
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-NOISE_DIM = 512
+NOISE_DIM = 2048
 MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
@@ -249,23 +250,23 @@ def make_discriminator_model():
 
     discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
     logger.info(discr.get_shape())
-    discr = MaxPooling3D(pool_size = (2,2,2), padding ="same")(discr)
+    discr = AveragePooling3D(pool_size = (2,2,2), padding ="valid")(discr)
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     logger.info(f"Minibatch shape: {discr.get_shape()}")
 
-    discr = Conv3D(2*N_FILTER, (2,2,2) , padding="same", use_bias=False)(minibatch)
-    discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
+    discr = Conv3D(2*N_FILTER, (2,2,2) , padding="valid", use_bias=False)(minibatch)
+    discr = AveragePooling3D(pool_size = (2,2,2) , padding ="valid")(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(3*N_FILTER, (2,2,2), padding="same", use_bias=False)(discr)
-    discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
-    discr = LeakyReLU()(discr)
-    discr = Dropout(0.3)(discr)
+    # discr = Conv3D(3*N_FILTER, (2,2,2), padding="same", use_bias=False)(discr)
+    # discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
+    # discr = LeakyReLU()(discr)
+    # discr = Dropout(0.3)(discr)
 
     # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     # logger.info(f"Minibatch shape: {minibatch.get_shape()}")

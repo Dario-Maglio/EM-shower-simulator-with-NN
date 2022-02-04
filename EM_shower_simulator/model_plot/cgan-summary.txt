@@ -74,53 +74,53 @@ ________________________________________________________________________________
  conv3d_3 (Conv3D)              (None, 11, 21, 21,   3200        ['input_image[0][0]']            
                                 64)                                                               
                                                                                                   
- average_pooling3d_1 (AveragePo  (None, 11, 10, 10,   0          ['conv3d_3[0][0]']               
- oling3D)                       64)                                                               
+ average_pooling3d_1 (AveragePo  (None, 5, 10, 10, 6  0          ['conv3d_3[0][0]']               
+ oling3D)                       4)                                                                
                                                                                                   
- leaky_re_lu_9 (LeakyReLU)      (None, 11, 10, 10,   0           ['average_pooling3d_1[0][0]']    
-                                64)                                                               
+ leaky_re_lu_9 (LeakyReLU)      (None, 5, 10, 10, 6  0           ['average_pooling3d_1[0][0]']    
+                                4)                                                                
                                                                                                   
- dropout_3 (Dropout)            (None, 11, 10, 10,   0           ['leaky_re_lu_9[0][0]']          
-                                64)                                                               
+ dropout_3 (Dropout)            (None, 5, 10, 10, 6  0           ['leaky_re_lu_9[0][0]']          
+                                4)                                                                
                                                                                                   
- minibatch (Lambda)             (None, 11, 10, 10,   0           ['dropout_3[0][0]']              
-                                65)                                                               
+ minibatch (Lambda)             (None, 5, 10, 10, 6  0           ['dropout_3[0][0]']              
+                                5)                                                                
                                                                                                   
- conv3d_4 (Conv3D)              (None, 7, 8, 8, 128  374400      ['minibatch[0][0]']              
+ conv3d_4 (Conv3D)              (None, 4, 9, 9, 128  66560       ['minibatch[0][0]']              
                                 )                                                                 
                                                                                                   
- max_pooling3d_1 (MaxPooling3D)  (None, 7, 4, 4, 128  0          ['conv3d_4[0][0]']               
+ max_pooling3d_1 (MaxPooling3D)  (None, 4, 4, 4, 128  0          ['conv3d_4[0][0]']               
                                 )                                                                 
                                                                                                   
- leaky_re_lu_10 (LeakyReLU)     (None, 7, 4, 4, 128  0           ['max_pooling3d_1[0][0]']        
+ leaky_re_lu_10 (LeakyReLU)     (None, 4, 4, 4, 128  0           ['max_pooling3d_1[0][0]']        
                                 )                                                                 
                                                                                                   
- dropout_4 (Dropout)            (None, 7, 4, 4, 128  0           ['leaky_re_lu_10[0][0]']         
+ dropout_4 (Dropout)            (None, 4, 4, 4, 128  0           ['leaky_re_lu_10[0][0]']         
                                 )                                                                 
                                                                                                   
- conv3d_5 (Conv3D)              (None, 2, 2, 2, 192  1327104     ['dropout_4[0][0]']              
+ conv3d_5 (Conv3D)              (None, 3, 3, 3, 192  196608      ['dropout_4[0][0]']              
                                 )                                                                 
                                                                                                   
- leaky_re_lu_11 (LeakyReLU)     (None, 2, 2, 2, 192  0           ['conv3d_5[0][0]']               
+ leaky_re_lu_11 (LeakyReLU)     (None, 3, 3, 3, 192  0           ['conv3d_5[0][0]']               
                                 )                                                                 
                                                                                                   
- dropout_5 (Dropout)            (None, 2, 2, 2, 192  0           ['leaky_re_lu_11[0][0]']         
+ dropout_5 (Dropout)            (None, 3, 3, 3, 192  0           ['leaky_re_lu_11[0][0]']         
                                 )                                                                 
                                                                                                   
  energies_per_layer (Lambda)    (None, 12)           0           ['input_image[0][0]']            
                                                                                                   
- flatten_1 (Flatten)            (None, 1536)         0           ['dropout_5[0][0]']              
+ flatten_1 (Flatten)            (None, 5184)         0           ['dropout_5[0][0]']              
                                                                                                   
  dense_13 (Dense)               (None, 128)          1664        ['energies_per_layer[0][0]']     
                                                                                                   
- concatenate_3 (Concatenate)    (None, 1664)         0           ['flatten_1[0][0]',              
+ concatenate_3 (Concatenate)    (None, 5312)         0           ['flatten_1[0][0]',              
                                                                   'dense_13[0][0]']               
                                                                                                   
- dense_14 (Dense)               (None, 64)           106560      ['concatenate_3[0][0]']          
+ dense_14 (Dense)               (None, 64)           340032      ['concatenate_3[0][0]']          
                                                                                                   
- dense_16 (Dense)               (None, 64)           106560      ['concatenate_3[0][0]']          
+ dense_16 (Dense)               (None, 64)           340032      ['concatenate_3[0][0]']          
                                                                                                   
- dense_18 (Dense)               (None, 64)           106560      ['concatenate_3[0][0]']          
+ dense_18 (Dense)               (None, 64)           340032      ['concatenate_3[0][0]']          
                                                                                                   
  dense_15 (Dense)               (None, 64)           4160        ['dense_14[0][0]']               
                                                                                                   
@@ -135,8 +135,8 @@ ________________________________________________________________________________
  one_hot (Dense)                (None, 1)            65          ['dense_19[0][0]']               
                                                                                                   
 ==================================================================================================
-Total params: 2,038,723
-Trainable params: 2,038,723
+Total params: 1,300,803
+Trainable params: 1,300,803
 Non-trainable params: 0
 __________________________________________________________________________________________________
 

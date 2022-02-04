@@ -223,7 +223,7 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     N_FILTER = 64
-    KERNEL = (1, 5, 5)
+    KERNEL = (2, 5, 5)
     KERNEL_1 = (3, 3, 3)
     KERNEL_2 = (2, 2, 2)
     # padding="same" add a 0 to borders, "valid" use only available data !

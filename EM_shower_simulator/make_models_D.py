@@ -223,7 +223,7 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     N_FILTER = 64
-    KERNEL = (2, 5, 5)
+    KERNEL = (5, 5, 5)
     KERNEL_1 = (3, 3, 3)
     KERNEL_2 = (2, 2, 2)
     # padding="same" add a 0 to borders, "valid" use only available data !
@@ -258,15 +258,15 @@ def make_discriminator_model():
     logger.info(f"Minibatch shape: {discr.get_shape()}")
 
     discr = Conv3D(2*N_FILTER, (2,2,2) , padding="valid", use_bias=False)(minibatch)
-    discr = MaxPooling3D(pool_size = (1,2,2) , padding ="valid")(discr)
+    discr = MaxPooling3D(pool_size = (2,2,2) , padding ="valid")(discr)
     logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = Conv3D(3*N_FILTER, (2,2,2), padding="valid", use_bias=False)(discr)
-    #discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
-    discr = LeakyReLU()(discr)
-    discr = Dropout(0.3)(discr)
+    # discr = Conv3D(3*N_FILTER, (2,2,2), padding="same", use_bias=False)(discr)
+    # discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
+    # discr = LeakyReLU()(discr)
+    # discr = Dropout(0.3)(discr)
 
     # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     # logger.info(f"Minibatch shape: {minibatch.get_shape()}")

@@ -18,7 +18,6 @@ from tensorflow.keras.layers import (Input,
                                      Conv3DTranspose,
                                      Conv3D,
                                      MaxPooling3D,
-                                     AveragePooling3D,
                                      Dropout,
                                      Lambda,
                                      Concatenate,
@@ -27,16 +26,21 @@ from tensorflow.keras.layers import (Input,
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
 
-# Configuration parameters
-N_PID = 3
-N_ENER = 30 + 1
-NOISE_DIM = 2048
-MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
-ENERGY_NORM = 6.7404
-ENERGY_SCALE = 1000000.
+#from constants import *
+# GEOMETRY = (12, 12, 12, 1)
 GEOMETRY = (12, 25, 25, 1)
 
-# Define logger and handler
+ENERGY_NORM = 6.7404
+ENERGY_SCALE = 1000000
+
+N_PID = 3                               # number of pid classes
+N_ENER = 30 + 1                         # number of en classes
+PARAM_EN = 0.01                         # parameter in energy losses computation
+NOISE_DIM = 2048
+BUFFER_SIZE = 10400
+
+MBSTD_GROUP_SIZE = 8                    #minibatch dimension
+
 logger = logging.getLogger("ModelsLogger")
 
 #-------------------------------------------------------------------------------
@@ -110,8 +114,6 @@ def make_generator_model():
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
 
-    # print(output)
-
     model = Model([in_lat, en_label, pid_label], output, name='generator')
     return model
 
@@ -172,11 +174,9 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         # Cast to FP32.
         minib = tf.cast(minib, tf.float32)
         # Calculate the std deviation for each pixel over minibatch
-        minib = tf.math.reduce_std(minib + 1E-6, axis=0)
-        # print(f"STD DEVIATION \n{minib}")
+        minib = tf.math.reduce_std(minib, axis=0)
         # Take average over fmaps and pixels.
         minib = tf.reduce_mean(minib, axis=[2,3,4], keepdims=True)
-        # print(f"MEAN \n{minib}")
         # Cast back to original data type.
         minib = tf.cast(minib, discr.dtype)
         # New tensor by replicating input multiples times.
@@ -196,22 +196,6 @@ def compute_energy(in_images):
     en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
     return en_images
 
-def energies_per_layer(in_images):
-    """Compute energy deposited in detector for each layer
-    """
-    in_images = tf.cast(in_images, tf.float32)
-    shape = in_images.shape
-
-    en_images = tf.math.multiply(in_images, ENERGY_NORM)
-    en_images = tf.math.pow(10., en_images)
-    en_images = tf.math.divide(en_images, ENERGY_SCALE)
-    en_images = tf.math.reduce_sum(en_images, axis=[2,3,4])#, keepdims=True)
-
-    #en_images = tf.tile(en_images, [1, 1 , shape[2], shape[3], 1])
-    #output: (None, 12)
-    return  en_images#tf.concat([in_images, en_images], axis=-1)
-
-
 def make_discriminator_model():
     """Define discriminator model:
     Input 1) Vector of images associated to the given labels;
@@ -222,7 +206,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 64
+    N_FILTER = 32
     KERNEL = (5, 5, 5)
     KERNEL_1 = (3, 3, 3)
     KERNEL_2 = (2, 2, 2)
@@ -242,38 +226,25 @@ def make_discriminator_model():
     # Image input
     in_image = Input(shape=GEOMETRY, name="input_image")
 
-    energies = Lambda(energies_per_layer, name="energies_per_layer")(in_image)
-    energies = Dense(2*N_FILTER, activation="relu")(energies)
-
-    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
-    # logger.info(f"Minibatch shape: {discr.get_shape()}")
-
-    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
+    discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)
     logger.info(discr.get_shape())
-    discr = AveragePooling3D(pool_size = (2,2,2), padding ="valid")(discr)
+    discr = LeakyReLU()(discr)
+    discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
+    discr = Dropout(0.3)(discr)
+
+    discr = Conv3D(2*N_FILTER, KERNEL, padding="same", use_bias=False)(discr)
+    logger.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
+
+    discr = Conv3D(3*N_FILTER, KERNEL_1, padding="same", use_bias=False)(discr)
+    discr = MaxPooling3D(pool_size = KERNEL, padding ="same")(discr)
 
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
-    logger.info(f"Minibatch shape: {discr.get_shape()}")
-
-    discr = Conv3D(2*N_FILTER, (2,2,2) , padding="valid", use_bias=False)(minibatch)
-    discr = MaxPooling3D(pool_size = (2,2,2) , padding ="valid")(discr)
-    logger.info(discr.get_shape())
-    discr = LeakyReLU()(discr)
-    discr = Dropout(0.3)(discr)
-
-    # discr = Conv3D(3*N_FILTER, (2,2,2), padding="same", use_bias=False)(discr)
-    # discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
-    # discr = LeakyReLU()(discr)
-    # discr = Dropout(0.3)(discr)
-
-    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
-    # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+    logger.info(f"Minibatch shape: {minibatch.get_shape()}")
 
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
-    discr = Concatenate()([discr, energies])
 
     discr_conv = Dense(N_FILTER, activation="relu")(discr)
     discr_conv = Dense(N_FILTER, activation="relu")(discr_conv)

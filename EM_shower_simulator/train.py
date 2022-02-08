@@ -2,7 +2,6 @@
 
 import os
 import logging
-from sys import exit
 
 import matplotlib.pyplot as plt
 
@@ -39,14 +38,12 @@ logGAN.addHandler(ch)
 #-------------------------------------------------------------------------------
 
 def train_cgan(cond_gan, train_dataset):
-    history = cond_gan.train(train_dataset, epochs=500, batch=256, wake_up=10)
+    history = cond_gan.train(train_dataset, epochs=5, batch=256, wake_up=70)
     #history = cond_gan.fit(train_dataset, epochs=3, batch=2048)
 
     plt.figure("Evolution of losses per epochs")
-    plt.plot(history["gener_loss"], label="gener_loss")
-    plt.plot(history["discr_loss"], label="discr_loss")
-    plt.plot(history["energ_loss"], label="energ_loss")
-    plt.plot(history["label_loss"], label="label_loss")
+    for key in history:
+        plt.plot(history[key], label=key)
     plt.show()
     logger.info("The cGAN model has been trained correctly.")
 

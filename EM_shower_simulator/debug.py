@@ -10,20 +10,20 @@ from constants import default_list
 
 # Logger import
 from dataset import logger as logData
-from make_models_D import logger as logMod
+from make_models import logger as logMod
 from class_GAN import logger as logGAN
 
 # Debug import
 from dataset import debug_data_pull, debug_shower
-from make_models_D import debug_generator, debug_discriminator
-from make_models_D import make_generator_model, make_discriminator_model
+from make_models import debug_generator, debug_discriminator
+from make_models import make_generator_model, make_discriminator_model
 from class_GAN import test_noise, ConditionalGAN, compute_energy
 
 #-------------------------------------------------------------------------------
 
-# Path list from colab interface
-# for index, path in enumerate(default_list):
-#     default_list[index] = os.path.join('EM-shower-simulator-with-NN', path)
+# Path list from this folder
+for index, path in enumerate(default_list):
+    default_list[index] = os.path.join('..', path)
 
 # Examples to show
 EXAMPLES = 5

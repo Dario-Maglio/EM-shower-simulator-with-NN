@@ -10,16 +10,21 @@ from constants import default_list
 
 # Logger import
 from dataset import logger as logData
-from make_models_D import logger as logMod
+from make_models import logger as logMod
 from class_GAN import logger as logGAN
 
 # Train import
-from make_models_D import make_generator_model, make_discriminator_model
+from dataset import data_pull
+from make_models import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
 
-
-
 #-------------------------------------------------------------------------------
+
+VERBOSE = True
+
+# Path list from this folder
+for index, path in enumerate(default_list):
+    default_list[index] = os.path.join('..', path)
 
 # Define logger and handler
 ch = logging.StreamHandler()
@@ -47,7 +52,7 @@ def train_cgan(cond_gan, train_dataset):
 
 if __name__=="__main__":
     """Creation and training of the conditional GAN."""
-    if verbose :
+    if VERBOSE :
         logger.setLevel(logging.DEBUG)
         logger.info('Logging level set on DEBUG.')
     else:
@@ -55,7 +60,7 @@ if __name__=="__main__":
         logger.info('Logging level set on WARNING.')
 
     logger.info("Start building operations.")
-    train_dataset = data_pull(PATH_LIST)
+    train_dataset = data_pull(default_list)
 
     generator = make_generator_model()
 

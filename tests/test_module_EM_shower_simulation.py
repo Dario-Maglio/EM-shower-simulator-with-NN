@@ -13,7 +13,7 @@ class TestCore(unittest.TestCase):
 
     def test_debug_models(self):
         """Test that the debug subroutins run without exceptions."""
-        train_data = EM.debug_data_pull([EM.data_path_1, EM.data_path_2], num_examples=5)
+        train_data = EM.debug_data_pull(EM.default_list)
         train_images = train_data[0]
         EM.debug_shower(train_images)
         #EM.debug_generator(EM.test_noise)

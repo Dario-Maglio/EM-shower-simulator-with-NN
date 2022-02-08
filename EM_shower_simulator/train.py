@@ -6,21 +6,20 @@ from sys import exit
 
 import matplotlib.pyplot as plt
 
+from constants import default_list
+
 # Logger import
 from dataset import logger as logData
 from make_models_D import logger as logMod
 from class_GAN import logger as logGAN
 
 # Train import
-from dataset import PATH_LIST, data_pull
 from make_models_D import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
 
 
-# Creation of the default dataset path
-#from constants import *
 
-verbose = True
+#-------------------------------------------------------------------------------
 
 # Define logger and handler
 ch = logging.StreamHandler()

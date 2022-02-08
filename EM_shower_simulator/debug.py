@@ -1,24 +1,32 @@
 """ Debug GAN, generator and discriminator and save the models """
 
 import os
+import sys
 import logging
-from sys import exit
 
 import matplotlib.pyplot as plt
 
+from constants import default_list
+
 # Logger import
 from dataset import logger as logData
-from make_models import logger as logMod
+from make_models_D import logger as logMod
 from class_GAN import logger as logGAN
 
 # Debug import
-from dataset import PATH_LIST, GEOMETRY, debug_data_pull, debug_shower
+from dataset import debug_data_pull, debug_shower
 from make_models_D import debug_generator, debug_discriminator
 from make_models_D import make_generator_model, make_discriminator_model
 from class_GAN import test_noise, ConditionalGAN, compute_energy
 
-# Creation of the default dataset path
-#from constants import *
+#-------------------------------------------------------------------------------
+
+# Path list from colab interface
+# for index, path in enumerate(default_list):
+#     default_list[index] = os.path.join('EM-shower-simulator-with-NN', path)
+
+# Examples to show
+EXAMPLES = 5
 
 # Define logger and handler
 ch = logging.StreamHandler()
@@ -32,7 +40,7 @@ logGAN.addHandler(ch)
 
 #-------------------------------------------------------------------------------
 
-def debug(path_list = PATH_LIST, num_examples=5, verbose=False):
+def debug(path_list, num_examples=EXAMPLES, verbose=False):
     """Debug subroutines for the training of the cGAN with dataset in path."""
     if verbose :
         logger.setLevel(logging.DEBUG)
@@ -42,13 +50,10 @@ def debug(path_list = PATH_LIST, num_examples=5, verbose=False):
         logger.info('Logging level set on WARNING.')
 
     try:
-        train_data = debug_data_pull(path_list, num_examples)
-    except AssertionError as e:
-        print(f"An error occurred while loading the dataset: \n{e}")
-        exit()
-    except Exception as e:
-        print(f"Error: Invalid path or corrupted file. \n{e}")
-        exit()
+        train_data = debug_data_pull(path_list, num_examples, verbose=verbose)
+    except AssertionError as error:
+        print(f"An error occurred while loading the dataset: \n{error}")
+        sys.exit()
 
     #Execute debug subroutines
     train_images = train_data[0]
@@ -56,10 +61,11 @@ def debug(path_list = PATH_LIST, num_examples=5, verbose=False):
     debug_generator(test_noise, verbose=verbose)
     debug_discriminator(train_images, verbose)
 
-def debug_cgan(cond_gan, path_list = PATH_LIST, num_examples=5):
+def debug_cgan(gan, path_list, num_examples=EXAMPLES):
+    """Debug of the cGAN methods."""
     logger.info("Testing the cGAN methods on noise and real samples.")
-    gener, discr = cond_gan.evaluate()
-    noise = cond_gan.generate_noise(num_examples)
+    gener, discr = gan.evaluate()
+    noise = gan.generate_noise(num_examples)
 
     # Fake showers
     predictions = gener(noise, training=False)
@@ -67,14 +73,14 @@ def debug_cgan(cond_gan, path_list = PATH_LIST, num_examples=5):
     energy = compute_energy(predictions)
 
     k=0
-    fig = plt.figure("Fake generated showers", figsize=(20,10))
+    plt.figure("Fake generated showers", figsize=(20,10))
     num_examples = predictions.shape[0]
     for i in range(num_examples):
-       for j in range(predictions.shape[1]):
-          k=k+1
-          plt.subplot(num_examples, predictions.shape[1], k)
-          plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
-          plt.axis("off")
+        for j in range(predictions.shape[1]):
+            k=k+1
+            plt.subplot(num_examples, predictions.shape[1], k)
+            plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
+            plt.axis("off")
 
     for example in range(len(noise[0])):
         print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
@@ -93,11 +99,11 @@ def debug_cgan(cond_gan, path_list = PATH_LIST, num_examples=5):
     plt.figure("Real generated showers", figsize=(20,10))
     num_examples = images.shape[0]
     for i in range(num_examples):
-       for j in range(images.shape[1]):
-          k=k+1
-          plt.subplot(num_examples, images.shape[1], k)
-          plt.imshow(images[i,j,:,:,0]) #, cmap="gray")
-          plt.axis("off")
+        for j in range(images.shape[1]):
+            k=k+1
+            plt.subplot(num_examples, images.shape[1], k)
+            plt.imshow(images[i,j,:,:,0]) #, cmap="gray")
+            plt.axis("off")
 
     for example in range(num_examples):
         print(f"{example+1}) Primary particle = {int(predictions[2][example][0])}"
@@ -112,7 +118,7 @@ def debug_cgan(cond_gan, path_list = PATH_LIST, num_examples=5):
 
 if __name__=="__main__":
 
-    debug(verbose=True)
+    debug(default_list, verbose=True)
 
     generator = make_generator_model()
 
@@ -125,7 +131,7 @@ if __name__=="__main__":
     cond_gan.plot_model()
     logger.info("The cGAN model has been plotted correctly.")
 
-    #debug_cgan(cond_gan)
+    #debug_cgan(cond_gan, default_list)
 
     logger.info("The work is done.")
     logger.handlers.clear()

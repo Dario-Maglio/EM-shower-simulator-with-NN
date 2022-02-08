@@ -1,4 +1,4 @@
-"""Conditional GAN structure and subroutines."""
+""" Conditional GAN Class and structure """
 
 # Examples of conditional GANs from which we built our neural network :
 # https://machinelearningmastery.com/how-to-develop-a-conditional-generative-adversarial-network-from-scratch/

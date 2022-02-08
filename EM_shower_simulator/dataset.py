@@ -1,4 +1,4 @@
-"""Subroutines for the dataset organization and shower plot."""
+""" Subroutines for the dataset organization and shower plot """
 
 import logging
 

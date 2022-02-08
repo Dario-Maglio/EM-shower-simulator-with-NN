@@ -1,4 +1,4 @@
-"""Simulation of EM shower with a pre-trained NN"""
+""" Simulation of EM shower with a pre-trained NN """
 
 import time
 import logging

@@ -1,4 +1,4 @@
-"""Subroutins for the creation of the generator and discriminator models."""
+""" Subroutins for the creation of the generator and discriminator models """
 
 import os
 import logging

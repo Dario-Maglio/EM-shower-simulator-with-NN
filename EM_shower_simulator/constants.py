@@ -25,3 +25,5 @@ NOISE_DIM = 1024
 BUFFER_SIZE = 10400
 
 MBSTD_GROUP_SIZE = 8                    #minibatch dimension
+
+#-------------------------------------------------------------------------------

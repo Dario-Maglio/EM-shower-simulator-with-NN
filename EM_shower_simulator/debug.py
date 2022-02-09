@@ -21,9 +21,10 @@ from class_GAN import test_noise, ConditionalGAN, compute_energy
 
 #-------------------------------------------------------------------------------
 
+VERBOSE = True
+
 # Path list from this folder
-for index, path in enumerate(default_list):
-    default_list[index] = os.path.join('..', path)
+path_list = [os.path.join('..', path) for path in default_list]
 
 # Examples to show
 EXAMPLES = 5
@@ -119,7 +120,7 @@ def debug_cgan(gan, path_list, num_examples=EXAMPLES):
 
 if __name__=="__main__":
 
-    debug(default_list, verbose=True)
+    debug(path_list, verbose=VERBOSE)
 
     generator = make_generator_model()
 
@@ -132,7 +133,7 @@ if __name__=="__main__":
     cond_gan.plot_model()
     logger.info("The cGAN model has been plotted correctly.")
 
-    #debug_cgan(cond_gan, default_list)
+    #debug_cgan(cond_gan, path_list)
 
     logger.info("The work is done.")
     logger.handlers.clear()

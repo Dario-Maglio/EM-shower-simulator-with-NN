@@ -22,8 +22,7 @@ from class_GAN import ConditionalGAN
 VERBOSE = True
 
 # Path list from this folder
-for index, path in enumerate(default_list):
-    default_list[index] = os.path.join('..', path)
+path_list = [os.path.join('..', path) for path in default_list]
 
 # Define logger and handler
 ch = logging.StreamHandler()
@@ -57,7 +56,7 @@ if __name__=="__main__":
         logger.info('Logging level set on WARNING.')
 
     logger.info("Start building operations.")
-    train_dataset = data_pull(default_list)
+    train_dataset = data_pull(path_list)
 
     generator = make_generator_model()
 

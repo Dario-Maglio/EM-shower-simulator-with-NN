@@ -1,11 +1,7 @@
 """ Conditional GAN Class and structure """
 
-# Examples of conditional GANs from which we built our neural network :
-# https://machinelearningmastery.com/how-to-develop-a-conditional-generative-adversarial-network-from-scratch/
-# https://keras.io/examples/generative/conditional_gan/
-
-import sys
 import os
+import sys
 import time
 import logging
 from pathlib import Path
@@ -17,6 +13,9 @@ from matplotlib.image import imread
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.metrics import Mean
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.losses import MeanSquaredError as mean_squared
+from tensorflow.keras.losses import BinaryCrossentropy as cross_entropy
+from tensorflow.train import CheckpointManager as Manager
 
 from IPython import display
 
@@ -81,6 +80,7 @@ class ConditionalGAN(tf.keras.Model):
         super(ConditionalGAN, self).__init__()
         self.generator = gener
         self.discriminator = discr
+        self.history = {}
 
         # Metrics
         self.gener_loss_tracker = Mean(name="gener_loss")
@@ -89,20 +89,18 @@ class ConditionalGAN(tf.keras.Model):
         self.parID_loss_tracker = Mean(name="particle_loss")
         self.computed_e_tracker = Mean(name="computed_loss")
 
-        # Scheduler attributes and optimizers
+        # Optimizers
         self.generator_optimizer = Adam(learning_rate * 10)
         self.discriminator_optimizer = Adam(learning_rate)
 
-        # Manager to save rusults from training in form of checkpoints.
-        self.history = {}
+        # Manager to save rusults from training in form of checkpoints
         self.checkpoint = tf.train.Checkpoint(
                            generator=self.generator,
                            discriminator=self.discriminator,
                            generator_optimizer=self.generator_optimizer,
                            discriminator_optimizer=self.discriminator_optimizer)
 
-        self.manager = tf.train.CheckpointManager(self.checkpoint,
-                                        './training_checkpoints', max_to_keep=5)
+        self.manager = Manager(self.checkpoint, './checkpoints', max_to_keep=5)
 
     @property
     def metrics(self):
@@ -112,6 +110,14 @@ class ConditionalGAN(tf.keras.Model):
                 self.energ_loss_tracker,
                 self.parID_loss_tracker,
                 self.computed_e_tracker]
+
+    def compile(self):
+        """Compile method of the cGAN network.
+        Quite useless in this case because the training set up has been done in
+        the constructor of the class. It associate to the new abstract model an
+        optimizer attribute 'rmsprop', and loss, metrics=None.
+        """
+        super(ConditionalGAN, self).compile()
 
     def summary(self):
         """Summary method of the cGAN network."""
@@ -156,13 +162,11 @@ class ConditionalGAN(tf.keras.Model):
         fig.savefig(os.path.join(save_path, file_name))
         plt.close()
 
-    def compile(self):
-        """Compile method of the cGAN network.
-        Quite useless in this case because the training set up has been done in
-        the constructor of the class. It associate to the new abstract model an
-        optimizer attribute 'rmsprop', and loss, metrics=None.
-        """
-        super(ConditionalGAN, self).compile()
+    def generate_noise(self, num_examples=num_examples):
+        """Generate a set of num_examples noise inputs for the generator."""
+        return [tf.random.normal([num_examples, NOISE_DIM]),
+                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
+                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
     def evaluate(self, num_examples=num_examples):
         """Restore the last checkpoint and return the models."""
@@ -176,12 +180,6 @@ class ConditionalGAN(tf.keras.Model):
             return self.generator, self.discriminator
         else:
             raise Exception("No checkpoint found.")
-
-    def generate_noise(self, num_examples=num_examples):
-        """Generate a set of num_examples noise inputs for the generator."""
-        return [tf.random.normal([num_examples, NOISE_DIM]),
-                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
-                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
     def generate_and_save_images(self, noise, epoch=0):
         """Use the current status of the NN to generate images from the noise,
@@ -261,10 +259,6 @@ class ConditionalGAN(tf.keras.Model):
             real_output = self.discriminator(real_images, training=True)
             fake_output = self.discriminator(generated_images, training=True)
 
-            # Abbreviation for loss calculation
-            cross_entropy = tf.keras.losses.BinaryCrossentropy()
-            mean_squared = tf.keras.losses.MeanSquaredError()
-
             # Compute GAN loss on decisions
             ones = tf.ones_like(real_output[0])
             zero = tf.zeros_like(fake_output[0])
@@ -320,7 +314,7 @@ class ConditionalGAN(tf.keras.Model):
 
         return logs
 
-    def train(self, dataset, epochs=1, batch=32, wake_up=10, verbose=1):
+    def train(self, dataset, epochs=1, batch=32, wake_up=100, verbose=1):
         """Define the training function of the cGAN.
         Inputs:
         dataset = combined real images vectors and labels;
@@ -385,17 +379,18 @@ class ConditionalGAN(tf.keras.Model):
            print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
 
+           # Update history and call scheduler
+           for key, value in logs.items():
+               self.history.setdefault(key, []).append(value)
+           self.scheduler(epoch + 1, logs, wake_up=wake_up)
+
            # Save checkpoint
            if (epoch + 1) % 3 == 0:
               save_path = self.manager.save()
               print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
 
-           # Update history and call the scheduler
-           for key, value in logs.items():
-               self.history.setdefault(key, []).append(value)
-           self.scheduler(epoch + 1, logs, wake_up=wake_up)
         return self.history
-        
+
     def fit(self, dataset, epochs=1, batch=32):
         """Wrap the default training function of the model."""
         dataset = dataset.batch(batch, drop_remainder=True)

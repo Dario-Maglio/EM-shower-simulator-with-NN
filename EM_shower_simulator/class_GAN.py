@@ -320,7 +320,7 @@ class ConditionalGAN(tf.keras.Model):
 
         return logs
 
-    def train(self, dataset, epochs=1, batch=32, wake_up=100, verbose=1):
+    def train(self, dataset, epochs=1, batch=32, wake_up=10, verbose=1):
         """Define the training function of the cGAN.
         Inputs:
         dataset = combined real images vectors and labels;
@@ -330,9 +330,10 @@ class ConditionalGAN(tf.keras.Model):
 
         For each epoch:
         1) For each batch of the dataset, run the custom "train_step" function;
-        2) Produce images from default test_noise;
+        2) Produce images;
         3) Save the model every 5 epochs as a checkpoint;
-        4) Print out the completed epoch no. and the time spent.
+        4) Print out the completed epoch no. and the time spent;
+        5) Then generate a final image after the training is completed.
         """
         if verbose :
             logger.setLevel(logging.DEBUG)
@@ -384,18 +385,17 @@ class ConditionalGAN(tf.keras.Model):
            print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
 
-           # Update history and call scheduler
-           for key, value in logs.items():
-               self.history.setdefault(key, []).append(value)
-           self.scheduler(epoch + 1, logs, wake_up=wake_up)
-
            # Save checkpoint
            if (epoch + 1) % 3 == 0:
               save_path = self.manager.save()
               print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
 
+           # Update history and call the scheduler
+           for key, value in logs.items():
+               self.history.setdefault(key, []).append(value)
+           self.scheduler(epoch + 1, logs, wake_up=wake_up)
         return self.history
-
+        
     def fit(self, dataset, epochs=1, batch=32):
         """Wrap the default training function of the model."""
         dataset = dataset.batch(batch, drop_remainder=True)

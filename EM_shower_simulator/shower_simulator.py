@@ -5,7 +5,6 @@ import logging
 import argparse
 
 from numpy import array, random
-from tensorflow.keras.models import load_model
 
 DESCRIPTION = """
 This command allows the user to generate a shower simulation from command line.
@@ -14,7 +13,7 @@ order: energy momentum angle
 It gives an error if a different input size or type is passed."""
 DESCRIPTION_F = """insert the shower's features from command line"""
 
-n_features = 3
+n_features = 2
 default_features = random.rand(n_features)
 
 def simulate_shower(features=default_features, verbose=0):
@@ -26,8 +25,8 @@ def simulate_shower(features=default_features, verbose=0):
     if not(features.dtype=='float64'):
         raise TypeError('Expected array of float as input.')
     if not(len(features)==n_features):
-        e = f'Expected input dimension {n_features}, not {len(features)}.'
-        raise TypeError(e)
+        error = f'Expected input dimension {n_features}, not {len(features)}.'
+        raise TypeError(error)
 
     print(f'simulating event with features: {features}')
 
@@ -63,7 +62,7 @@ def simulate_shower(features=default_features, verbose=0):
 
 
 def cli():
-    """Command line interface (CLI) of the shpwer simulator."""
+    """Command line interface (CLI) of the shower simulator."""
     PARSER = argparse.ArgumentParser(
        prog='simulate-EM-shower',
        formatter_class=argparse.RawTextHelpFormatter,

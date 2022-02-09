@@ -12,8 +12,8 @@
    arguments to setuptools.setup() when it is executed through pip install.
 """
 
-from pkg_resources import parse_version
 import setuptools
+from pkg_resources import parse_version
 
 #requirement to use the setup.cfg file during the setup
 setuptools_version = parse_version(setuptools.__version__)
@@ -25,6 +25,4 @@ with open('requirements.txt', 'r') as f:
 
 _PACKAGES = setuptools.find_packages(exclude='tests')
 
-setuptools.setup(
-   install_requires=_DEPENDENCIES,
-   packages=_PACKAGES)
+setuptools.setup(install_requires=_DEPENDENCIES, packages=_PACKAGES)

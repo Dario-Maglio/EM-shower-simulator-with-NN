@@ -10,6 +10,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from matplotlib.image import imread
+from tensorflow.keras.utils import Progbar
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.metrics import Mean
 from tensorflow.keras.optimizers import Adam
@@ -48,7 +49,7 @@ def metrics_control(metrics):
     """Prevent the training to use continue when a NaN is found."""
     for key in metrics:
         if np.isnan(metrics[key]):
-            raise AssertionError(f"ERROR IN MINIMIZATION {key}: NAN VALUE")
+            raise AssertionError(f"\nERROR IN MINIMIZATION {key}: NAN VALUE")
 
 @tf.function
 def compute_energy(in_images):
@@ -195,13 +196,13 @@ class ConditionalGAN(tf.keras.Model):
         num_examples = predictions.shape[0]
         fig = plt.figure("Generated showers", figsize=(20,10))
         for i in range(num_examples):
-            print(f"Example {i+1}\n"
+            print(f"Example {i+1}\t"
                  +f"Primary particle = {int(noise[2][i][0])}\t"
                  +f"Predicted particle = {decisions[2][i][0]}\n"
                  +f"Initial energy = {noise[1][i][0]}\t"
                  +f"Generated energy = {energies[i][0]}\t"
                  +f"Predicted energy = {decisions[1][i][0]}\t"
-                 +f"Decision = {decisions[0][i][0]}\n\n")
+                 +f"Decision = {decisions[0][i][0]}\n")
             for j in range(predictions.shape[1]):
                 k=k+1
                 plt.subplot(num_examples, predictions.shape[1], k)
@@ -355,7 +356,7 @@ class ConditionalGAN(tf.keras.Model):
            print(f"Running EPOCH = {epoch + 1}/{epochs}")
 
            # Define the progbar
-           progbar = tf.keras.utils.Progbar(len(dataset), verbose=1)
+           progbar = Progbar(len(dataset), verbose=1)
 
            # Start iterate on batches
            start = time.time()
@@ -363,7 +364,7 @@ class ConditionalGAN(tf.keras.Model):
               try:
                   self.train_step(image_batch)
               except AssertionError as error:
-                  print(f"Epoch {epoch}, batch {index}: {error}")
+                  print(f"\nEpoch {epoch}, batch {index}: {error}")
                   sys.exit()
               progbar.update(index, zip(self.logs.keys(), self.logs.values()))
            end = time.time() - start

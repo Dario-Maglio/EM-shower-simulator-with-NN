@@ -31,16 +31,28 @@ from tensorflow.keras.layers import (Input,
 N_PID = 3
 N_ENER = 30 + 1
 NOISE_DIM = 2048
-MBSTD_GROUP_SIZE = 32
+MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 25, 25, 1)
+# EN_CUTOFF = 1. # keV
 
 # Define logger and handler
 logger = logging.getLogger("ModelsLogger")
 
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
+def zero_suppression(output):
+    """Zero suppression on output images
+    """
+    cutoff = tf.zeros_like(output) - 0.5
+    void_pixel = -tf.ones_like(output)
+
+    def f_true(): return output
+    def f_false(): return void_pixel
+
+    output = tf.where( tf.greater(output , cutoff), output, void_pixel )
+    return output
 
 def make_generator_model():
     """Define generator model:
@@ -60,6 +72,9 @@ def make_generator_model():
 
     # Input[i] -> input[i] + 3 convolution * (KERNEL-1) = GEOMETRY[i]!
     error = "ERROR building the generator: shape different from geometry!"
+    #assert KERNEL[0] == (GEOMETRY[0] - input_shape[0])/3 + 1, error
+    #assert KERNEL[1] == (GEOMETRY[1] - input_shape[1])/3 + 1, error
+    #assert KERNEL[2] == (GEOMETRY[2] - input_shape[2])/3 + 1, error
 
     n_nodes = 1
     for cell in input_shape:
@@ -103,9 +118,11 @@ def make_generator_model():
 
     output = (Conv3DTranspose(1, KERNEL, use_bias=False,
                               activation="tanh", name="Fake_image")(gen))
-
+    output = Lambda(zero_suppression, name="Fake_image_zero_suppression")(output)
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
+
+    # print(output)
 
     model = Model([in_lat, en_label, pid_label], output, name='generator')
     return model
@@ -130,15 +147,17 @@ def debug_generator(noise, verbose=False):
     plt.figure("Generated showers", figsize=(20,10))
     num_examples = data_images.shape[0]
     for i in range(num_examples):
-        print(f"{i+1})\tPrimary particle={int(noise[2][i][0])}"
-             +f"\tInitial energy ={noise[1][i][0]}"
-             +f"\tGenerated energy ={energy[i]}\n")
-        for j in range(data_images.shape[1]):
-           k=k+1
-           plt.subplot(num_examples, data_images.shape[1], k)
-           plt.imshow(data_images[i,j,:,:,0])
-           plt.axis("off")
+       for j in range(data_images.shape[1]):
+          k=k+1
+          plt.subplot(num_examples, data_images.shape[1], k)
+          plt.imshow(data_images[i,j,:,:,0]) #, cmap="gray")
+          plt.axis("off")
     plt.show()
+
+    for example in range(len(noise[0]) ):
+      print(f"{example+1})\tPrimary particle={int(noise[2][example][0])}"
+           +f"\tInitial energy ={noise[1][example][0]}"
+           +f"\tGenerated energy ={energy[example]}")
 
     logger.info("Debug of the generator model finished.")
 
@@ -166,19 +185,23 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         minib = tf.cast(minib, tf.float32)
         # Calculate the std deviation for each pixel over minibatch
         minib = tf.math.reduce_std(minib + 1E-6, axis=0)
+        # print(f"STD DEVIATION \n{minib}")
         # Take average over fmaps and pixels.
         minib = tf.reduce_mean(minib, axis=[2,3,4], keepdims=True)
+        # print(f"MEAN \n{minib}")
         # Cast back to original data type.
         minib = tf.cast(minib, discr.dtype)
         # New tensor by replicating input multiples times.
         minib = tf.tile(minib, [group_size, 1 , shape[2], shape[3], 1])
-        # Append as new fmap.
+        #print(f"SHAPE MINIBATCH {minib.shape}")
+        # Append as new fmap. # which axis ????
         return tf.concat([discr, minib], axis=-1)
 
 def compute_energy(in_images):
     """Compute energy deposited in detector
     """
     in_images = tf.cast(in_images, tf.float32)
+
     en_images = tf.math.multiply(in_images, ENERGY_NORM)
     en_images = tf.math.pow(10., en_images)
     en_images = tf.math.divide(en_images, ENERGY_SCALE)
@@ -190,11 +213,15 @@ def energies_per_layer(in_images):
     """
     in_images = tf.cast(in_images, tf.float32)
     shape = in_images.shape
+
     en_images = tf.math.multiply(in_images, ENERGY_NORM)
     en_images = tf.math.pow(10., en_images)
     en_images = tf.math.divide(en_images, ENERGY_SCALE)
-    en_images = tf.math.reduce_sum(en_images, axis=[2,3,4])
-    return  en_images
+    en_images = tf.math.reduce_sum(en_images, axis=[2,3,4])#, keepdims=True)
+
+    #en_images = tf.tile(en_images, [1, 1 , shape[2], shape[3], 1])
+    #output: (None, 12)
+    return  en_images#tf.concat([in_images, en_images], axis=-1)
 
 
 def make_discriminator_model():
@@ -214,8 +241,11 @@ def make_discriminator_model():
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
     # Here we use padding default = "valid" (=0 above) and strides = 1 !
-    # GEOMETRY[i] --> GEOMETRY[i] - n*convolution*(KERNEL[i] - 1) > 0 !
+    # GEOMETRY[i] -> GEOMETRY[i] - 3convolution * (KERNEL[i] - 1) > 0 !
     error = "ERROR building the discriminator: smaller KERNEL is required!"
+    # assert KERNEL[0] < GEOMETRY[0]/3 + 1, error
+    # assert KERNEL[1] < GEOMETRY[1]/3 + 1, error
+    # assert KERNEL[2] < GEOMETRY[2]/3 + 1, error
 
     n_nodes = 1
     for cell in GEOMETRY:
@@ -226,6 +256,9 @@ def make_discriminator_model():
 
     energies = Lambda(energies_per_layer, name="energies_per_layer")(in_image)
     energies = Dense(2*N_FILTER, activation="relu")(energies)
+
+    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(in_image)
+    # logger.info(f"Minibatch shape: {discr.get_shape()}")
 
     discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
     logger.info(discr.get_shape())
@@ -242,6 +275,14 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
+    # discr = Conv3D(3*N_FILTER, (2,2,2), padding="same", use_bias=False)(discr)
+    # discr = MaxPooling3D(pool_size = (2,2,2) , padding ="same")(discr)
+    # discr = LeakyReLU()(discr)
+    # discr = Dropout(0.3)(discr)
+
+    # minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
+    # logger.info(f"Minibatch shape: {minibatch.get_shape()}")
+
     logger.info(discr.get_shape())
     discr = Flatten()(discr)
     discr = Concatenate()([discr, energies])
@@ -254,12 +295,13 @@ def make_discriminator_model():
     discr_en = Dense(N_FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
+    #total_energy = Lambda(compute_energy, name="total_energy")(in_image)
+
     discr_id = Dense(N_FILTER, activation="relu")(discr)
     discr_id = Dense(N_FILTER, activation="sigmoid")(discr_id)
     output_id = Dense(1, activation="sigmoid", name="one_hot")(discr_id)
 
-    output = [output_conv, output_en, output_id]
-    model = Model(in_image, output, name='discriminator')
+    model = Model(in_image, [output_conv, output_en, output_id], name='discriminator')#, pid_label
     return model
 
 def debug_discriminator(data, verbose=False):

@@ -73,47 +73,47 @@ def debug_cgan(gan, path_list, num_examples=EXAMPLES):
     # Fake showers
     predictions = gener(noise, training=False)
     decisions = discr(predictions, training=False)
-    energy = compute_energy(predictions)
+    energies = compute_energy(predictions)
 
     k = 0
     num_examples = predictions.shape[0]
+    side = predictions.shape[1]
     fig = plt.figure("Fake generated showers", figsize=(20,10))
     for i in range(num_examples):
-        print(f"Example {i+1}\n"
+        print(f"Example {i+1}\t"
              +f"Primary particle = {int(noise[2][i][0])}\t"
              +f"Predicted particle = {decisions[2][i][0]}\n"
              +f"Initial energy = {noise[1][i][0]}\t"
              +f"Generated energy = {energies[i][0]}\t"
              +f"Predicted energy = {decisions[1][i][0]}\t"
-             +f"Decision = {decisions[0][i][0]}\n\n")
-        for j in range(predictions.shape[1]):
+             +f"Decision = {decisions[0][i][0]}\n")
+        for j in range(side):
             k=k+1
-            plt.subplot(num_examples, predictions.shape[1], k)
-            plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
+            plt.subplot(num_examples, side, k)
+            plt.imshow(predictions[i,j,:,:,0])
             plt.axis("off")
     plt.show()
-    
+
     # True showers
     predictions = debug_data_pull(path_list, num_examples)
     images = predictions[0]
     decisions = discr(images, training=False)
-    energy = compute_energy(images)
+    energies = compute_energy(images)
 
     k = 0
-    num_examples = predictions.shape[0]
     fig = plt.figure("Real generated showers", figsize=(20,10))
     for i in range(num_examples):
-        print(f"Example {i+1}\n"
+        print(f"Example {i+1}\t"
              +f"Primary particle = {int(noise[2][i][0])}\t"
              +f"Predicted particle = {decisions[2][i][0]}\n"
              +f"Initial energy = {noise[1][i][0]}\t"
              +f"Generated energy = {energies[i][0]}\t"
              +f"Predicted energy = {decisions[1][i][0]}\t"
-             +f"Decision = {decisions[0][i][0]}\n\n")
-        for j in range(predictions.shape[1]):
+             +f"Decision = {decisions[0][i][0]}\n")
+        for j in range(side):
             k=k+1
-            plt.subplot(num_examples, predictions.shape[1], k)
-            plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
+            plt.subplot(num_examples, side, k)
+            plt.imshow(images[i,j,:,:,0])
             plt.axis("off")
     plt.show()
 

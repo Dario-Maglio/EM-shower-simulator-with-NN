@@ -31,7 +31,7 @@ ENERGY_SCALE = 1000000
 N_PID = 3                               # number of pid classes
 N_ENER = 30 + 1                         # number of en classes
 PARAM_EN = 0.01                         # parameter in energy losses computation
-NOISE_DIM = 2048
+NOISE_DIM = 512
 BUFFER_SIZE = 10400
 
 MBSTD_GROUP_SIZE = 8                    # minibatch dimension
@@ -286,8 +286,8 @@ class ConditionalGAN(tf.keras.Model):
             fake_parID = cross_entropy(parID, fake_output[2])
             real_parID = cross_entropy(parID, real_output[2])
 
-            aux_gener_loss = (fake_energ + fake_parID + computed_e) * PARAM_EN
-            aux_discr_loss = (real_energ + real_parID) * PARAM_EN
+            aux_gener_loss = (fake_energ + computed_e) * PARAM_EN + fake_parID
+            aux_discr_loss = (real_energ) * PARAM_EN + real_parID
 
             # Compute total losses
             gener_total_loss = aux_gener_loss + gener_loss

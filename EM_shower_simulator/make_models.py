@@ -30,7 +30,7 @@ from tensorflow.keras.layers import (Input,
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-NOISE_DIM = 2048
+NOISE_DIM = 512
 MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
@@ -41,6 +41,17 @@ logger = logging.getLogger("ModelsLogger")
 
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
+def zero_suppression(output):
+    """Zero suppression on output images
+    """
+    cutoff = tf.zeros_like(output)
+    void_pixel = -tf.ones_like(output)
+
+    def f_true(): return output
+    def f_false(): return void_pixel
+
+    output = tf.where( tf.greater(output , cutoff), cutoff, void_pixel)
+    return output
 
 def make_generator_model():
     """Define generator model:
@@ -106,7 +117,7 @@ def make_generator_model():
 
     output = (Conv3DTranspose(1, KERNEL, use_bias=False,
                               activation="tanh", name="Fake_image")(gen))
-
+    output = Lambda(zero_suppression, name="Fake_image_zero_suppression")(output)
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
 

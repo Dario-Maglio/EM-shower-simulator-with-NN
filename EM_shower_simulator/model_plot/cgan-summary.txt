@@ -5,9 +5,9 @@ Model: "generator"
 __________________________________________________________________________________________________
  Layer (type)                   Output Shape         Param #     Connected to                     
 ==================================================================================================
- latent_input (InputLayer)      [(None, 2048)]       0           []                               
+ latent_input (InputLayer)      [(None, 512)]        0           []                               
                                                                                                   
- dense_12 (Dense)               (None, 9408)         19267584    ['latent_input[0][0]']           
+ dense_12 (Dense)               (None, 9408)         4816896     ['latent_input[0][0]']           
                                                                                                   
  energy_input (InputLayer)      [(None, 1)]          0           []                               
                                                                                                   
@@ -57,9 +57,12 @@ ________________________________________________________________________________
  Fake_image (Conv3DTranspose)   (None, 12, 25, 25,   6272        ['leaky_re_lu_7[0][0]']          
                                 1)                                                                
                                                                                                   
+ Fake_image_zero_suppression (L  (None, 12, 25, 25,   0          ['Fake_image[0][0]']             
+ ambda)                         1)                                                                
+                                                                                                  
 ==================================================================================================
-Total params: 22,534,532
-Trainable params: 22,515,460
+Total params: 8,083,844
+Trainable params: 8,064,772
 Non-trainable params: 19,072
 __________________________________________________________________________________________________
 

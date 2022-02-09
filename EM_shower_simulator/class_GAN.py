@@ -242,9 +242,9 @@ class ConditionalGAN(tf.keras.Model):
         3) Calculate gradients using loss values and model variables;
         4) Process Gradients and Run the Optimizer.
         """
-        mean_squared = MeanSquaredError
-        cross_entropy = BinaryCrossentropy
-        
+        mean_squared = MeanSquaredError()
+        cross_entropy = BinaryCrossentropy()
+
         real_images, en_labels, pid_labels = dataset
         noise = self.generate_noise(num_examples=real_images.shape[0])[0]
 

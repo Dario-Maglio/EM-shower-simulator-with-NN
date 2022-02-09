@@ -75,7 +75,7 @@ def data_pull(path_list):
             dataset = single_data_pull(path)
         else:
             single_dataset = single_data_pull(path)
-            dataset.concatenate(single_dataset)
+            dataset = dataset.concatenate(single_dataset)
 
     dataset = dataset.shuffle(BUFFER_SIZE)
     logger.info(f"Shuffled dataset shape:{dataset.element_spec}")

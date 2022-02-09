@@ -10,7 +10,7 @@ for file in FILE_LIST:
     default_list.append(os.path.join("dataset", "filtered_data", file))
 
 # Checkpoint path
-CHECKP = os.path.join('EM_shower_simulator','training_checkpoints','checkpoint')
+CHECKP = os.path.join('EM_shower_simulator','checkpoints','checkpoint')
 
 #-------------------------------------------------------------------------------
 

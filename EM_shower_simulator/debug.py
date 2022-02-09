@@ -65,56 +65,58 @@ def debug(path_list, num_examples=EXAMPLES, verbose=False):
 def debug_cgan(gan, path_list, num_examples=EXAMPLES):
     """Debug of the cGAN methods."""
     logger.info("Testing the cGAN methods on noise and real samples.")
-    gener, discr = gan.evaluate()
     noise = gan.generate_noise(num_examples)
+    gan.generate_and_save_images(noise)
+
+    gener, discr = gan.evaluate()
 
     # Fake showers
     predictions = gener(noise, training=False)
-    # print(images)
     decisions = discr(predictions, training=False)
     energy = compute_energy(predictions)
 
-    k=0
-    plt.figure("Fake generated showers", figsize=(20,10))
+    k = 0
     num_examples = predictions.shape[0]
+    fig = plt.figure("Fake generated showers", figsize=(20,10))
     for i in range(num_examples):
+        print(f"Example {i+1}\n"
+             +f"Primary particle = {int(noise[2][i][0])}\t"
+             +f"Predicted particle = {decisions[2][i][0]}\n"
+             +f"Initial energy = {noise[1][i][0]}\t"
+             +f"Generated energy = {energies[i][0]}\t"
+             +f"Predicted energy = {decisions[1][i][0]}\t"
+             +f"Decision = {decisions[0][i][0]}\n\n")
         for j in range(predictions.shape[1]):
             k=k+1
             plt.subplot(num_examples, predictions.shape[1], k)
             plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
             plt.axis("off")
-
-    for example in range(len(noise[0])):
-        print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
-             +f"\nInitial energy = {noise[1][example][0]}   "
-             +f"Generated energy = {energy[example][0]}   "
-             +f"Predicted energy = {decisions[1][example][0]}   "
-             +f"Decision = {decisions[0][example][0]}")
-
+    plt.show()
+    
     # True showers
     predictions = debug_data_pull(path_list, num_examples)
     images = predictions[0]
     decisions = discr(images, training=False)
     energy = compute_energy(images)
 
-    k=0
-    plt.figure("Real generated showers", figsize=(20,10))
-    num_examples = images.shape[0]
+    k = 0
+    num_examples = predictions.shape[0]
+    fig = plt.figure("Real generated showers", figsize=(20,10))
     for i in range(num_examples):
-        for j in range(images.shape[1]):
+        print(f"Example {i+1}\n"
+             +f"Primary particle = {int(noise[2][i][0])}\t"
+             +f"Predicted particle = {decisions[2][i][0]}\n"
+             +f"Initial energy = {noise[1][i][0]}\t"
+             +f"Generated energy = {energies[i][0]}\t"
+             +f"Predicted energy = {decisions[1][i][0]}\t"
+             +f"Decision = {decisions[0][i][0]}\n\n")
+        for j in range(predictions.shape[1]):
             k=k+1
-            plt.subplot(num_examples, images.shape[1], k)
-            plt.imshow(images[i,j,:,:,0]) #, cmap="gray")
+            plt.subplot(num_examples, predictions.shape[1], k)
+            plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
             plt.axis("off")
-
-    for example in range(num_examples):
-        print(f"{example+1}) Primary particle = {int(predictions[2][example][0])}"
-             +f"\nInitial energy = {predictions[1][example][0]}   "
-             +f"Generated energy = {energy[example][0]}   "
-             +f"Predicted energy = {decisions[1][example][0]}   "
-             +f"Decision = {decisions[0][example][0]}")
-
     plt.show()
+
     logger.info("Debug of the cGAN methods finished.")
 
 
@@ -133,7 +135,7 @@ if __name__=="__main__":
     cond_gan.plot_model()
     logger.info("The cGAN model has been plotted correctly.")
 
-    #debug_cgan(cond_gan, path_list)
+    debug_cgan(cond_gan, path_list)
 
     logger.info("The work is done.")
     logger.handlers.clear()

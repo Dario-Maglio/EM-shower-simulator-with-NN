@@ -31,10 +31,6 @@ N_PID = 3                               # number of pid classes
 N_ENER = 30 + 1                         # number of en classes
 PARAM_EN = 0.01                         # parameter in energy losses computation
 NOISE_DIM = 2048
-BUFFER_SIZE = 10400
-
-MBSTD_GROUP_SIZE = 8                    # minibatch dimension
-
 
 # Create a random seed, to be used during the evaluation of the cGAN.
 tf.random.set_seed(42)
@@ -81,6 +77,7 @@ class ConditionalGAN(tf.keras.Model):
         self.generator = gener
         self.discriminator = discr
         self.history = {}
+        self.logs = {}
 
         # Metrics
         self.gener_loss_tracker = Mean(name="gener_loss")
@@ -194,27 +191,26 @@ class ConditionalGAN(tf.keras.Model):
         energies = compute_energy(predictions)
 
         # 2 - Plot the generated images
-        k=0
-        fig = plt.figure("Generated showers", figsize=(20,10))
+        k = 0
         num_examples = predictions.shape[0]
+        fig = plt.figure("Generated showers", figsize=(20,10))
         for i in range(num_examples):
-           for j in range(predictions.shape[1]):
-              k=k+1
-              plt.subplot(num_examples, predictions.shape[1], k)
-              plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
-              plt.axis("off")
-
-        for example in range(len(noise[0]) ):
-            print(f"{example+1}) Primary particle = {int(noise[2][example][0])}"
-                 +f"   Predicted particle = {decisions[2][example][0]}"
-                 +f"\nInitial energy = {noise[1][example][0]}   "
-                 +f"Generated energy = {energies[example][0]}   "
-                 +f"Predicted energy = {decisions[1][example][0]}   "
-                 +f"Decision = {decisions[0][example][0]}")
+            print(f"Example {i+1}\n"
+                 +f"Primary particle = {int(noise[2][i][0])}\t"
+                 +f"Predicted particle = {decisions[2][i][0]}\n"
+                 +f"Initial energy = {noise[1][i][0]}\t"
+                 +f"Generated energy = {energies[i][0]}\t"
+                 +f"Predicted energy = {decisions[1][i][0]}\t"
+                 +f"Decision = {decisions[0][i][0]}\n\n")
+            for j in range(predictions.shape[1]):
+                k=k+1
+                plt.subplot(num_examples, predictions.shape[1], k)
+                plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
+                plt.axis("off")
         plt.show()
 
         # 3 - Save the generated images
-        save_path = Path('training_results').resolve()
+        save_path = Path('model_results').resolve()
         file_name = f"image_at_epoch_{epoch}.png"
         if not os.path.isdir(save_path):
            os.makedirs(save_path)
@@ -304,15 +300,13 @@ class ConditionalGAN(tf.keras.Model):
         self.parID_loss_tracker.update_state(real_parID)
         self.computed_e_tracker.update_state(computed_e)
 
-        # Dictionary for training results
-        logs = {}
         for element in self.metrics:
-            logs[element.name] = element.result()
+            self.logs[element.name] = element.result()
 
         # Prevent NaN propagation
-        metrics_control(logs)
+        metrics_control(self.logs)
 
-        return logs
+        return self.logs
 
     def train(self, dataset, epochs=1, batch=32, wake_up=100, verbose=1):
         """Define the training function of the cGAN.
@@ -364,25 +358,25 @@ class ConditionalGAN(tf.keras.Model):
            start = time.time()
            for index, image_batch in enumerate(dataset):
               try:
-                  logs = self.train_step(image_batch)
+                  self.train_step(image_batch)
               except AssertionError as error:
                   print(f"Epoch {epoch}, batch {index}: {error}")
                   sys.exit()
-              progbar.update(index, zip(logs.keys(), logs.values()))
+              progbar.update(index, zip(self.logs.keys(), self.logs.values()))
            end = time.time() - start
 
            # Dispaly results and save images
            display.clear_output(wait=True)
            print(f"EPOCH = {epoch + 1}/{epochs}")
-           for log in logs:
-               print(f"{log} = {logs[log]}")
+           for log in self.logs:
+               print(f"{log} = {self.logs[log]}")
            print (f"Time for epoch {epoch + 1} = {end} sec.")
            self.generate_and_save_images(test_noise, epoch + 1)
 
            # Update history and call scheduler
-           for key, value in logs.items():
+           for key, value in self.logs.items():
                self.history.setdefault(key, []).append(value)
-           self.scheduler(epoch + 1, logs, wake_up=wake_up)
+           self.scheduler(epoch + 1, self.logs, wake_up=wake_up)
 
            # Save checkpoint
            if (epoch + 1) % 3 == 0:

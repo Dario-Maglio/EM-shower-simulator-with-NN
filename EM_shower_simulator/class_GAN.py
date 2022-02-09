@@ -49,11 +49,11 @@ logger = logging.getLogger("CGANLogger")
 
 #-------------------------------------------------------------------------------
 
-def metrics_control(metrics):
+def metrics_control(metrics, string = "MINIMIZATION"):
     """Prevent the training to use continue when a NaN is found."""
     for key in metrics:
         if np.isnan(metrics[key]):
-            raise AssertionError(f"ERROR IN MINIMIZATION {key}: NAN VALUE")
+            raise AssertionError(f"\nERROR IN {string} {key}: NAN VALUE")
 
 @tf.function
 def compute_energy(in_images):
@@ -293,6 +293,11 @@ class ConditionalGAN(tf.keras.Model):
             gener_total_loss = aux_gener_loss + gener_loss
             discr_total_loss = aux_discr_loss + discr_loss
 
+        logs = {"gener_loss":gener_loss, "discr_loss":discr_loss,
+                "energy_loss":real_energ, "particle_loss":real_parID,
+                "computed_loss":computed_e }
+        metrics_control(logs, "COMPUTING")
+
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
         self.generator_optimizer.apply_gradients(zip(grad_generator,
@@ -316,7 +321,7 @@ class ConditionalGAN(tf.keras.Model):
             logs[element.name] = element.result()
 
         # Prevent NaN propagation
-        metrics_control(logs)
+        metrics_control(logs, "MINIMIZATION")
 
         return logs
 
@@ -395,7 +400,7 @@ class ConditionalGAN(tf.keras.Model):
                self.history.setdefault(key, []).append(value)
            self.scheduler(epoch + 1, logs, wake_up=wake_up)
         return self.history
-        
+
     def fit(self, dataset, epochs=1, batch=32):
         """Wrap the default training function of the model."""
         dataset = dataset.batch(batch, drop_remainder=True)

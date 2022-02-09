@@ -69,7 +69,7 @@ def debug_cgan(gan, path_list, num_examples=EXAMPLES):
 
     # Fake showers
     predictions = gener(noise, training=False)
-    print(images)
+    # print(images)
     decisions = discr(predictions, training=False)
     energy = compute_energy(predictions)
 

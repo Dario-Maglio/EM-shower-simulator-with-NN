@@ -35,6 +35,7 @@ MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 25, 25, 1)
+# EN_CUTOFF = 1. # keV
 
 # Define logger and handler
 logger = logging.getLogger("ModelsLogger")
@@ -50,7 +51,7 @@ def zero_suppression(output):
     def f_true(): return output
     def f_false(): return void_pixel
 
-    output = tf.where( tf.greater(output , cutoff), cutoff, void_pixel)
+    output = tf.where( tf.greater(output , cutoff), output, void_pixel )
     return output
 
 def make_generator_model():

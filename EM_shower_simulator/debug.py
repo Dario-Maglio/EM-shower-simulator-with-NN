@@ -14,6 +14,7 @@ from make_models import logger as logMod
 from class_GAN import logger as logGAN
 
 # Debug import
+from unbiased_metrics import shower_depth_lateral_width
 from dataset import debug_data_pull, debug_shower
 from make_models import debug_generator, debug_discriminator
 from make_models import make_generator_model, make_discriminator_model
@@ -58,6 +59,10 @@ def debug(path_list, num_examples=EXAMPLES, verbose=False):
 
     #Execute debug subroutines
     train_images = train_data[0]
+    metrics = shower_depth_lateral_width(train_images)
+    for el in metrics:
+        print(f"{el} = {metrics[el]}")
+
     debug_shower(train_images, verbose)
     debug_generator(test_noise, verbose=verbose)
     debug_discriminator(train_images, verbose)

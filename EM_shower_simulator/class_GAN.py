@@ -13,11 +13,13 @@ from matplotlib.image import imread
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.metrics import Mean
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import MeanSquaredError as mean_squared
-from tensorflow.keras.losses import BinaryCrossentropy as cross_entropy
+#from tensorflow.keras.losses import MeanSquaredError as mean_squared
+#from tensorflow.keras.losses import BinaryCrossentropy as cross_entropy
 from tensorflow.train import CheckpointManager as Manager
 
 from IPython import display
+
+from unbiased_metrics import shower_depth_lateral_width
 
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
@@ -88,6 +90,12 @@ class ConditionalGAN(tf.keras.Model):
         self.energ_loss_tracker = Mean(name="energy_loss")
         self.parID_loss_tracker = Mean(name="particle_loss")
         self.computed_e_tracker = Mean(name="computed_loss")
+
+        # Unbiased metrics
+        self.mean_depth_tracker = Mean(name="mean_depth")
+        self.std_depth_tracker  = Mean(name="std_depth")
+        self.mean_lateral_tracker = Mean(name="mean_lateral")
+        self.std_lateral_tracker  = Mean(name="std_lateral")
 
         # Optimizers
         self.generator_optimizer = Adam(learning_rate * 10)
@@ -251,7 +259,8 @@ class ConditionalGAN(tf.keras.Model):
 
         # GradientTape method records operations for automatic differentiation.
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-
+            mean_squared = tf.keras.losses.MeanSquaredError()
+            cross_entropy= tf.keras.losses.BinaryCrossentropy()
             # Compute real and fake outputs
             generator_input = [noise, en_labels, pid_labels]
             generated_images = self.generator(generator_input, training=True)
@@ -374,6 +383,13 @@ class ConditionalGAN(tf.keras.Model):
                   print(f"Epoch {epoch}, batch {index}: {error}")
                   sys.exit()
               progbar.update(index, zip(logs.keys(), logs.values()))
+              if(index==0):
+                  unb_metr = shower_depth_lateral_width(image_batch[0])
+                  self.mean_depth_tracker.update_state(unb_metr["shower mean depth"])
+                  self.std_depth_tracker.update_state(unb_metr["shower std depth"])
+                  self.mean_lateral_tracker.update_state(unb_metr["mean lateral width"])
+                  self.std_lateral_tracker.update_state(unb_metr["std lateral width"])
+
            end = time.time() - start
 
            # Dispaly results and save images

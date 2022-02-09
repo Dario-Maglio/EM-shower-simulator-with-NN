@@ -13,7 +13,8 @@ from make_models import logger as logMod
 from class_GAN import logger as logGAN
 
 # Train import
-from dataset import data_pull
+from unbiased_metrics import shower_depth_lateral_width
+from dataset import debug_data_pull, data_pull
 from make_models import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
 
@@ -46,6 +47,11 @@ def train_cgan(cond_gan, train_dataset):
     plt.show()
     logger.info("The cGAN model has been trained correctly.")
 
+def global_metrics_real_data():
+    train_data = debug_data_pull(path_list, 10000)
+    train_images = train_data[0]
+    return shower_depth_lateral_width(train_images)
+
 if __name__=="__main__":
     """Creation and training of the conditional GAN."""
     if VERBOSE :
@@ -57,6 +63,10 @@ if __name__=="__main__":
 
     logger.info("Start building operations.")
     train_dataset = data_pull(path_list)
+
+    metrics = global_metrics_real_data()
+    for el in metrics:
+        print(f"{el} = {metrics[el]}")
 
     generator = make_generator_model()
 

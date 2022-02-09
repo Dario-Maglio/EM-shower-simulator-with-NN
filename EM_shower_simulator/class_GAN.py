@@ -13,8 +13,8 @@ from matplotlib.image import imread
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.metrics import Mean
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import MeanSquaredError as mean_squared
-from tensorflow.keras.losses import BinaryCrossentropy as cross_entropy
+from tensorflow.keras.losses import MeanSquaredError
+from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.train import CheckpointManager as Manager
 
 from IPython import display
@@ -242,6 +242,9 @@ class ConditionalGAN(tf.keras.Model):
         3) Calculate gradients using loss values and model variables;
         4) Process Gradients and Run the Optimizer.
         """
+        mean_squared = MeanSquaredError
+        cross_entropy = BinaryCrossentropy
+        
         real_images, en_labels, pid_labels = dataset
         noise = self.generate_noise(num_examples=real_images.shape[0])[0]
 

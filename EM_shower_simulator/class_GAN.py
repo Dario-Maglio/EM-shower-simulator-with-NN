@@ -393,6 +393,8 @@ class ConditionalGAN(tf.keras.Model):
            print(f"EPOCH = {epoch + 1}/{epochs}")
            for log in self.logs:
                print(f"{log} = {self.logs[log]}")
+           for el in unb_metr:
+               print(f"{el} = {unb_metr[el]}")
            print (f"Time for epoch {epoch + 1} = {end} sec.\n")
            self.generate_and_save_images(test_noise, epoch + 1)
 

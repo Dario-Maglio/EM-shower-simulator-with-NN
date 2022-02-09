@@ -45,7 +45,7 @@ logger = logging.getLogger("ModelsLogger")
 def zero_suppression(output):
     """Zero suppression on output images
     """
-    cutoff = tf.zeros_like(output)
+    cutoff = tf.zeros_like(output) - 0.5
     void_pixel = -tf.ones_like(output)
 
     def f_true(): return output
@@ -118,7 +118,7 @@ def make_generator_model():
 
     output = (Conv3DTranspose(1, KERNEL, use_bias=False,
                               activation="tanh", name="Fake_image")(gen))
-    #output = Lambda(zero_suppression, name="Fake_image_zero_suppression")(output)
+    output = Lambda(zero_suppression, name="Fake_image_zero_suppression")(output)
     logger.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
 

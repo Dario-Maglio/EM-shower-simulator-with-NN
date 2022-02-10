@@ -83,7 +83,7 @@ def shower_depth_lateral_width(showers_vector):
     x2 = tf.math.reduce_sum(x2, axis=[2,3,4])
 
     # shower lateral width
-    lateral_width      = tf.math.sqrt(tf.math.abs(x2/layers_en - (x/layers_en)**2))
+    lateral_width  = tf.math.sqrt(tf.math.abs(x2/layers_en - (x/layers_en)**2))
     lat_width_mean = tf.math.reduce_mean(lateral_width, axis=[0,1])
     lat_width_std  = tf.math.reduce_std(lateral_width, axis=[0,1])
 
@@ -415,7 +415,7 @@ class ConditionalGAN(tf.keras.Model):
 
             # Unbiased metrics computation
             fake_images = self.generator(self.generate_noise(num_examples=1000))
-            unb_metr = shower_depth_lateral_width(fake_images).values()
+            unb_metr = shower_depth_lateral_width(fake_images)
             self.update_metrics(logs_list.append(unb_metr))
 
             # Dispaly results and save images

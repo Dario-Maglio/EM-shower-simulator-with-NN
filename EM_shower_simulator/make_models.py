@@ -37,7 +37,7 @@ ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 25, 25, 1)
 
 # Define logger and handler
-logger = logging.getLogger("ModelsLogger")
+logMod = logging.getLogger("ModelsLogger")
 
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
@@ -92,19 +92,19 @@ def make_generator_model():
     merge = Concatenate()([gen, li_en, li_pid])
 
     gen = Conv3DTranspose(6*N_FILTER, KERNEL, use_bias=False)(merge)
-    logger.info(gen.get_shape())
+    logMod.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
     gen = Conv3DTranspose(2*N_FILTER, KERNEL, use_bias=False)(gen)
-    logger.info(gen.get_shape())
+    logMod.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
     output = (Conv3DTranspose(1, KERNEL, use_bias=False,
                               activation="tanh", name="Fake_image")(gen))
     # output = Lambda(zero_suppression, name="Fake_image_zero_suppression")(output)
-    logger.info(f"Shape of the generator output: {output.get_shape()}")
+    logMod.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
 
     model = Model([in_lat, en_label, pid_label], output, name='generator')
@@ -113,16 +113,16 @@ def make_generator_model():
 def debug_generator(noise, verbose=False):
     """Uses the random seeds to generate fake samples and plots them."""
     if verbose :
-        logger.setLevel(logging.DEBUG)
-        logger.info('Logging level set on DEBUG.')
+        logMod.setLevel(logging.DEBUG)
+        logMod.info('Logging level set on DEBUG.')
     else:
-        logger.setLevel(logging.WARNING)
-        logger.info('Logging level set on WARNING.')
-    logger.info("Start debugging the generator model.")
+        logMod.setLevel(logging.WARNING)
+        logMod.info('Logging level set on WARNING.')
+    logMod.info("Start debugging the generator model.")
 
     generator = make_generator_model()
     data_images = generator(noise, training=False)
-    logger.info(f"Shape of generated images: {data_images.shape}")
+    logMod.info(f"Shape of generated images: {data_images.shape}")
 
     energy = compute_energy(data_images)
 
@@ -140,7 +140,7 @@ def debug_generator(noise, verbose=False):
            plt.axis("off")
     plt.show()
 
-    logger.info("Debug of the generator model finished.")
+    logMod.info("Debug of the generator model finished.")
 
 #-------------------------------------------------------------------------------
 """Subroutines for the discriminator network."""
@@ -228,21 +228,21 @@ def make_discriminator_model():
     energies = Dense(2*N_FILTER, activation="relu")(energies)
 
     discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)#in_image
-    logger.info(discr.get_shape())
+    logMod.info(discr.get_shape())
     discr = AveragePooling3D(pool_size = (2,2,2), padding ="valid")(discr)
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
-    logger.info(f"Minibatch shape: {discr.get_shape()}")
+    logMod.info(f"Minibatch shape: {discr.get_shape()}")
 
     discr = Conv3D(2*N_FILTER, (2,2,2) , padding="valid", use_bias=False)(minibatch)
     discr = MaxPooling3D(pool_size = (2,2,2) , padding ="valid")(discr)
-    logger.info(discr.get_shape())
+    logMod.info(discr.get_shape())
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    logger.info(discr.get_shape())
+    logMod.info(discr.get_shape())
     discr = Flatten()(discr)
     discr = Concatenate()([discr, energies])
 
@@ -265,14 +265,14 @@ def make_discriminator_model():
 def debug_discriminator(data, verbose=False):
     """Uses images from the sample to test discriminator model."""
     if verbose :
-        logger.setLevel(logging.DEBUG)
-        logger.info('Logging level set on DEBUG.')
+        logMod.setLevel(logging.DEBUG)
+        logMod.info('Logging level set on DEBUG.')
     else:
-        logger.setLevel(logging.WARNING)
-        logger.info('Logging level set on WARNING.')
-    logger.info("Start debugging discriminator model.")
+        logMod.setLevel(logging.WARNING)
+        logMod.info('Logging level set on WARNING.')
+    logMod.info("Start debugging discriminator model.")
 
     discriminator = make_discriminator_model()
     decision = discriminator(data)
-    logger.info(f"\nDecision per raw:\n {decision[0]}")
-    logger.info("Debug of the discriminator model finished.")
+    logMod.info(f"\nDecision per raw:\n {decision[0]}")
+    logMod.info("Debug of the discriminator model finished.")

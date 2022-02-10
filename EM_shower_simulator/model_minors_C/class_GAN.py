@@ -20,46 +20,31 @@ from tensorflow.train import CheckpointManager as Manager
 
 from IPython import display
 
+#from unbiased_metrics import shower_depth_lateral_width
+
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
 
 # Configuration parameters
 #from constants import *
-ENERGY_NORM = 6.7404
-ENERGY_SCALE = 1000000
 
 N_PID = 3                               # number of pid classes
 N_ENER = 30 + 1                         # number of en classes
-PARAM_EN = 0.01                         # parameter in energy losses computation
 NOISE_DIM = 1024
 
+PARAM_EN = 0.01                         # parameter in energy losses computation
+ENERGY_NORM = 6.7404
+ENERGY_SCALE = 1000000
+
 # Create a random seed, to be used during the evaluation of the cGAN.
-tf.random.set_seed(42)
+tf.random.set_seed(12)
 num_examples = 6
 test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
 # Define logger
-logger = logging.getLogger("CGANLogger")
-
-#-------------------------------------------------------------------------------
-
-def metrics_control(metrics):
-    """Prevent the training to use continue when a NaN is found."""
-    for key in metrics:
-        if np.isnan(metrics[key]):
-            raise AssertionError(f"\nERROR IN MINIMIZATION {key}: NAN VALUE")
-
-@tf.function
-def compute_energy(in_images):
-    """Compute energy deposited into the detector."""
-    in_images = tf.cast(in_images, tf.float32)
-    en_images = tf.math.multiply(in_images, ENERGY_NORM)
-    en_images = tf.math.pow(10., en_images)
-    en_images = tf.math.divide(en_images, ENERGY_SCALE)
-    en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
-    return en_images
+logGAN = logging.getLogger("CGANLogger")
 
 #-------------------------------------------------------------------------------
 
@@ -87,6 +72,12 @@ class ConditionalGAN(tf.keras.Model):
         self.parID_loss_tracker = Mean(name="particle_loss")
         self.computed_e_tracker = Mean(name="computed_loss")
 
+        # Unbiased metrics
+        self.mean_depth_tracker = Mean(name="mean_depth")
+        self.std_depth_tracker  = Mean(name="std_depth")
+        self.mean_lateral_tracker = Mean(name="mean_lateral")
+        self.std_lateral_tracker  = Mean(name="std_lateral")
+
         # Optimizers
         self.generator_optimizer = Adam(learning_rate * 10)
         self.discriminator_optimizer = Adam(learning_rate)
@@ -108,6 +99,16 @@ class ConditionalGAN(tf.keras.Model):
                 self.energ_loss_tracker,
                 self.parID_loss_tracker,
                 self.computed_e_tracker]
+
+    @tf.function
+    def update_metrics(self, args, string="MINIMIZATION"):
+        """Update metrics and logs preventing NaN propagation."""
+        for metric, arg in zip(self.metrics, args):
+            key = metric.name
+            if np.isnan(arg):
+                raise AssertionError(f"\nERROR IN {string} {key}: NAN VALUE")
+            metric.update_state(arg)
+            self.logs[key] = metric.result()
 
     def compile(self):
         """Compile method of the cGAN network.
@@ -166,6 +167,16 @@ class ConditionalGAN(tf.keras.Model):
                 tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
                 tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
+    @tf.function
+    def compute_energy(in_images):
+        """Compute energy deposited into the detector."""
+        in_images = tf.cast(in_images, tf.float32)
+        en_images = tf.math.multiply(in_images, ENERGY_NORM)
+        en_images = tf.math.pow(10., en_images)
+        en_images = tf.math.divide(en_images, ENERGY_SCALE)
+        en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
+        return en_images
+
     def evaluate(self, num_examples=num_examples):
         """Restore the last checkpoint and return the models."""
         if self.manager.latest_checkpoint:
@@ -188,8 +199,8 @@ class ConditionalGAN(tf.keras.Model):
         # 1 - Generate images
         predictions = self.generator(noise, training=False)
         decisions = self.discriminator(predictions, training=False)
-        logger.info(f"Shape of generated images: {predictions.shape}")
-        energies = compute_energy(predictions)
+        logGAN.info(f"Shape of generated images: {predictions.shape}")
+        energies = self.compute_energy(predictions)
 
         # 2 - Plot the generated images
         k = 0
@@ -206,7 +217,7 @@ class ConditionalGAN(tf.keras.Model):
             for j in range(predictions.shape[1]):
                 k=k+1
                 plt.subplot(num_examples, predictions.shape[1], k)
-                plt.imshow(predictions[i,j,:,:,0]) #, cmap="gray")
+                plt.imshow(predictions[i,j,:,:,0])
                 plt.axis("off")
         plt.show()
 
@@ -229,8 +240,8 @@ class ConditionalGAN(tf.keras.Model):
            discr_lr = self.discriminator_optimizer.lr.numpy()
            self.generator_optimizer.lr = gener_lr * decrease
            self.discriminator_optimizer.lr = discr_lr * decrease
-           logger.info(f"Gener learning rate setted to {gener_lr * decrease}.")
-           logger.info(f"Discr learning rate setted to {discr_lr * decrease}.")
+           logGAN.info(f"Gener learning rate setted to {gener_lr * decrease}.")
+           logGAN.info(f"Discr learning rate setted to {discr_lr * decrease}.")
 
     def train_step(self, dataset):
         """Train step of the cGAN.
@@ -251,7 +262,6 @@ class ConditionalGAN(tf.keras.Model):
 
         # GradientTape method records operations for automatic differentiation.
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-
             # Compute real and fake outputs
             generator_input = [noise, en_labels, pid_labels]
             generated_images = self.generator(generator_input, training=True)
@@ -269,7 +279,7 @@ class ConditionalGAN(tf.keras.Model):
             discr_loss = real_loss + fake_loss
 
             # Generated and computed energies
-            energies = compute_energy(generated_images)
+            energies = self.compute_energy(generated_images)
             computed_e = mean_squared(en_labels, energies)
 
             # Compute auxiliary energy and particle losses
@@ -287,6 +297,9 @@ class ConditionalGAN(tf.keras.Model):
             gener_total_loss = aux_gener_loss + gener_loss
             discr_total_loss = aux_discr_loss + discr_loss
 
+        list = [gener_loss, discr_loss, real_energ, real_parID, computed_e]
+        self.update_metrics(list, "COMPUTING")
+
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
         self.generator_optimizer.apply_gradients(zip(grad_generator,
@@ -297,19 +310,8 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator_optimizer.apply_gradients(zip(grad_discriminator,
                                         self.discriminator.trainable_variables))
 
-        # Update metrics
-        self.gener_loss_tracker.update_state(gener_loss)
-        self.discr_loss_tracker.update_state(discr_loss)
-        self.energ_loss_tracker.update_state(real_energ)
-        self.parID_loss_tracker.update_state(real_parID)
-        self.computed_e_tracker.update_state(computed_e)
-
-        for element in self.metrics:
-            self.logs[element.name] = element.result()
-
-        # Prevent NaN propagation
-        metrics_control(self.logs)
-
+        list = [gener_loss, discr_loss, real_energ, real_parID, computed_e]
+        self.update_metrics(list)
         return self.logs
 
     def train(self, dataset, epochs=1, batch=32, wake_up=100, verbose=1):
@@ -328,11 +330,11 @@ class ConditionalGAN(tf.keras.Model):
         5) Then generate a final image after the training is completed.
         """
         if verbose :
-            logger.setLevel(logging.DEBUG)
-            logger.info('Logging level set on DEBUG.')
+            logGAN.setLevel(logging.DEBUG)
+            logGAN.info('Logging level set on DEBUG.')
         else:
-            logger.setLevel(logging.WARNING)
-            logger.info('Logging level set on WARNING.')
+            logGAN.setLevel(logging.WARNING)
+            logGAN.info('Logging level set on WARNING.')
         dataset = dataset.batch(batch, drop_remainder=True)
 
         # Call checkpoint manager to load the state or restart from scratch
@@ -367,6 +369,13 @@ class ConditionalGAN(tf.keras.Model):
                   print(f"\nEpoch {epoch}, batch {index}: {error}")
                   sys.exit()
               progbar.update(index, zip(self.logs.keys(), self.logs.values()))
+              # if(index==0):
+              #     unb_metr = shower_depth_lateral_width(image_batch[0])
+              #     self.mean_depth_tracker.update_state(unb_metr["shower mean depth"])
+              #     self.std_depth_tracker.update_state(unb_metr["shower std depth"])
+              #     self.mean_lateral_tracker.update_state(unb_metr["mean lateral width"])
+              #     self.std_lateral_tracker.update_state(unb_metr["std lateral width"])
+
            end = time.time() - start
 
            # Dispaly results and save images
@@ -374,6 +383,8 @@ class ConditionalGAN(tf.keras.Model):
            print(f"EPOCH = {epoch + 1}/{epochs}")
            for log in self.logs:
                print(f"{log} = {self.logs[log]}")
+           for el in unb_metr:
+               print(f"{el} = {unb_metr[el]}")
            print (f"Time for epoch {epoch + 1} = {end} sec.\n")
            self.generate_and_save_images(test_noise, epoch + 1)
 

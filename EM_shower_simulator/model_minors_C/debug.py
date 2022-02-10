@@ -9,22 +9,23 @@ import matplotlib.pyplot as plt
 from constants import default_list
 
 # Logger import
-from dataset import logger as logData
-from make_models_C import logger as logMod
-from class_GAN_C import logger as logGAN
+from dataset import logData
+from make_models import logMod
+from class_GAN import logGAN
 
 # Debug import
+from unbiased_metrics import shower_depth_lateral_width
 from dataset import debug_data_pull, debug_shower
-from make_models_C import debug_generator, debug_discriminator
-from make_models_C import make_generator_model, make_discriminator_model
-from class_GAN_C import test_noise, ConditionalGAN, compute_energy
+from make_models import debug_generator, debug_discriminator
+from make_models import make_generator_model, make_discriminator_model
+from class_GAN import test_noise, ConditionalGAN, compute_energy
 
 #-------------------------------------------------------------------------------
 
 VERBOSE = True
 
 # Path list from this folder
-path_list = [os.path.join('..','..', path) for path in default_list]
+path_list = [os.path.join('..', '..', path) for path in default_list]
 
 # Examples to show
 EXAMPLES = 5
@@ -58,6 +59,10 @@ def debug(path_list, num_examples=EXAMPLES, verbose=False):
 
     #Execute debug subroutines
     train_images = train_data[0]
+    metrics = shower_depth_lateral_width(train_images)
+    for el in metrics:
+        print(f"{el} = {metrics[el]}")
+
     debug_shower(train_images, verbose)
     debug_generator(test_noise, verbose=verbose)
     debug_discriminator(train_images, verbose)

@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 from constants import default_list
 
 # Logger import
-from dataset import logger as logData
-from make_models import logger as logMod
-from class_GAN import logger as logGAN
+from dataset import logData
+from make_models import logMod
+from class_GAN import logGAN
 
 # Debug import
 from unbiased_metrics import shower_depth_lateral_width

@@ -23,7 +23,7 @@ from class_GAN import ConditionalGAN
 VERBOSE = True
 
 # Path list from this folder
-path_list = [os.path.join('..', path) for path in default_list]
+path_list = [os.path.join('..', '..', path) for path in default_list]
 
 # Define logger and handler
 ch = logging.StreamHandler()

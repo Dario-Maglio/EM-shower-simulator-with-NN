@@ -22,6 +22,7 @@ from tensorflow.keras.layers import (Input,
                                      Dropout,
                                      Lambda,
                                      Concatenate,
+                                     ELU,
                                      Flatten)
 
 #-------------------------------------------------------------------------------
@@ -103,6 +104,7 @@ def make_generator_model():
 
     output = (Conv3DTranspose(1, KERNEL, use_bias=False,
                               activation="tanh", name="Fake_image")(gen))
+    output = ELU()(output)
     # output = Lambda(zero_suppression, name="Fake_image_zero_suppression")(output)
     logMod.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
@@ -176,8 +178,7 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         return tf.concat([discr, minib], axis=-1)
 
 def compute_energy(in_images):
-    """Compute energy deposited in detector
-    """
+    """Compute energy deposited in detector"""
     in_images = tf.cast(in_images, tf.float32)
     en_images = tf.math.multiply(in_images, ENERGY_NORM)
     en_images = tf.math.pow(10., en_images)
@@ -195,7 +196,6 @@ def energies_per_layer(in_images):
     en_images = tf.math.divide(en_images, ENERGY_SCALE)
     en_images = tf.math.reduce_sum(en_images, axis=[2,3,4])
     return  en_images
-
 
 def make_discriminator_model():
     """Define discriminator model:

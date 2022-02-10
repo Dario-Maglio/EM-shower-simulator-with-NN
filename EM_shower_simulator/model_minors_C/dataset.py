@@ -16,7 +16,7 @@ ENERGY_SCALE = 1000000
 BUFFER_SIZE = 10400
 
 # Define logger
-logger = logging.getLogger("DataLogger")
+logData = logging.getLogger("DataLogger")
 
 #-------------------------------------------------------------------------------
 
@@ -29,7 +29,7 @@ def single_data_pull(path):
     Take in input a path to the dataset and return an iterator over events that
     can be used to train the cGAN using the method train.
     """
-    logger.info("Loading data from the path.")
+    logData.info("Loading data from the path.")
     try:
         with up.open(path) as file:
             branches = file["h"].arrays()
@@ -78,7 +78,7 @@ def data_pull(path_list):
             dataset = dataset.concatenate(single_dataset)
 
     dataset = dataset.shuffle(BUFFER_SIZE)
-    logger.info(f"Shuffled dataset shape:{dataset.element_spec}")
+    logData.info(f"Shuffled dataset shape:{dataset.element_spec}")
     return dataset
 
 def debug_data_pull(path_list, num_examples=1, verbose=False):
@@ -92,23 +92,23 @@ def debug_data_pull(path_list, num_examples=1, verbose=False):
     the dataset that can be plotted with debug_shower.
     """
     if verbose :
-        logger.setLevel(logging.DEBUG)
-        logger.info('Logging level set on DEBUG.')
+        logData.setLevel(logging.DEBUG)
+        logData.info('Logging level set on DEBUG.')
     else:
-        logger.setLevel(logging.WARNING)
-        logger.info('Logging level set on WARNING.')
-    logger.info("Start debugging the dataset loading subroutines.")
+        logData.setLevel(logging.WARNING)
+        logData.info('Logging level set on WARNING.')
+    logData.info("Start debugging the dataset loading subroutines.")
 
     dataset = data_pull(path_list)
-    logger.info("Dataset imported.")
+    logData.info("Dataset imported.")
     dataset = dataset.batch(num_examples, drop_remainder=True)
-    logger.info("Batch created.")
+    logData.info("Batch created.")
 
     for batch in dataset:
         train_images, en_labels, pid_labels = batch
         break
 
-    logger.info("Debug of the loading subroutines finished.")
+    logData.info("Debug of the loading subroutines finished.")
     return [train_images, en_labels, pid_labels]
 
 def debug_shower(data_images, verbose=False):
@@ -117,14 +117,14 @@ def debug_shower(data_images, verbose=False):
     data_images = vector of images with shape equal to GEOMETRY.
     """
     if verbose :
-        logger.setLevel(logging.DEBUG)
-        logger.info('Logging level set on DEBUG.')
+        logData.setLevel(logging.DEBUG)
+        logData.info('Logging level set on DEBUG.')
     else:
-        logger.setLevel(logging.WARNING)
-        logger.info('Logging level set on WARNING.')
+        logData.setLevel(logging.WARNING)
+        logData.info('Logging level set on WARNING.')
 
-    logger.info("Start debug data_images features.")
-    logger.info(f"Shape of data_images: {data_images.shape}")
+    logData.info("Start debug data_images features.")
+    logData.info(f"Shape of data_images: {data_images.shape}")
     k=0
     fig = plt.figure("Generated showers", figsize=(20,10))
     num_examples = data_images.shape[0]
@@ -135,5 +135,5 @@ def debug_shower(data_images, verbose=False):
             plt.imshow(data_images[i,j,:,:,0]) #, cmap="gray")
             plt.axis("off")
     plt.show()
-    logger.info("Debug of data_images features finished.")
+    logData.info("Debug of data_images features finished.")
     return fig

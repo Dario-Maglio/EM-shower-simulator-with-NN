@@ -16,7 +16,7 @@ from class_GAN import logGAN
 from dataset import debug_data_pull, data_pull
 from make_models import make_generator_model, make_discriminator_model
 from class_GAN import ConditionalGAN
-#from unbiased_metrics import shower_depth_lateral_width
+from unbiased_metrics import shower_depth_lateral_width
 
 #-------------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ logGAN.addHandler(ch)
 def global_metrics_real_data():
     train_data = debug_data_pull(path_list, 10000)
     train_images = train_data[0]
-    metrics = {}#shower_depth_lateral_width(train_images)
+    metrics = shower_depth_lateral_width(train_images)
     for el in metrics:
         print(f"{el} = {metrics[el]}")
 
@@ -57,7 +57,7 @@ if __name__=="__main__":
     logger.info("Start building operations.")
     train_dataset = data_pull(path_list)
 
-    #global_metrics_real_data()
+    global_metrics_real_data()
 
     generator = make_generator_model()
 

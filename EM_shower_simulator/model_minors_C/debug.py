@@ -16,10 +16,9 @@ from class_GAN import logGAN
 # Debug import
 from unbiased_metrics import shower_depth_lateral_width
 from dataset import debug_data_pull, debug_shower
-from make_models import debug_generator, debug_discriminator
+from make_models import debug_generator, debug_discriminator, compute_energy
 from make_models import make_generator_model, make_discriminator_model
-from class_GAN import test_noise, ConditionalGAN, compute_energy
-
+from class_GAN import test_noise, ConditionalGAN
 #-------------------------------------------------------------------------------
 
 VERBOSE = True

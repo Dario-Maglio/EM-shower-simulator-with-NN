@@ -168,7 +168,7 @@ class ConditionalGAN(tf.keras.Model):
                 tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
     @tf.function
-    def compute_energy(in_images):
+    def compute_energy(self, in_images):
         """Compute energy deposited into the detector."""
         in_images = tf.cast(in_images, tf.float32)
         en_images = tf.math.multiply(in_images, ENERGY_NORM)

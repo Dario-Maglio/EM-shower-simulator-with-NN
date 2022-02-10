@@ -20,8 +20,6 @@ from tensorflow.train import CheckpointManager as Manager
 
 from IPython import display
 
-#from unbiased_metrics import shower_depth_lateral_width
-
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
 
@@ -45,6 +43,51 @@ test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
 
 # Define logger
 logGAN = logging.getLogger("CGANLogger")
+
+#-------------------------------------------------------------------------------
+
+def shower_depth_lateral_width(showers_vector):
+    """Compute shower mean depth and std;
+       Compute shower mean lateral width among layers and std.
+    """
+    shape = showers_vector.shape
+
+    layer_num= tf.constant([[x for x in range(shape[1])]])
+    layer_num= tf.cast(tf.tile(layer_num, [shape[0],1] ), tf.float32)
+    pixel_num= tf.constant([[[[x for x in range(-shape[2]//2+1, shape[2]//2+1)]
+                            for y in range(-shape[2]//2+1, shape[2]//2+1)]
+                            for l in range(shape[1]) ]])
+    pixel_num= tf.cast(tf.tile(
+                        pixel_num, [shape[0],1,1,1] ), tf.float32)
+    pixel_num= tf.reshape(pixel_num, shape)
+
+    pixel_en = tf.math.multiply(showers_vector, ENERGY_NORM)
+    pixel_en = tf.math.pow(10., pixel_en)
+    pixel_en = tf.math.divide(pixel_en, ENERGY_SCALE)
+
+    layers_en = tf.math.reduce_sum(pixel_en, axis=[2,3,4])
+    total_en  = tf.math.reduce_sum(layers_en, axis=1)
+
+    layers_scalar_prod_en   = tf.math.multiply(layers_en, layer_num)
+    depth_weighted_total_en = tf.math.reduce_sum(layers_scalar_prod_en, axis=1)
+
+    # shower depth
+    shower_depth      = tf.math.divide(depth_weighted_total_en,total_en)
+    shower_depth_mean = tf.math.reduce_mean(shower_depth, axis = 0)
+    shower_depth_std  = tf.math.reduce_std(shower_depth, axis=0)
+
+    x = tf.math.multiply(pixel_en,pixel_num)
+    x = tf.math.reduce_sum(x, axis=[2,3,4])
+
+    x2 = tf.math.multiply(pixel_en, pixel_num**2)
+    x2 = tf.math.reduce_sum(x2, axis=[2,3,4])
+
+    # shower lateral width
+    lateral_width      = tf.math.sqrt(tf.math.abs(x2/layers_en - (x/layers_en)**2))
+    lat_width_mean = tf.math.reduce_mean(lateral_width, axis=[0,1])
+    lat_width_std  = tf.math.reduce_std(lateral_width, axis=[0,1])
+
+    return [shower_depth_mean, shower_depth_std, lat_width_mean, lat_width_std]
 
 #-------------------------------------------------------------------------------
 
@@ -98,15 +141,19 @@ class ConditionalGAN(tf.keras.Model):
                 self.discr_loss_tracker,
                 self.energ_loss_tracker,
                 self.parID_loss_tracker,
-                self.computed_e_tracker]
+                self.computed_e_tracker,
+                self.mean_depth_tracker,
+                self.std_depth_tracker,
+                self.mean_lateral_tracker,
+                self.std_lateral_tracker]
 
     @tf.function
-    def update_metrics(self, args, string="MINIMIZATION"):
+    def update_metrics(self, args):
         """Update metrics and logs preventing NaN propagation."""
         for metric, arg in zip(self.metrics, args):
             key = metric.name
             if np.isnan(arg):
-                raise AssertionError(f"\nERROR IN {string} {key}: NAN VALUE")
+                raise AssertionError(f"\nERROR IN {key}: NAN VALUE")
             metric.update_state(arg)
             self.logs[key] = metric.result()
 
@@ -297,9 +344,6 @@ class ConditionalGAN(tf.keras.Model):
             gener_total_loss = aux_gener_loss + gener_loss
             discr_total_loss = aux_discr_loss + discr_loss
 
-        list = [gener_loss, discr_loss, real_energ, real_parID, computed_e]
-        self.update_metrics(list, "COMPUTING")
-
         grad_generator = gen_tape.gradient(gener_total_loss,
                                         self.generator.trainable_variables)
         self.generator_optimizer.apply_gradients(zip(grad_generator,
@@ -310,9 +354,9 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator_optimizer.apply_gradients(zip(grad_discriminator,
                                         self.discriminator.trainable_variables))
 
-        list = [gener_loss, discr_loss, real_energ, real_parID, computed_e]
-        self.update_metrics(list)
-        return self.logs
+        logs = [gener_loss, discr_loss, real_energ, real_parID, computed_e]
+        self.update_metrics(logs)
+        return logs
 
     def train(self, dataset, epochs=1, batch=32, wake_up=100, verbose=1):
         """Define the training function of the cGAN.
@@ -355,48 +399,42 @@ class ConditionalGAN(tf.keras.Model):
         # Start training operations
         display.clear_output(wait=True)
         for epoch in range(epochs):
-           print(f"Running EPOCH = {epoch + 1}/{epochs}")
+            print(f"Running EPOCH = {epoch + 1}/{epochs}")
+            progbar = Progbar(len(dataset), verbose=1)
 
-           # Define the progbar
-           progbar = Progbar(len(dataset), verbose=1)
+            # Start iterate on batches
+            start = time.time()
+            for index, image_batch in enumerate(dataset):
+                try:
+                    logs_list = self.train_step(image_batch)
+                except AssertionError as error:
+                    print(f"\nEpoch {epoch}, batch {index}: {error}")
+                    sys.exit()
+                progbar.update(index, zip(self.logs.keys(), logs_list))
+            end = time.time() - start
 
-           # Start iterate on batches
-           start = time.time()
-           for index, image_batch in enumerate(dataset):
-              try:
-                  self.train_step(image_batch)
-              except AssertionError as error:
-                  print(f"\nEpoch {epoch}, batch {index}: {error}")
-                  sys.exit()
-              progbar.update(index, zip(self.logs.keys(), self.logs.values()))
-              # if(index==0):
-              #     unb_metr = shower_depth_lateral_width(image_batch[0])
-              #     self.mean_depth_tracker.update_state(unb_metr["shower mean depth"])
-              #     self.std_depth_tracker.update_state(unb_metr["shower std depth"])
-              #     self.mean_lateral_tracker.update_state(unb_metr["mean lateral width"])
-              #     self.std_lateral_tracker.update_state(unb_metr["std lateral width"])
+            # Unbiased metrics computation
+            fake_images = self.generator(self.generate_noise(num_examples=1000))
+            unb_metr = shower_depth_lateral_width(fake_images).values()
+            self.update_metrics(logs_list.append(unb_metr))
 
-           end = time.time() - start
+            # Dispaly results and save images
+            display.clear_output(wait=True)
+            print(f"EPOCH = {epoch + 1}/{epochs}")
+            for log in self.logs:
+                print(f"{log} = {self.logs[log]}")
+            print (f"Time for epoch {epoch + 1} = {end} sec.\n")
+            self.generate_and_save_images(test_noise, epoch + 1)
 
-           # Dispaly results and save images
-           display.clear_output(wait=True)
-           print(f"EPOCH = {epoch + 1}/{epochs}")
-           for log in self.logs:
-               print(f"{log} = {self.logs[log]}")
-           for el in unb_metr:
-               print(f"{el} = {unb_metr[el]}")
-           print (f"Time for epoch {epoch + 1} = {end} sec.\n")
-           self.generate_and_save_images(test_noise, epoch + 1)
+            # Update history and call scheduler
+            for key, value in self.logs.items():
+                self.history.setdefault(key, []).append(value)
+            self.scheduler(epoch + 1, self.logs, wake_up=wake_up)
 
-           # Update history and call scheduler
-           for key, value in self.logs.items():
-               self.history.setdefault(key, []).append(value)
-           self.scheduler(epoch + 1, self.logs, wake_up=wake_up)
-
-           # Save checkpoint
-           if (epoch + 1) % 3 == 0:
-              save_path = self.manager.save()
-              print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
+            # Save checkpoint
+            if (epoch + 1) % 3 == 0:
+               save_path = self.manager.save()
+               print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
 
         return self.history
 

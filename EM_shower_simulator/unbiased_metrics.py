@@ -47,7 +47,7 @@ def shower_depth_lateral_width(showers_vector):
     x2 = tf.math.reduce_sum(x2, axis=[2,3,4])
 
     # shower lateral width
-    lateral_width      = tf.math.sqrt( tf.math.abs(x2/layers_en - (x/layers_en)**2) )
+    lateral_width      = tf.math.sqrt(tf.math.abs(x2/layers_en - (x/layers_en)**2))
     lateral_width_mean = tf.math.reduce_mean(lateral_width, axis=[0,1])
     lateral_width_std  = tf.math.reduce_std(lateral_width, axis=[0,1])
 

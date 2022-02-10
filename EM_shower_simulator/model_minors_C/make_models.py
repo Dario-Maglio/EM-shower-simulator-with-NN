@@ -32,7 +32,7 @@ N_PID = 3
 N_ENER = 30 + 1
 NOISE_DIM = 1024
 MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
-ENERGY_NORM = 6.503
+ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 25, 25, 1)
 
@@ -64,10 +64,10 @@ def make_generator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     BASE = 8
-    FILTER = 16
+    FILTER = 128
     EMBED_DIM = 10
-    KERNEL = (5, 8, 8)
-    KERNEL2 = (1, 8, 8)
+    KERNEL_L = (1, 8, 8)
+    KERNEL_S = (3, 6, 6)
     n_nodes = BASE*BASE*BASE
     image_shape = (BASE, BASE, BASE, -1)
 
@@ -94,25 +94,27 @@ def make_generator_model():
     gen = Concatenate()([li_lat, li_pid])
     logMod.info(gen.get_shape())
 
-    gen = Conv3DTranspose(2*FILTER, KERNEL, padding="same")(gen)
+    gen = Conv3DTranspose(3, KERNEL_S, padding="same", use_bias=False)(gen)
     logMod.info(gen.get_shape())
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
     # Combine image and energy
     gen = Concatenate()([gen, li_en])
     logMod.info(gen.get_shape())
 
-    gen = Conv3DTranspose(4*FILTER, KERNEL, activation="relu")(gen)
+    gen = Conv3DTranspose(FILTER, KERNEL_L, use_bias=False)(gen)
     logMod.info(gen.get_shape())
-    # gen = BatchNormalization()(gen)
-    # gen = LeakyReLU(alpha=0.2)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(2*FILTER, KERNEL, activation="relu")(gen)
+    gen = Conv3DTranspose(FILTER, KERNEL_S, use_bias=False)(gen)
     logMod.info(gen.get_shape())
-    # gen = BatchNormalization()(gen)
-    # gen = LeakyReLU(alpha=0.2)(gen)
+    gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.2)(gen)
 
-    output = Conv3DTranspose(1, KERNEL2, activation="tanh", name="image")(gen)
-    output = ELU()(output)
+    output = Conv3DTranspose(1, KERNEL_S, activation="tanh", name="image")(gen)
+    output = ELU(name="filtered_image")(output)
 
     logMod.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
@@ -196,7 +198,7 @@ def make_discriminator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     N_FILTER = 32
-    KERNEL = (1, 6, 6)
+    KERNEL = (3, 6, 6)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
     # Output of convolution = (input + 2padding - kernel) / strides + 1 !
@@ -212,7 +214,7 @@ def make_discriminator_model():
     discr = LeakyReLU()(discr)
     discr = Dropout(0.3)(discr)
 
-    discr = AveragePooling3D(pool_size=(2,2,2), padding="valid")(discr)
+    discr = AveragePooling3D(pool_size=(1,2,2), padding="valid")(discr)
 
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     logMod.info(f"Minibatch shape: {discr.get_shape()}")
@@ -227,16 +229,16 @@ def make_discriminator_model():
     logMod.info(discr.get_shape())
     discr = Flatten()(discr)
 
-    discr_conv = Dense(N_FILTER, activation="relu")(discr)
-    discr_conv = Dense(N_FILTER, activation="relu")(discr_conv)
+    discr_conv = Dense(2*N_FILTER, activation="relu")(discr)
+    discr_conv = Dense(2*N_FILTER, activation="relu")(discr_conv)
     output_conv = Dense(1, activation="sigmoid", name="decision")(discr_conv)
 
-    discr_en = Dense(N_FILTER, activation="relu")(discr)
-    discr_en = Dense(N_FILTER, activation="relu")(discr_en)
+    discr_en = Dense(2*N_FILTER, activation="relu")(discr)
+    discr_en = Dense(2*N_FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
-    discr_id = Dense(N_FILTER, activation="relu")(discr)
-    discr_id = Dense(N_FILTER, activation="sigmoid")(discr_id)
+    discr_id = Dense(2*N_FILTER, activation="relu")(discr)
+    discr_id = Dense(2*N_FILTER, activation="sigmoid")(discr_id)
     output_id = Dense(1, activation="sigmoid", name="particle_label")(discr_id)
 
     output = [output_conv, output_en, output_id]

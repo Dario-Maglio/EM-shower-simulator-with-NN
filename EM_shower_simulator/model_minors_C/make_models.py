@@ -31,7 +31,7 @@ from tensorflow.keras.layers import (Input,
 N_PID = 3
 N_ENER = 30 + 1
 NOISE_DIM = 1024
-MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
+MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 25, 25, 1)
@@ -64,7 +64,7 @@ def make_generator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     BASE = 8
-    FILTER = 128
+    FILTER = 32
     EMBED_DIM = 10
     KERNEL_L = (1, 8, 8)
     KERNEL_S = (3, 6, 6)
@@ -108,7 +108,7 @@ def make_generator_model():
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    gen = Conv3DTranspose(FILTER, KERNEL_S, use_bias=False)(gen)
+    gen = Conv3DTranspose(2 * FILTER, KERNEL_S, use_bias=False)(gen)
     logMod.info(gen.get_shape())
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
@@ -197,7 +197,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 32
+    N_FILTER = 64
     KERNEL = (3, 6, 6)
 
     # padding="same" add a 0 to borders, "valid" use only available data !
@@ -211,8 +211,8 @@ def make_discriminator_model():
 
     discr = Conv3D(N_FILTER, KERNEL, use_bias=False)(in_image)
     logMod.info(discr.get_shape())
-    discr = LeakyReLU()(discr)
-    discr = Dropout(0.3)(discr)
+    discr = LeakyReLU(alpha=0.2)(discr)
+    discr = Dropout(0.2)(discr)
 
     discr = AveragePooling3D(pool_size=(1,2,2), padding="valid")(discr)
 
@@ -221,8 +221,8 @@ def make_discriminator_model():
 
     discr = Conv3D(2*N_FILTER, KERNEL, use_bias=False)(minibatch)
     logMod.info(discr.get_shape())
-    discr = LeakyReLU()(discr)
-    discr = Dropout(0.3)(discr)
+    discr = LeakyReLU(alpha=0.2)(discr)
+    discr = Dropout(0.2)(discr)
 
     discr = MaxPooling3D(pool_size=(2,2,2), padding="valid")(discr)
 

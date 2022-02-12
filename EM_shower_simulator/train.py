@@ -69,10 +69,8 @@ if __name__=="__main__":
     history = cond_gan.train(train_dataset, epochs=100, batch=256, wake_up=70)
     np.save(os.path.join("model_results","history.npy"), history)
 
-    # only to remember how to load the dictionary:
-    hist = np.load(os.path.join("model_results","history.npy"))
     plt.figure("Evolution of losses per epochs")
-    for key in hist:
+    for key in history:
         plt.plot(history[key], label=key)
     plt.legend()
     plt.show()

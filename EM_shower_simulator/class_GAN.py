@@ -404,13 +404,13 @@ class ConditionalGAN(tf.keras.Model):
 
             # Start iterate on batches
             start = time.time()
-            for index, image_batch in enumerate(dataset):
-                try:
+            try:
+                for index, image_batch in enumerate(dataset):
                     logs = self.train_step(image_batch)
-                except AssertionError as error:
-                    print(f"\nEpoch {epoch}, batch {index}: {error}")
-                    sys.exit()
-                progbar.update(index, zip(self.logs.keys(), logs))
+                    progbar.update(index, zip(self.logs.keys(), logs))
+            except AssertionError as error:
+                print(f"\nEpoch {epoch}, batch {index}: {error}")
+                break
             end = time.time() - start
 
             # Unbiased metrics computation

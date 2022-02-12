@@ -155,7 +155,7 @@ class ConditionalGAN(tf.keras.Model):
             if tf.math.is_nan(arg):
                  raise AssertionError(f"\nERROR IN {key}: NAN VALUE")
             metric.update_state(arg)
-            self.logs[key] = metric.result()
+            self.logs[key] = metric.result().numpy()
 
     def compile(self):
         """Compile method of the cGAN network.
@@ -272,7 +272,7 @@ class ConditionalGAN(tf.keras.Model):
         save_path = Path('model_results').resolve()
         file_name = f"image_at_epoch_{epoch}.png"
         if not os.path.isdir(save_path):
-           os.makedirs(save_path)
+            os.makedirs(save_path)
         fig.savefig(os.path.join(save_path, file_name))
 
     def scheduler(self, epoch, logs, wake_up):

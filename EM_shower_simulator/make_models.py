@@ -22,7 +22,6 @@ from tensorflow.keras.layers import (Input,
                                      Dropout,
                                      Lambda,
                                      Concatenate,
-                                     ELU,
                                      Flatten)
 
 #-------------------------------------------------------------------------------
@@ -104,7 +103,6 @@ def make_generator_model():
 
     output = (Conv3DTranspose(1, KERNEL, use_bias=False,
                               activation="tanh", name="Fake_image")(gen))
-    output = ELU()(output)
     # output = Lambda(zero_suppression, name="Fake_image_zero_suppression")(output)
     logMod.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error

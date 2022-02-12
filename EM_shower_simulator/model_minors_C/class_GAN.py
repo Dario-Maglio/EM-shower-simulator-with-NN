@@ -72,9 +72,9 @@ def shower_depth_lateral_width(showers_vector):
     depth_weighted_total_en = tf.math.reduce_sum(layers_scalar_prod_en, axis=1)
 
     # shower depth
-    shower_depth      = tf.math.divide(depth_weighted_total_en,total_en)
-    shower_depth_mean = tf.math.reduce_mean(shower_depth, axis = 0)
-    shower_depth_std  = tf.math.reduce_std(shower_depth, axis=0)
+    shower_depth = tf.math.divide(depth_weighted_total_en,total_en)
+    depth_mean = tf.math.reduce_mean(shower_depth, axis = 0)
+    depth_std  = tf.math.reduce_std(shower_depth, axis=0)
 
     x = tf.math.multiply(pixel_en,pixel_num)
     x = tf.math.reduce_sum(x, axis=[2,3,4])
@@ -84,10 +84,11 @@ def shower_depth_lateral_width(showers_vector):
 
     # shower lateral width
     lateral_width  = tf.math.sqrt(tf.math.abs(x2/layers_en - (x/layers_en)**2))
-    lat_width_mean = tf.math.reduce_mean(lateral_width, axis=[0,1])
-    lat_width_std  = tf.math.reduce_std(lateral_width, axis=[0,1])
+    width_mean = tf.math.reduce_mean(lateral_width, axis=[0,1])
+    width_std  = tf.math.reduce_std(lateral_width, axis=[0,1])
 
-    return [shower_depth_mean, shower_depth_std, lat_width_mean, lat_width_std]
+    metrics = [depth_mean, depth_std, width_mean, width_std]
+    return metrics
 
 #-------------------------------------------------------------------------------
 
@@ -118,8 +119,8 @@ class ConditionalGAN(tf.keras.Model):
         # Unbiased metrics
         self.mean_depth_tracker = Mean(name="mean_depth")
         self.std_depth_tracker  = Mean(name="std_depth")
-        self.mean_lateral_tracker = Mean(name="mean_lateral")
-        self.std_lateral_tracker  = Mean(name="std_lateral")
+        self.mean_lateral_tracker = Mean(name="mean_width")
+        self.std_lateral_tracker  = Mean(name="std_width")
 
         # Optimizers
         self.generator_optimizer = Adam(learning_rate * 10)
@@ -147,13 +148,12 @@ class ConditionalGAN(tf.keras.Model):
                 self.mean_lateral_tracker,
                 self.std_lateral_tracker]
 
-    @tf.function
     def update_metrics(self, args):
         """Update metrics and logs preventing NaN propagation."""
         for metric, arg in zip(self.metrics, args):
             key = metric.name
-            if np.isnan(arg):
-                raise AssertionError(f"\nERROR IN {key}: NAN VALUE")
+            if tf.math.is_nan(arg):
+                 raise AssertionError(f"\nERROR IN {key}: NAN VALUE")
             metric.update_state(arg)
             self.logs[key] = metric.result()
 
@@ -404,19 +404,21 @@ class ConditionalGAN(tf.keras.Model):
 
             # Start iterate on batches
             start = time.time()
-            for index, image_batch in enumerate(dataset):
-                try:
-                    logs_list = self.train_step(image_batch)
-                except AssertionError as error:
-                    print(f"\nEpoch {epoch}, batch {index}: {error}")
-                    sys.exit()
-                progbar.update(index, zip(self.logs.keys(), logs_list))
+            try:
+                for index, image_batch in enumerate(dataset):
+                    logs = self.train_step(image_batch)
+                    progbar.update(index, zip(self.logs.keys(), logs))
+            except AssertionError as error:
+                print(f"\nEpoch {epoch}, batch {index}: {error}")
+                break
             end = time.time() - start
 
             # Unbiased metrics computation
-            fake_images = self.generator(self.generate_noise(num_examples=1000))
+            noise = self.generate_noise(num_examples=batch)
+            fake_images = self.generator(noise)
             unb_metr = shower_depth_lateral_width(fake_images)
-            self.update_metrics(logs_list.append(unb_metr))
+            # note the following is the only way to append list of ope.tensor
+            self.update_metrics([*logs, *unb_metr])
 
             # Dispaly results and save images
             display.clear_output(wait=True)

@@ -3,6 +3,7 @@
 import os
 import logging
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 from constants import default_list
@@ -57,8 +58,6 @@ if __name__=="__main__":
     logger.info("Start building operations.")
     train_dataset = data_pull(path_list)
 
-    global_metrics_real_data()
-
     generator = make_generator_model()
 
     discriminator = make_discriminator_model()
@@ -66,12 +65,16 @@ if __name__=="__main__":
     cond_gan = ConditionalGAN(generator, discriminator)
     logger.info("The cGAN model has been built correctly.")
 
-    history = cond_gan.train(train_dataset, epochs=100, batch=128, wake_up=70)
+    global_metrics_real_data()
+    history = cond_gan.train(train_dataset, epochs=100, batch=64, wake_up=70)
+    np.save(os.path.join("model_results","history.npy"), history)
 
     plt.figure("Evolution of losses per epochs")
     for key in history:
         plt.plot(history[key], label=key)
+    plt.legend()
     plt.show()
+
     logger.info("The cGAN model has been trained correctly.")
 
     logger.info("The work is done.")

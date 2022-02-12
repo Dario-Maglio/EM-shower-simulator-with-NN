@@ -28,7 +28,7 @@ from IPython import display
 
 N_PID = 3                               # number of pid classes
 N_ENER = 30 + 1                         # number of en classes
-NOISE_DIM = 2048
+NOISE_DIM = 1024
 
 PARAM_EN = 0.01                         # parameter in energy losses computation
 ENERGY_NORM = 6.7404

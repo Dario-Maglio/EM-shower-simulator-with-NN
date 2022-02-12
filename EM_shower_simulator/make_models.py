@@ -20,6 +20,7 @@ from tensorflow.keras.layers import (Input,
                                      MaxPooling3D,
                                      AveragePooling3D,
                                      Dropout,
+                                     ELU,
                                      Lambda,
                                      Concatenate,
                                      Flatten)
@@ -30,7 +31,7 @@ from tensorflow.keras.layers import (Input,
 # Configuration parameters
 N_PID = 3
 N_ENER = 30 + 1
-NOISE_DIM = 2048
+NOISE_DIM = 1024
 MBSTD_GROUP_SIZE = 32
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
@@ -52,44 +53,46 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 16
+    N_FILTER = 64
     EMBED_DIM = 10
-    KERNEL = (4, 7, 7)
+    KERNEL = (2, 6, 6)
     input_shape = (3, 7, 7, N_FILTER)
-    image_shape = (3, 7, 7, 4*N_FILTER)
-
+    BASE = 8
+    image_shape = (BASE, BASE, BASE, -1)
+    n_nodes = BASE*BASE*BASE
     # Input[i] -> input[i] + 3 convolution * (KERNEL-1) = GEOMETRY[i]!
     error = "ERROR building the generator: shape different from geometry!"
 
-    n_nodes = 1
-    for cell in input_shape:
-        n_nodes = n_nodes * cell
+    # n_nodes = 1
+    # for cell in input_shape:
+    #     n_nodes = n_nodes * cell
 
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Embedding(N_ENER, N_ENER*EMBED_DIM)(en_label)
+    li_en = Dense(2*N_FILTER, activation="relu")(en_label)
     li_en = Dense(n_nodes)(li_en)
-    li_en = Reshape(input_shape)(li_en)
+    li_en = Reshape(image_shape)(li_en)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particleID_input")
     li_pid = Embedding(N_PID, N_PID*EMBED_DIM)(pid_label)
     li_pid = Dense(n_nodes)(li_pid)
-    li_pid = Reshape(input_shape)(li_pid)
+    li_pid = Reshape(image_shape)(li_pid)
 
-    n_nodes = 1
-    for cell in image_shape:
-        n_nodes = n_nodes * cell
+    # n_nodes = 1
+    # for cell in image_shape:
+    #     n_nodes = n_nodes * cell
 
     # Image generator input
     in_lat = Input(shape=(NOISE_DIM,), name="latent_input")
-    gen = Dense(n_nodes, use_bias=False)(in_lat)
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-    gen = Reshape(image_shape)(gen)
+    li_lat = Reshape(image_shape)(in_lat)
+    # gen = Dense(n_nodes, use_bias=False)(in_lat)
+    # gen = BatchNormalization()(gen)
+    # gen = LeakyReLU(alpha=0.2)(gen)
+    # gen = Reshape(image_shape)(gen)
 
     # Merge image gen and label input
-    merge = Concatenate()([gen, li_en, li_pid])
+    merge = Concatenate()([li_lat, li_en, li_pid])
 
     gen = Conv3DTranspose(6*N_FILTER, KERNEL, use_bias=False)(merge)
     logMod.info(gen.get_shape())
@@ -101,8 +104,10 @@ def make_generator_model():
     gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
-    output = (Conv3DTranspose(1, KERNEL, use_bias=False,
+    output = (Conv3DTranspose(1, (3,8,8), use_bias=False,
                               activation="tanh", name="Fake_image")(gen))
+    output = ELU(alpha=0.1, name="filtered_image")(output)
+
     # output = Lambda(zero_suppression, name="Fake_image_zero_suppression")(output)
     logMod.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error

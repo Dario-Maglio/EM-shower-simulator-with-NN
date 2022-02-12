@@ -31,7 +31,7 @@ from tensorflow.keras.layers import (Input,
 N_PID = 3
 N_ENER = 30 + 1
 NOISE_DIM = 1024
-MBSTD_GROUP_SIZE = 32                                     #minibatch dimension
+MBSTD_GROUP_SIZE = 8                                     #minibatch dimension
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000.
 GEOMETRY = (12, 25, 25, 1)
@@ -64,8 +64,8 @@ def make_generator_model():
     categorizes the labels in N_CLASSES * classes.
     """
     BASE = 8
-    FILTER = 32
-    EMBED_DIM = 10
+    FILTER = 64
+    EMBED_DIM = 30
     KERNEL_L = (1, 8, 8)
     KERNEL_S = (3, 6, 6)
     n_nodes = BASE*BASE*BASE
@@ -80,14 +80,14 @@ def make_generator_model():
 
     # Energy label input
     en_label = Input(shape=(1,), name="energy_input")
-    li_en = Dense(FILTER)(en_label)
-    li_en = Dense(n_nodes)(li_en)
+    li_en = Dense(2*FILTER, activation="relu")(en_label)
+    li_en = Dense(n_nodes, activation="relu")(li_en)
     li_en = Reshape(image_shape)(li_en)
 
     # ParticleID label input
     pid_label = Input(shape=(1,), name="particle_input")
     li_pid = Embedding(N_PID, EMBED_DIM)(pid_label)
-    li_pid = Dense(n_nodes)(li_pid)
+    li_pid = Dense(n_nodes, activation="relu")(li_pid)
     li_pid = Reshape(image_shape)(li_pid)
 
     # Combine noise and particle ID
@@ -96,7 +96,7 @@ def make_generator_model():
 
     gen = Conv3DTranspose(3, KERNEL_S, padding="same", use_bias=False)(gen)
     logMod.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
+    # gen = BatchNormalization()(gen)
     gen = LeakyReLU(alpha=0.2)(gen)
 
     # Combine image and energy
@@ -105,16 +105,17 @@ def make_generator_model():
 
     gen = Conv3DTranspose(FILTER, KERNEL_L, use_bias=False)(gen)
     logMod.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    # gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.1)(gen)
 
-    gen = Conv3DTranspose(2 * FILTER, KERNEL_S, use_bias=False)(gen)
+    gen = Conv3DTranspose(FILTER, KERNEL_S, use_bias=False)(gen)
     logMod.info(gen.get_shape())
-    gen = BatchNormalization()(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
+    # gen = BatchNormalization()(gen)
+    gen = LeakyReLU(alpha=0.1)(gen)
 
-    output = Conv3DTranspose(1, KERNEL_S, activation="tanh", name="image")(gen)
-    output = ELU(name="filtered_image")(output)
+    output = Conv3DTranspose(1, KERNEL_S, activation="tanh", use_bias=False,
+                                                              name="image")(gen)
+    # output = ELU(name="filtered_image")(output)
 
     logMod.info(f"Shape of the generator output: {output.get_shape()}")
     assert output.get_shape().as_list()==[None, *GEOMETRY], error
@@ -197,7 +198,7 @@ def make_discriminator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES * classes.
     """
-    N_FILTER = 64
+    N_FILTER = 32
     KERNEL = (3, 6, 6)
 
     # padding="same" add a 0 to borders, "valid" use only available data !

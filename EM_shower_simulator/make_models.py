@@ -53,7 +53,7 @@ def make_generator_model():
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
     categorizes the labels in N_CLASSES_* classes.
     """
-    N_FILTER = 64
+    N_FILTER = 45
     EMBED_DIM = 10
     KERNEL = (2, 6, 6)
     input_shape = (3, 7, 7, N_FILTER)

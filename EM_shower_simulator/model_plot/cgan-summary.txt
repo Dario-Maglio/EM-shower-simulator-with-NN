@@ -7,56 +7,56 @@ ________________________________________________________________________________
 ==================================================================================================
  particle_input (InputLayer)    [(None, 1)]          0           []                               
                                                                                                   
- embedding_13 (Embedding)       (None, 1, 30)        90          ['particle_input[0][0]']         
+ embedding_17 (Embedding)       (None, 1, 30)        90          ['particle_input[0][0]']         
                                                                                                   
  latent_input (InputLayer)      [(None, 1024)]       0           []                               
                                                                                                   
- dense_117 (Dense)              (None, 1, 512)       15872       ['embedding_13[0][0]']           
+ dense_161 (Dense)              (None, 1, 512)       15872       ['embedding_17[0][0]']           
                                                                                                   
  energy_input (InputLayer)      [(None, 1)]          0           []                               
                                                                                                   
- reshape_33 (Reshape)           (None, 8, 8, 8, 2)   0           ['latent_input[0][0]']           
+ reshape_45 (Reshape)           (None, 8, 8, 8, 2)   0           ['latent_input[0][0]']           
                                                                                                   
- reshape_35 (Reshape)           (None, 8, 8, 8, 1)   0           ['dense_117[0][0]']              
+ reshape_47 (Reshape)           (None, 8, 8, 8, 1)   0           ['dense_161[0][0]']              
                                                                                                   
- dense_115 (Dense)              (None, 512)          1024        ['energy_input[0][0]']           
+ dense_159 (Dense)              (None, 512)          1024        ['energy_input[0][0]']           
                                                                                                   
- concatenate_22 (Concatenate)   (None, 8, 8, 8, 3)   0           ['reshape_33[0][0]',             
-                                                                  'reshape_35[0][0]']             
+ concatenate_30 (Concatenate)   (None, 8, 8, 8, 3)   0           ['reshape_45[0][0]',             
+                                                                  'reshape_47[0][0]']             
                                                                                                   
- dense_116 (Dense)              (None, 512)          262656      ['dense_115[0][0]']              
+ dense_160 (Dense)              (None, 512)          262656      ['dense_159[0][0]']              
                                                                                                   
- conv3d_transpose_31 (Conv3DTra  (None, 8, 8, 8, 3)  972         ['concatenate_22[0][0]']         
+ conv3d_transpose_43 (Conv3DTra  (None, 8, 8, 8, 3)  972         ['concatenate_30[0][0]']         
  nspose)                                                                                          
                                                                                                   
- reshape_34 (Reshape)           (None, 8, 8, 8, 1)   0           ['dense_116[0][0]']              
+ reshape_46 (Reshape)           (None, 8, 8, 8, 1)   0           ['dense_160[0][0]']              
                                                                                                   
- concatenate_23 (Concatenate)   (None, 8, 8, 8, 4)   0           ['conv3d_transpose_31[0][0]',    
-                                                                  'reshape_34[0][0]']             
+ concatenate_31 (Concatenate)   (None, 8, 8, 8, 4)   0           ['conv3d_transpose_43[0][0]',    
+                                                                  'reshape_46[0][0]']             
                                                                                                   
- dense_118 (Dense)              (None, 8, 8, 8, 32)  128         ['concatenate_23[0][0]']         
+ dense_162 (Dense)              (None, 8, 8, 8, 32)  128         ['concatenate_31[0][0]']         
                                                                                                   
- dense_119 (Dense)              (None, 8, 8, 8, 32)  1024        ['dense_118[0][0]']              
+ dense_163 (Dense)              (None, 8, 8, 8, 32)  1024        ['dense_162[0][0]']              
                                                                                                   
- conv3d_transpose_32 (Conv3DTra  (None, 8, 15, 15, 6  131072     ['dense_119[0][0]']              
+ conv3d_transpose_44 (Conv3DTra  (None, 8, 15, 15, 6  131072     ['dense_163[0][0]']              
  nspose)                        4)                                                                
                                                                                                   
- batch_normalization_26 (BatchN  (None, 8, 15, 15, 6  256        ['conv3d_transpose_32[0][0]']    
+ batch_normalization_34 (BatchN  (None, 8, 15, 15, 6  256        ['conv3d_transpose_44[0][0]']    
  ormalization)                  4)                                                                
                                                                                                   
- leaky_re_lu_48 (LeakyReLU)     (None, 8, 15, 15, 6  0           ['batch_normalization_26[0][0]'] 
+ leaky_re_lu_64 (LeakyReLU)     (None, 8, 15, 15, 6  0           ['batch_normalization_34[0][0]'] 
                                 4)                                                                
                                                                                                   
- conv3d_transpose_33 (Conv3DTra  (None, 10, 20, 20,   221184     ['leaky_re_lu_48[0][0]']         
+ conv3d_transpose_45 (Conv3DTra  (None, 10, 20, 20,   221184     ['leaky_re_lu_64[0][0]']         
  nspose)                        32)                                                               
                                                                                                   
- batch_normalization_27 (BatchN  (None, 10, 20, 20,   128        ['conv3d_transpose_33[0][0]']    
+ batch_normalization_35 (BatchN  (None, 10, 20, 20,   128        ['conv3d_transpose_45[0][0]']    
  ormalization)                  32)                                                               
                                                                                                   
- leaky_re_lu_49 (LeakyReLU)     (None, 10, 20, 20,   0           ['batch_normalization_27[0][0]'] 
+ leaky_re_lu_65 (LeakyReLU)     (None, 10, 20, 20,   0           ['batch_normalization_35[0][0]'] 
                                 32)                                                               
                                                                                                   
- image (Conv3DTranspose)        (None, 12, 25, 25,   3457        ['leaky_re_lu_49[0][0]']         
+ image (Conv3DTranspose)        (None, 12, 25, 25,   3457        ['leaky_re_lu_65[0][0]']         
                                 1)                                                                
                                                                                                   
 ==================================================================================================
@@ -73,49 +73,49 @@ ________________________________________________________________________________
  input_image (InputLayer)       [(None, 12, 25, 25,  0           []                               
                                  1)]                                                              
                                                                                                   
- conv3d_22 (Conv3D)             (None, 9, 20, 20, 3  4608        ['input_image[0][0]']            
+ conv3d_30 (Conv3D)             (None, 9, 20, 20, 3  4608        ['input_image[0][0]']            
                                 2)                                                                
                                                                                                   
- leaky_re_lu_50 (LeakyReLU)     (None, 9, 20, 20, 3  0           ['conv3d_22[0][0]']              
+ leaky_re_lu_66 (LeakyReLU)     (None, 9, 20, 20, 3  0           ['conv3d_30[0][0]']              
                                 2)                                                                
                                                                                                   
- dropout_22 (Dropout)           (None, 9, 20, 20, 3  0           ['leaky_re_lu_50[0][0]']         
+ dropout_30 (Dropout)           (None, 9, 20, 20, 3  0           ['leaky_re_lu_66[0][0]']         
                                 2)                                                                
                                                                                                   
- average_pooling3d_11 (AverageP  (None, 9, 10, 10, 3  0          ['dropout_22[0][0]']             
+ average_pooling3d_15 (AverageP  (None, 9, 10, 10, 3  0          ['dropout_30[0][0]']             
  ooling3D)                      2)                                                                
                                                                                                   
- minibatch (Lambda)             (None, 9, 10, 10, 3  0           ['average_pooling3d_11[0][0]']   
+ minibatch (Lambda)             (None, 9, 10, 10, 3  0           ['average_pooling3d_15[0][0]']   
                                 3)                                                                
                                                                                                   
- conv3d_23 (Conv3D)             (None, 6, 5, 5, 32)  152064      ['minibatch[0][0]']              
+ conv3d_31 (Conv3D)             (None, 6, 5, 5, 32)  152064      ['minibatch[0][0]']              
                                                                                                   
- leaky_re_lu_51 (LeakyReLU)     (None, 6, 5, 5, 32)  0           ['conv3d_23[0][0]']              
+ leaky_re_lu_67 (LeakyReLU)     (None, 6, 5, 5, 32)  0           ['conv3d_31[0][0]']              
                                                                                                   
- dropout_23 (Dropout)           (None, 6, 5, 5, 32)  0           ['leaky_re_lu_51[0][0]']         
+ dropout_31 (Dropout)           (None, 6, 5, 5, 32)  0           ['leaky_re_lu_67[0][0]']         
                                                                                                   
- max_pooling3d_11 (MaxPooling3D  (None, 3, 2, 2, 32)  0          ['dropout_23[0][0]']             
+ max_pooling3d_15 (MaxPooling3D  (None, 3, 2, 2, 32)  0          ['dropout_31[0][0]']             
  )                                                                                                
                                                                                                   
- flatten_11 (Flatten)           (None, 384)          0           ['max_pooling3d_11[0][0]']       
+ flatten_15 (Flatten)           (None, 384)          0           ['max_pooling3d_15[0][0]']       
                                                                                                   
- dense_120 (Dense)              (None, 128)          49280       ['flatten_11[0][0]']             
+ dense_164 (Dense)              (None, 128)          49280       ['flatten_15[0][0]']             
                                                                                                   
- dense_122 (Dense)              (None, 128)          49280       ['flatten_11[0][0]']             
+ dense_166 (Dense)              (None, 128)          49280       ['flatten_15[0][0]']             
                                                                                                   
- dense_124 (Dense)              (None, 128)          49280       ['flatten_11[0][0]']             
+ dense_168 (Dense)              (None, 128)          49280       ['flatten_15[0][0]']             
                                                                                                   
- dense_121 (Dense)              (None, 64)           8256        ['dense_120[0][0]']              
+ dense_165 (Dense)              (None, 64)           8256        ['dense_164[0][0]']              
                                                                                                   
- dense_123 (Dense)              (None, 64)           8256        ['dense_122[0][0]']              
+ dense_167 (Dense)              (None, 64)           8256        ['dense_166[0][0]']              
                                                                                                   
- dense_125 (Dense)              (None, 64)           8256        ['dense_124[0][0]']              
+ dense_169 (Dense)              (None, 64)           8256        ['dense_168[0][0]']              
                                                                                                   
- decision (Dense)               (None, 1)            65          ['dense_121[0][0]']              
+ decision (Dense)               (None, 1)            65          ['dense_165[0][0]']              
                                                                                                   
- energy_label (Dense)           (None, 1)            65          ['dense_123[0][0]']              
+ energy_label (Dense)           (None, 1)            65          ['dense_167[0][0]']              
                                                                                                   
- particle_label (Dense)         (None, 1)            65          ['dense_125[0][0]']              
+ particle_label (Dense)         (None, 1)            65          ['dense_169[0][0]']              
                                                                                                   
 ==================================================================================================
 Total params: 329,475

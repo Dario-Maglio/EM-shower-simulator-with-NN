@@ -141,8 +141,8 @@ if __name__=="__main__":
 
     try:
         debug_cgan(cond_gan, path_list)
+        logger.info("The work is done.")
     except Exception as error:
         print(error)
 
-    logger.info("The work is done.")
     logger.handlers.clear()

@@ -330,7 +330,7 @@ class ConditionalGAN(tf.keras.Model):
             computed_e = mean_squared(en_labels, energies)
 
             # Compute auxiliary energy and particle losses
-            fake_energ = mean_squared(en_labels, fake_output[1])  # or energies?
+            fake_energ = mean_squared(en_labels, fake_output[1])
             real_energ = mean_squared(en_labels, real_output[1])
 
             parID = tf.math.abs(tf.math.add(pid_labels, -1))
@@ -338,7 +338,7 @@ class ConditionalGAN(tf.keras.Model):
             real_parID = cross_entropy(parID, real_output[2])
 
             aux_gener_loss = (fake_energ + computed_e) * PARAM_EN + fake_parID
-            aux_discr_loss = (real_energ) * PARAM_EN + real_parID
+            aux_discr_loss = real_energ * PARAM_EN + real_parID
 
             # Compute total losses
             gener_total_loss = aux_gener_loss + gener_loss
@@ -409,7 +409,7 @@ class ConditionalGAN(tf.keras.Model):
                     logs = self.train_step(image_batch)
                     progbar.update(index, zip(self.logs.keys(), logs))
             except AssertionError as error:
-                print(f"\nEpoch {epoch+1}, batch {index}: {error}")
+                print(f"\nEpoch {epoch + 1}, batch {index + 1}: {error}")
                 break
             end = time.time() - start
 

@@ -46,7 +46,7 @@ logGAN = logging.getLogger("CGANLogger")
 
 #-------------------------------------------------------------------------------
 
-def shower_depth_lateral_width(showers_vector):
+def shower_depth_width(showers_vector):
     """Compute shower mean depth and std;
        Compute shower mean lateral width among layers and std.
     """
@@ -155,7 +155,7 @@ class ConditionalGAN(tf.keras.Model):
             if tf.math.is_nan(arg):
                  raise AssertionError(f"\nERROR IN {key}: NAN VALUE")
             metric.update_state(arg)
-            self.logs[key] = metric.result()
+            self.logs[key] = metric.result().numpy()
 
     def compile(self):
         """Compile method of the cGAN network.
@@ -272,7 +272,7 @@ class ConditionalGAN(tf.keras.Model):
         save_path = Path('model_results').resolve()
         file_name = f"image_at_epoch_{epoch}.png"
         if not os.path.isdir(save_path):
-           os.makedirs(save_path)
+            os.makedirs(save_path)
         fig.savefig(os.path.join(save_path, file_name))
 
     def scheduler(self, epoch, logs, wake_up):
@@ -330,7 +330,7 @@ class ConditionalGAN(tf.keras.Model):
             computed_e = mean_squared(en_labels, energies)
 
             # Compute auxiliary energy and particle losses
-            fake_energ = mean_squared(en_labels, fake_output[1])  # or energies?
+            fake_energ = mean_squared(en_labels, fake_output[1])
             real_energ = mean_squared(en_labels, real_output[1])
 
             parID = tf.math.abs(tf.math.add(pid_labels, -1))
@@ -338,7 +338,7 @@ class ConditionalGAN(tf.keras.Model):
             real_parID = cross_entropy(parID, real_output[2])
 
             aux_gener_loss = (fake_energ + computed_e) * PARAM_EN + fake_parID
-            aux_discr_loss = (real_energ) * PARAM_EN + real_parID
+            aux_discr_loss = real_energ * PARAM_EN + real_parID
 
             # Compute total losses
             gener_total_loss = aux_gener_loss + gener_loss
@@ -409,14 +409,14 @@ class ConditionalGAN(tf.keras.Model):
                     logs = self.train_step(image_batch)
                     progbar.update(index, zip(self.logs.keys(), logs))
             except AssertionError as error:
-                print(f"\nEpoch {epoch}, batch {index}: {error}")
+                print(f"\nEpoch {epoch + 1}, batch {index + 1}: {error}")
                 break
             end = time.time() - start
 
             # Unbiased metrics computation
             noise = self.generate_noise(num_examples=batch)
             fake_images = self.generator(noise)
-            unb_metr = shower_depth_lateral_width(fake_images)
+            unb_metr = shower_depth_width(fake_images)
             # note the following is the only way to append list of ope.tensor
             self.update_metrics([*logs, *unb_metr])
 
@@ -434,7 +434,7 @@ class ConditionalGAN(tf.keras.Model):
             self.scheduler(epoch + 1, self.logs, wake_up=wake_up)
 
             # Save checkpoint
-            if (epoch + 1) % 3 == 0:
+            if (epoch + 1) % 5 == 0:
                save_path = self.manager.save()
                print(f"Saved checkpoint for epoch {epoch + 1}: {save_path}")
 

@@ -139,7 +139,10 @@ if __name__=="__main__":
     cond_gan.plot_model()
     logger.info("The cGAN model has been plotted correctly.")
 
-    debug_cgan(cond_gan, path_list)
+    try:
+        debug_cgan(cond_gan, path_list)
+        logger.info("The work is done.")
+    except Exception as error:
+        print(error)
 
-    logger.info("The work is done.")
     logger.handlers.clear()

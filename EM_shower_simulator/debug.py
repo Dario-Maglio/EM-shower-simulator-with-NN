@@ -21,13 +21,13 @@ from make_models import make_generator_model, make_discriminator_model
 from class_GAN import test_noise, ConditionalGAN
 #-------------------------------------------------------------------------------
 
-VERBOSE = True
+VERBOSE = False
 
 # Path list from this folder
 path_list = [os.path.join('..', path) for path in default_list]
 
 # Examples to show
-EXAMPLES = 5
+EXAMPLES = 8
 
 # Define logger and handler
 ch = logging.StreamHandler()

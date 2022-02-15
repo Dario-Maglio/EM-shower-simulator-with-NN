@@ -27,8 +27,8 @@ if __name__=="__main__":
     cond_gan = ConditionalGAN(generator, discriminator)
     logger.info("The cGAN model has been built correctly.")
 
-    # generator, discriminator = cond_gan.evaluate()
-    # logger.info("Results restored correctly")
+    generator, discriminator = cond_gan.evaluate()
+    logger.info("Results restored correctly")
 
     noise = cond_gan.generate_noise(num_examples)
 

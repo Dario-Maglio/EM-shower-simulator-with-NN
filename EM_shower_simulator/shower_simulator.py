@@ -5,11 +5,15 @@ import logging
 import argparse
 
 from numpy import array, random
+import tensorflow as tf
+
+from .class_GAN import ConditionalGAN
+from .make_models import make_generator_model, make_discriminator_model
 
 DESCRIPTION = """
 This command allows the user to generate a shower simulation from command line.
 Furthermore, it allows to pass the shower's features as float arguments in the
-order: energy momentum angle
+order: energy particleID
 It gives an error if a different input size or type is passed."""
 DESCRIPTION_F = """insert the shower's features from command line"""
 
@@ -21,9 +25,6 @@ def simulate_shower(features=default_features, verbose=0):
        it generates the corresponding shower simulation.
     """
     # Check the input format
-    features = array(features)
-    if not(features.dtype=='float64'):
-        raise TypeError('Expected array of float as input.')
     if not(len(features)==n_features):
         error = f'Expected input dimension {n_features}, not {len(features)}.'
         raise TypeError(error)
@@ -47,14 +48,21 @@ def simulate_shower(features=default_features, verbose=0):
     # Load the model
     try:
        logger.info('Loading the model...')
-       #model = load_model(os.path.join("model_save","cGAN.h5"))
-    except:
-       logger.info('Missing model')
+       gen = make_generator_model()
+       dis = make_discriminator_model()
+       gan = ConditionalGAN(gen, dis)
+       logger.info('GAN created...')
+       gan.evaluate()
+    except Exception as error:
+       logger.info(f'Missing model: {error}')
        return 1
 
     # Start simulation
     start_time = time.time()
-    #model.simulate(features)
+    noise = gan.generate_noise(1)
+    noise[1] = tf.constant(features[0], shape=(1,1))
+    noise[2] = tf.constant(features[1], shape=(1,1))
+    gan.generate_and_save_images(noise)
     time_elapsed = time.time() - start_time
     logger.info(f'Done in {time_elapsed:.4} seconds')
     logger.handlers.clear()

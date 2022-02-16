@@ -28,7 +28,7 @@ from IPython import display
 
 N_PID = 3                               # number of pid classes
 N_ENER = 30 + 1                         # number of en classes
-NOISE_DIM = 2048
+NOISE_DIM = 1024
 
 PARAM_EN = 0.01                         # parameter in energy losses computation
 ENERGY_NORM = 6.7404
@@ -57,8 +57,7 @@ def shower_depth_width(showers_vector):
     pixel_num= tf.constant([[[[x for x in range(-shape[2]//2+1, shape[2]//2+1)]
                             for y in range(-shape[2]//2+1, shape[2]//2+1)]
                             for l in range(shape[1]) ]])
-    pixel_num= tf.cast(tf.tile(
-                        pixel_num, [shape[0],1,1,1] ), tf.float32)
+    pixel_num= tf.cast(tf.tile(pixel_num, [shape[0],1,1,1] ), tf.float32)
     pixel_num= tf.reshape(pixel_num, shape)
 
     pixel_en = tf.math.multiply(showers_vector, ENERGY_NORM)

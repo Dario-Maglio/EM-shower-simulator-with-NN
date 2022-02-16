@@ -21,9 +21,9 @@ GEOMETRY = (12, 25, 25, 1)
 N_PID = 3                               # number of pid classes
 N_ENER = 30 + 1                         # number of en classes
 PARAM_EN = 0.01                         # parameter in energy losses computation
-NOISE_DIM = 2048
+NOISE_DIM = 1024
 BUFFER_SIZE = 10400
 
-MBSTD_GROUP_SIZE = 8                    #minibatch dimension
+MBSTD_GROUP_SIZE = 32                    #minibatch dimension
 
 #-------------------------------------------------------------------------------

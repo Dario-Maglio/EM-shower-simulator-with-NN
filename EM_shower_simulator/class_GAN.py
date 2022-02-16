@@ -210,7 +210,7 @@ class ConditionalGAN(tf.keras.Model):
     def generate_noise(self, num_examples=num_examples):
         """Generate a set of num_examples noise inputs for the generator."""
         return [tf.random.normal([num_examples, NOISE_DIM]),
-                tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
+                tf.random.uniform([num_examples, 1], minval= 1., maxval=30.),
                 tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
     @tf.function

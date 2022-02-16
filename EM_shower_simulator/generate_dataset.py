@@ -19,7 +19,7 @@ logger.setLevel(logging.DEBUG)
 
 if __name__=="__main__":
 
-    num_examples = 10
+    num_examples = 1000
 
     generator = make_generator_model()
     discriminator = make_discriminator_model()
@@ -43,7 +43,7 @@ if __name__=="__main__":
     gan_dataset = os.path.join("..","dataset","gan_data","data_GAN.root")
 
     shower_in = array("d", 12*25*25*[0])
-    primary_id_in = array("d", [0])
+    primary_id_in = array("i", [0])
     primary_en_in = array("d", [0])
     deposit_en_in = array("d", [0])
     evt_in = array("i",[0])
@@ -60,14 +60,15 @@ if __name__=="__main__":
     primary_id = np.cast[np.int32](noise[2].numpy())
     primary_en = noise[1].numpy()
     deposit_en = energies.numpy()
-    print(shower,primary_id, primary_en, deposit_en)
-    print(predictions.shape)
+    # print(primary_id)#shower,primary_en, deposit_en
+    # print(predictions.shape)
 
     for i in range(num_examples):
         j=0
         evt_in[0] = i
         primary_en_in[0] = primary_en[i]*1E6
-        primary_id_in[0] = primary_id[i]
+        primary_id_in[0] = int(primary_id[i])
+        # print(primary_id_in[0])
         deposit_en_in[0] = deposit_en[i]*1E6
         for layer in range(12):
             for num_z in range(25):

@@ -20,7 +20,6 @@ from tensorflow.keras.layers import (Input,
                                      MaxPooling3D,
                                      AveragePooling3D,
                                      Dropout,
-                                     ELU,
                                      Lambda,
                                      Concatenate,
                                      Flatten)
@@ -189,6 +188,23 @@ def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
         # Append as new fmap.
         return tf.concat([discr, minib], axis=-1)
 
+def energies_per_layer(in_images):
+    """Compute energy deposited in detector for each layer, then it appends to
+    input images per each layer.
+    """
+    in_images = tf.cast(in_images, tf.float32)
+    shape = in_images.shape
+
+    en_images = tf.math.multiply(in_images, ENERGY_NORM)
+    en_images = tf.math.pow(10., en_images)
+    en_images = tf.math.divide(en_images, ENERGY_SCALE)
+    en_images = tf.math.reduce_sum(en_images, axis=[2,3,4], keepdims=True)
+
+    en_images = tf.tile(en_images, [1, 1 , shape[2], shape[3], 1])
+    en_images = tf.concat([in_images, en_images], axis=-1)
+    #output: (None, 12,25,25,1)
+    return  en_images
+
 def make_discriminator_model():
     """Define discriminator model:
     Input 1) Vector of images associated to the given labels;
@@ -210,8 +226,9 @@ def make_discriminator_model():
 
     # Image input
     in_image = Input(shape=GEOMETRY, name="input_image")
+    in_image_en_layer = Lambda(energies_per_layer, name="input_image_energy_per_layer")(in_image)
 
-    discr = Conv3D(N_FILTER, KERNEL)(in_image)
+    discr = Conv3D(N_FILTER, KERNEL)(in_image_en_layer)
     logMod.info(discr.get_shape())
     discr = LeakyReLU(alpha=0.2)(discr)
     discr = Dropout(0.3)(discr)

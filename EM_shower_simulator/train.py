@@ -21,7 +21,7 @@ from unbiased_metrics import shower_depth_lateral_width
 
 #-------------------------------------------------------------------------------
 
-VERBOSE = True
+VERBOSE = False
 
 # Path list from this folder
 path_list = [os.path.join('..', path) for path in default_list]
@@ -66,7 +66,7 @@ if __name__=="__main__":
     logger.info("The cGAN model has been built correctly.")
 
     global_metrics_real_data()
-    history = cond_gan.train(train_dataset, epochs=100, batch=256, wake_up=70)
+    history = cond_gan.train(train_dataset, epochs=100, batch=64, wake_up=100)
     np.save(os.path.join("model_results","history.npy"), history)
 
     plt.figure("Evolution of losses per epochs")

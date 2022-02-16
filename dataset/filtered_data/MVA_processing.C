@@ -183,7 +183,7 @@ double MVA_processing_normalization(){
 
   ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
-  const char *input="data_MVA_24pixel.root";
+  const char *input="data_MVA_24pixel_parte1.root";
   TChain *h = new TChain("h");
   h->Add(input);
 
@@ -216,7 +216,7 @@ void MVA_processing_formatting_normalization(){
 
   ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
-  const char *input="data_MVA_24pixel.root";
+  const char *input="data_MVA_24pixel_parte1.root";
   TChain *h = new TChain("h");
   h->Add(input);
 
@@ -301,7 +301,7 @@ void do_stuff(TCanvas *c, int index, TH2D *hist){
   c->cd(index);
   //gPad->SetLogz();
   hist->SetContour(99);
-  hist->SetMaximum(1); hist->SetMinimum(-1);
+  //hist->SetMaximum(1); hist->SetMinimum(-1);
   hist->Draw("COLZ");
 }
 
@@ -318,7 +318,8 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
 
   ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
-  const char *input="data_MVA_24pixel_parte1.root";
+  const char *input="data_MVA_normalized.root";
+  // const char *input = "../gan_data/data_GAN_shower.root";
   TChain *h = new TChain("h");
   h->Add(input);
 
@@ -326,9 +327,9 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
   TBranch *b_shower, *b_en_in, *b_pid, *b_en_mis;
   double en_in, en_mis;
   int pid;
-  h->SetBranchAddress("primary", &pid, &b_pid);
-  h->SetBranchAddress("en_in", &en_in, &b_en_in);
-  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
+  // h->SetBranchAddress("primary", &pid, &b_pid);
+  // h->SetBranchAddress("en_in", &en_in, &b_en_in);
+  // h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
   h->SetBranchAddress("shower", shower, &b_shower);
 
   h->GetEntry(evento);
@@ -351,19 +352,19 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
     }
   }
 
-  std::cout<<"Primary particle:\t" ;
-  switch (pid) {
-        case -1 :
-            std::cout<<"Positron"<<std::endl ;
-            break;
-        case 0 :
-            std::cout<<"Photon"<<std::endl ;
-            break;
-        case 1 :
-            std::cout<<"Electron"<<std::endl ;
-            break;
-    }
-  std::cout<<"Initial energy: \t"<<en_in/1000000<<" GeV"<<std::endl;
-  std::cout<<"Deposited energy:\t"<<en_mis/1000000<<" GeV"<<std::endl;
+  // std::cout<<"Primary particle:\t" ;
+  // switch (pid) {
+  //       case -1 :
+  //           std::cout<<"Positron"<<std::endl ;
+  //           break;
+  //       case 0 :
+  //           std::cout<<"Photon"<<std::endl ;
+  //           break;
+  //       case 1 :
+  //           std::cout<<"Electron"<<std::endl ;
+  //           break;
+  //   }
+  // std::cout<<"Initial energy: \t"<<en_in/1000000<<" GeV"<<std::endl;
+  // std::cout<<"Deposited energy:\t"<<en_mis/1000000<<" GeV"<<std::endl;
 
 }

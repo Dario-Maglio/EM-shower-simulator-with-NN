@@ -284,10 +284,10 @@ TH2D *set_hist_layer(const int LAYER, double shower[NUMBER_OF_LAYERS][NUMBER_OF_
   char label[50];
   sprintf(label, "layer %d;y[mm];z[mm]", LAYER);
 
-  TH2D *layer_x = new TH2D("",label, NUMBER_OF_PIXEL_Z-1,-200,200,NUMBER_OF_PIXEL_Y-1,-200,200);
+  TH2D *layer_x = new TH2D("",label, NUMBER_OF_PIXEL_Z,-200,200,NUMBER_OF_PIXEL_Y,-200,200);
   for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
     for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
-      layer_x->SetBinContent(num_z, num_y, shower[LAYER-1][num_z][num_y][0]);
+      layer_x->SetBinContent(num_z+1, num_y+1, shower[LAYER-1][num_z][num_y][0]);
       //std::cout<< LAYER-1 <<"\t"<< num_z <<"\t"<< num_y <<"\t"<< layer_x->GetBinContent(num_z, num_y)<<std::endl;
     }
   }
@@ -305,7 +305,7 @@ void do_stuff(TCanvas *c, int index, TH2D *hist){
   hist->Draw("COLZ");
 }
 
-void event_display(int const evento=0, Bool_t show_display = kTRUE){
+void event_display(int const evento=0, Bool_t show_display = kFALSE){
   /**
   Displays an event of the simulation.
   Inputs:
@@ -318,18 +318,19 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
 
   ROOT::EnableImplicitMT(); // Tell ROOT you want to go parallel
 
-  const char *input="data_MVA_normalized.root";
+  const char *input="data_MVA_24pixel_parte2.root";
   // const char *input = "../gan_data/data_GAN_shower.root";
   TChain *h = new TChain("h");
   h->Add(input);
 
+  double en_calc=0;
   double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
   TBranch *b_shower, *b_en_in, *b_pid, *b_en_mis;
   double en_in, en_mis;
   int pid;
-  // h->SetBranchAddress("primary", &pid, &b_pid);
-  // h->SetBranchAddress("en_in", &en_in, &b_en_in);
-  // h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
+  h->SetBranchAddress("primary", &pid, &b_pid);
+  h->SetBranchAddress("en_in", &en_in, &b_en_in);
+  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
   h->SetBranchAddress("shower", shower, &b_shower);
 
   h->GetEntry(evento);
@@ -337,6 +338,11 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
   vector<TH2D*> layer(NUMBER_OF_LAYERS);
   for(int i=0; i<NUMBER_OF_LAYERS;i++){
     layer[i] = set_hist_layer(i+1, shower);
+    for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
+      for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
+        en_calc += TMath::Power(10,shower[i][num_z][num_y][0]*6.7404)/1E6;
+      }
+    }
   }
 
   if(show_display){
@@ -364,7 +370,7 @@ void event_display(int const evento=0, Bool_t show_display = kTRUE){
   //           std::cout<<"Electron"<<std::endl ;
   //           break;
   //   }
-  // std::cout<<"Initial energy: \t"<<en_in/1000000<<" GeV"<<std::endl;
-  // std::cout<<"Deposited energy:\t"<<en_mis/1000000<<" GeV"<<std::endl;
-
+  cout<<"Initial energy: \t"<<en_in/1E6<<" GeV"<<endl;
+  cout<<"Deposited energy:\t"<<en_mis/1E6<<" GeV"<<endl;
+  cout<<"Recalculed energy:\t"<<en_calc<<endl;
 }

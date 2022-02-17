@@ -111,9 +111,11 @@ class ConditionalGAN(tf.keras.Model):
         # Metrics
         self.gener_loss_tracker = Mean(name="gener_loss")
         self.discr_loss_tracker = Mean(name="discr_loss")
-        self.energ_loss_tracker = Mean(name="energy_loss")
-        self.parID_loss_tracker = Mean(name="particle_loss")
-        self.computed_e_tracker = Mean(name="computed_loss")
+        self.real_energ_loss_tracker = Mean(name="real_energy_loss")
+        self.fake_energ_loss_tracker = Mean(name="fake_energy_loss")
+        self.real_parID_loss_tracker = Mean(name="real_particle_loss")
+        self.fake_parID_loss_tracker = Mean(name="fake_particle_loss")
+        self.computed_e_tracker = Mean(name="fake_computed_loss")
 
         # Unbiased metrics
         self.mean_depth_tracker = Mean(name="mean_depth")
@@ -139,8 +141,10 @@ class ConditionalGAN(tf.keras.Model):
         """Metrics of the cGAN network."""
         return [self.gener_loss_tracker,
                 self.discr_loss_tracker,
-                self.energ_loss_tracker,
-                self.parID_loss_tracker,
+                self.real_energ_loss_tracker,
+                self.fake_energ_loss_tracker,
+                self.real_parID_loss_tracker,
+                self.fake_parID_loss_tracker,
                 self.computed_e_tracker,
                 self.mean_depth_tracker,
                 self.std_depth_tracker,
@@ -254,7 +258,7 @@ class ConditionalGAN(tf.keras.Model):
         fig = plt.figure("Generated showers", figsize=(20,10))
         for i in range(num_examples):
             print(f"Example {i+1}\t"
-                 +f"Primary particle = {int(noise[2][i][0])}\t"
+                 +f"Primary particle = {np.abs(int(noise[2][i][0])-1)}\t"
                  +f"Predicted particle = {decisions[2][i][0]}\n"
                  +f"Initial energy = {noise[1][i][0]}\t"
                  +f"Generated energy = {energies[i][0]}\t"
@@ -353,7 +357,7 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator_optimizer.apply_gradients(zip(grad_discriminator,
                                         self.discriminator.trainable_variables))
 
-        logs = [gener_loss, discr_loss, real_energ, real_parID, computed_e]
+        logs = [gener_loss, discr_loss, real_energ, fake_energ, real_parID, fake_parID, computed_e]
         self.update_metrics(logs)
         return logs
 

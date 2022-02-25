@@ -54,6 +54,8 @@ def compute_energy(in_images):
 #-------------------------------------------------------------------------------
 """Subroutines for the generator network."""
 
+"""Generator model."""
+
 def make_generator_model():
     """Define generator model:
     Input 1) Random noise from which the network creates a vector of images;
@@ -122,6 +124,7 @@ def make_generator_model():
 
     model = Model([in_lat, en_label, pid_label], output, name='generator')
     return model
+
 
 def debug_generator(noise, verbose=False):
     """Uses the random seeds to generate fake samples and plots them."""
@@ -205,6 +208,8 @@ def energies_per_layer(in_images):
     #output: (None, 12,25,25,1)
     return  en_images
 
+"""Discriminator model."""
+
 def make_discriminator_model():
     """Define discriminator model:
     Input 1) Vector of images associated to the given labels;
@@ -228,7 +233,7 @@ def make_discriminator_model():
     in_image = Input(shape=GEOMETRY, name="input_image")
     in_image_en_layer = Lambda(energies_per_layer, name="input_image_energy_per_layer")(in_image)
 
-    discr = Conv3D(N_FILTER, KERNEL)(in_image_en_layer)
+    discr = Conv3D(N_FILTER, (1,6,6) )(in_image_en_layer)
     logMod.info(discr.get_shape())
     discr = LeakyReLU(alpha=0.2)(discr)
     discr = Dropout(0.3)(discr)
@@ -238,7 +243,7 @@ def make_discriminator_model():
     minibatch = Lambda(minibatch_stddev_layer, name="minibatch")(discr)
     logMod.info(f"Minibatch shape: {discr.get_shape()}")
 
-    discr = Conv3D(2*N_FILTER, KERNEL)(minibatch)
+    discr = Conv3D(N_FILTER, KERNEL)(minibatch)
     logMod.info(discr.get_shape())
     discr = LeakyReLU(alpha=0.2)(discr)
 
@@ -248,15 +253,15 @@ def make_discriminator_model():
     discr = Flatten()(discr)
 
     discr_conv = Dense(4*N_FILTER, activation="relu")(discr)
-    discr_conv = Dense(4*N_FILTER, activation="relu")(discr_conv)
+    discr_conv = Dense(2*N_FILTER, activation="relu")(discr_conv)
     output_conv = Dense(1, activation="sigmoid", name="decision")(discr_conv)
 
     discr_en = Dense(4*N_FILTER, activation="relu")(discr)
-    discr_en = Dense(4*N_FILTER, activation="relu")(discr_en)
+    discr_en = Dense(2*N_FILTER, activation="relu")(discr_en)
     output_en = Dense(1, activation="relu", name="energy_label")(discr_en)
 
     discr_id = Dense(4*N_FILTER, activation="relu")(discr)
-    discr_id = Dense(4*N_FILTER, activation="sigmoid")(discr_id)
+    discr_id = Dense(2*N_FILTER, activation="sigmoid")(discr_id)
     output_id = Dense(1, activation="sigmoid", name="particle_label")(discr_id)
 
     output = [output_conv, output_en, output_id]

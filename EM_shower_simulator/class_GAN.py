@@ -27,7 +27,7 @@ from IPython import display
 #from constants import *
 
 N_PID = 3                               # number of pid classes
-N_ENER = 30 + 1                         # number of en classes
+N_ENER = 30                             # max energy in GeV
 NOISE_DIM = 1024
 
 PARAM_EN = 0.01                         # parameter in energy losses computation
@@ -38,7 +38,7 @@ ENERGY_SCALE = 1000000
 tf.random.set_seed(12)
 num_examples = 6
 test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
-              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
+              tf.random.uniform([num_examples, 1], minval= 1., maxval=N_ENER),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
 # Define logger
@@ -134,7 +134,9 @@ class ConditionalGAN(tf.keras.Model):
                            generator_optimizer=self.generator_optimizer,
                            discriminator_optimizer=self.discriminator_optimizer)
 
-        self.manager = Manager(self.checkpoint, './checkpoints', max_to_keep=5)
+        this_dir, _ = os.path.split(__file__)
+        check_dir = os.path.join(this_dir, 'checkpoints')
+        self.manager = Manager(self.checkpoint, check_dir, max_to_keep=5)
 
     @property
     def metrics(self):
@@ -214,7 +216,7 @@ class ConditionalGAN(tf.keras.Model):
     def generate_noise(self, num_examples=num_examples):
         """Generate a set of num_examples noise inputs for the generator."""
         return [tf.random.normal([num_examples, NOISE_DIM]),
-                tf.random.uniform([num_examples, 1], minval= 1., maxval=30.),
+                tf.random.uniform([num_examples, 1], minval= 1., maxval=N_ENER),
                 tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
     @tf.function

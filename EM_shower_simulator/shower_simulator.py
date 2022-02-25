@@ -18,7 +18,8 @@ It gives an error if a different input size or type is passed."""
 DESCRIPTION_F = """insert the shower's features from command line"""
 
 n_features = 2
-default_features = random.rand(n_features)
+default_features = [random.uniform(low= 1., high=30., size=1),
+                    random.randint(3, size=1)]
 
 def simulate_shower(features=default_features, verbose=0):
     """Given the input features as a list of n_features float components,

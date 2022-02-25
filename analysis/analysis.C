@@ -114,7 +114,7 @@ vector<TH2D*> mean_layers(const char* path_to_file="GEANT"){
     for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
       for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
         for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
-          //shower[layers][num_z][num_y][0] = TMath::Power(10,shower[layers][num_z][num_y][0]) ;
+          shower[layers][num_z][num_y][0] = TMath::Power(10,shower[layers][num_z][num_y][0]*EN_NORM)/1E6 ;
           mean_layer[layers]->SetBinContent(num_z+1, num_y+1,
             mean_layer[layers]->GetBinContent(num_z+1,num_y+1)+shower[layers][num_z][num_y][0] );
         }
@@ -420,7 +420,7 @@ void pdf_en_deposited(){
   TF1 *identity = new TF1("en_in = en_mis", "x", 0.,30.);
 
   graph_geant->Draw("AP");
-  graph_geant->SetNameTitle("GEANT", "en_in vs en_mis;en_in;en_mis");
+  graph_geant->SetNameTitle("GEANT", "Energia iniziale vs misurata;Enegia iniziale [GeV];Energia misurata [GeV]");
   graph_geant->SetMinimum(0.);
   graph_geant->SetMarkerColor(kBlack);
   graph_geant->SetMarkerStyle(20);

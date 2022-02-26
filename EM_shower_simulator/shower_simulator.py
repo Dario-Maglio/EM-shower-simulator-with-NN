@@ -5,7 +5,7 @@ import logging
 import argparse
 
 from numpy import array, random
-import tensorflow as tf
+from tensorflow import constant as tconst
 
 from .class_GAN import ConditionalGAN
 from .make_models import make_generator_model, make_discriminator_model
@@ -61,8 +61,8 @@ def simulate_shower(features=default_features, verbose=0):
     # Start simulation
     start_time = time.time()
     noise = gan.generate_noise(1)
-    noise[1] = tf.constant(features[0], shape=(1,1))
-    noise[2] = tf.constant(features[1], shape=(1,1))
+    noise[1] = tconst(features[0], shape=(1,1))
+    noise[2] = tconst(features[1], shape=(1,1))
     gan.generate_and_save_images(noise)
     time_elapsed = time.time() - start_time
     logger.info(f'Done in {time_elapsed:.4} seconds')

@@ -29,7 +29,6 @@ from tensorflow.keras.layers import (Input,
 
 # Configuration parameters
 N_PID = 3
-N_ENER = 30 + 1
 NOISE_DIM = 1024
 MBSTD_GROUP_SIZE = 32
 ENERGY_NORM = 6.7404

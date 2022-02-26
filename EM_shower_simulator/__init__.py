@@ -7,5 +7,6 @@ from .make_models import debug_generator, debug_discriminator
 from .class_GAN import test_noise
 
 from .constants import GEOMETRY, FILE_LIST, default_list, CHECKP
+from .constants import N_PID, NOISE_DIM, ENERGY_NORM, ENERGY_SCALE
 
 __version__ = _version.get_versions()['version']

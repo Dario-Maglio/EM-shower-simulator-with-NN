@@ -23,14 +23,10 @@ from IPython import display
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
 
-# Configuration parameters
-#from constants import *
-
 N_PID = 3                               # number of pid classes
 N_ENER = 30                             # max energy in GeV
-NOISE_DIM = 1024
-
 PARAM_EN = 0.01                         # parameter in energy losses computation
+NOISE_DIM = 1024
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000
 

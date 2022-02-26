@@ -106,6 +106,7 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator = discr
         self.history = {}
         self.logs = {}
+        self.values = []
 
         # Metrics
         self.gener_loss_tracker = Mean(name="gener_loss")
@@ -370,9 +371,10 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator_optimizer.apply_gradients(zip(grad_discriminator,
                                         self.discriminator.trainable_variables))
 
-        logs = [gener_loss, discr_loss, real_energ, fake_energ, real_parID, fake_parID, computed_e]
-        self.update_metrics(logs)
-        return logs
+        self.values = [gener_loss, discr_loss, real_energ, fake_energ,
+                        real_parID, fake_parID, computed_e]
+        self.update_metrics(self.values)
+        return self.logs
 
     def train(self, dataset, epochs=1, batch=32, wake_up=100, verbose=1):
         """Define the training function of the cGAN.
@@ -411,15 +413,7 @@ class ConditionalGAN(tf.keras.Model):
         # Call checkpoint manager to load the state or restart from scratch
         switch = input("Do you want to restore the last checkpoint? [y/N]")
         if switch=='y':
-           if self.manager.latest_checkpoint:
-              latest_check = self.manager.latest_checkpoint
-              try:
-                 self.checkpoint.restore(latest_check).expect_partial()
-                 print(f"Restored from {latest_check}")
-              except:
-                 print("Invalid checkpoint: init from scratch.")
-           else:
-              print("No checkpoint found: initializing from scratch.")
+           self.restore()
         else:
             print("Initializing from scratch.")
 
@@ -433,8 +427,8 @@ class ConditionalGAN(tf.keras.Model):
             start = time.time()
             try:
                 for index, image_batch in enumerate(dataset):
-                    logs = self.train_step(image_batch)
-                    progbar.update(index, zip(self.logs.keys(), logs))
+                    self.train_step(image_batch)
+                    progbar.update(index, zip(self.logs.keys(), self.values))
             except AssertionError as error:
                 print(f"\nEpoch {epoch + 1}, batch {index + 1}: {error}")
                 break
@@ -445,7 +439,7 @@ class ConditionalGAN(tf.keras.Model):
             fake_images = self.generator(noise)
             unb_metr = shower_depth_width(fake_images)
             # note the following is the only way to append list of ope.tensor
-            self.update_metrics([*logs, *unb_metr])
+            self.update_metrics([*self.values, *unb_metr])
 
             # Dispaly results and save images
             display.clear_output(wait=True)

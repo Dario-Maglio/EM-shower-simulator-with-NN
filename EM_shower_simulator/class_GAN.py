@@ -43,9 +43,7 @@ logGAN = logging.getLogger("CGANLogger")
 #-------------------------------------------------------------------------------
 
 def shower_depth_width(showers_vector):
-    """Compute shower mean depth and std;
-       Compute shower mean lateral width among layers and std.
-    """
+    """Compute shower mean depth and mean lateral width among layers."""
     shape = showers_vector.shape
 
     layer_num= tf.constant([[x for x in range(shape[1])]])
@@ -89,13 +87,18 @@ def shower_depth_width(showers_vector):
 
 class ConditionalGAN(tf.keras.Model):
     """Class for a conditional GAN.
+
     It inherits keras.Model properties and functions.
     """
     def __init__(self, gener, discr, learning_rate=2e-5):
         """Constructor.
+
         Inputs:
+
         gener = generator network;
+
         discr = discriminator network;
+
         learning_rate = starting poor learning rate.
         """
         super(ConditionalGAN, self).__init__()
@@ -160,6 +163,7 @@ class ConditionalGAN(tf.keras.Model):
 
     def compile(self):
         """Compile method of the cGAN network.
+
         Quite useless in this case because the training set up has been done in
         the constructor of the class. It associate to the new abstract model an
         optimizer attribute 'rmsprop', and loss, metrics=None.
@@ -225,7 +229,7 @@ class ConditionalGAN(tf.keras.Model):
         en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
         return en_images
 
-    def evaluate(self, num_examples=num_examples):
+    def restore(self):
         """Restore the last checkpoint and return the models."""
         if self.manager.latest_checkpoint:
             latest_check = self.manager.latest_checkpoint
@@ -241,7 +245,9 @@ class ConditionalGAN(tf.keras.Model):
     def generate_and_save_images(self, noise, epoch=0):
         """Use the current status of the NN to generate images from the noise,
         plot, evaluate and save them.
+
         Inputs:
+
         noise = noise with the generator input shape.
         """
         # 1 - Generate images
@@ -278,6 +284,7 @@ class ConditionalGAN(tf.keras.Model):
 
     def scheduler(self, epoch, logs, wake_up):
         """Decrease the learning_rate:
+
         Starting from epoch wake_up, the scheduler boosts the generator or
         discriminator learning rate depending on which is doing better. The
         comparison is made looking at the losses stored in logs.
@@ -293,13 +300,21 @@ class ConditionalGAN(tf.keras.Model):
 
     def train_step(self, dataset):
         """Train step of the cGAN.
+
         Inputs:
+
         dataset = combined images  and labels upon which the network trained.
 
+
+
         Description:
+
         1) Create a noise to feed into the model for the images generation;
+
         2) Generate images and calculate losses using real images and labels;
+
         3) Calculate gradients using loss values and model variables;
+
         4) Process Gradients and Run the Optimizer.
         """
         mean_squared = MeanSquaredError()
@@ -361,17 +376,28 @@ class ConditionalGAN(tf.keras.Model):
 
     def train(self, dataset, epochs=1, batch=32, wake_up=100, verbose=1):
         """Define the training function of the cGAN.
+
         Inputs:
+
         dataset = combined real images vectors and labels;
+
         epochs = number of epochs for the training;
+
         batch = number of batch in which dataset must be split;
+
         wake_up = epoch in which learning rates start to switch and decrease.
 
+
         For each epoch:
+
         1) For each batch of the dataset, run the custom "train_step" function;
+
         2) Produce images;
+
         3) Save the model every 5 epochs as a checkpoint;
+
         4) Print out the completed epoch no. and the time spent;
+
         5) Then generate a final image after the training is completed.
         """
         if verbose :

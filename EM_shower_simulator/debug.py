@@ -72,7 +72,7 @@ def debug_cgan(gan, path_list, num_examples=EXAMPLES):
     noise = gan.generate_noise(num_examples)
     gan.generate_and_save_images(noise)
 
-    gener, discr = gan.evaluate()
+    gener, discr = gan.restore()
 
     # Fake showers
     predictions = gener(noise, training=False)

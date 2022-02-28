@@ -23,14 +23,10 @@ from IPython import display
 #-------------------------------------------------------------------------------
 """Constant parameters of configuration and definition of global objects."""
 
-# Configuration parameters
-#from constants import *
-
 N_PID = 3                               # number of pid classes
-N_ENER = 30 + 1                         # number of en classes
-NOISE_DIM = 1024
-
+N_ENER = 30                             # max energy in GeV
 PARAM_EN = 0.01                         # parameter in energy losses computation
+NOISE_DIM = 1024
 ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000
 
@@ -38,7 +34,7 @@ ENERGY_SCALE = 1000000
 tf.random.set_seed(12)
 num_examples = 6
 test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
-              tf.random.uniform([num_examples, 1], minval= 0., maxval=N_ENER),
+              tf.random.uniform([num_examples, 1], minval= 1., maxval=N_ENER),
               tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
 # Define logger
@@ -47,9 +43,7 @@ logGAN = logging.getLogger("CGANLogger")
 #-------------------------------------------------------------------------------
 
 def shower_depth_width(showers_vector):
-    """Compute shower mean depth and std;
-       Compute shower mean lateral width among layers and std.
-    """
+    """Compute shower mean depth and mean lateral width among layers."""
     shape = showers_vector.shape
 
     layer_num= tf.constant([[x for x in range(shape[1])]])
@@ -93,13 +87,18 @@ def shower_depth_width(showers_vector):
 
 class ConditionalGAN(tf.keras.Model):
     """Class for a conditional GAN.
+
     It inherits keras.Model properties and functions.
     """
     def __init__(self, gener, discr, learning_rate=2e-5):
         """Constructor.
+
         Inputs:
+
         gener = generator network;
+
         discr = discriminator network;
+
         learning_rate = starting poor learning rate.
         """
         super(ConditionalGAN, self).__init__()
@@ -107,6 +106,7 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator = discr
         self.history = {}
         self.logs = {}
+        self.values = []
 
         # Metrics
         self.gener_loss_tracker = Mean(name="gener_loss")
@@ -134,7 +134,9 @@ class ConditionalGAN(tf.keras.Model):
                            generator_optimizer=self.generator_optimizer,
                            discriminator_optimizer=self.discriminator_optimizer)
 
-        self.manager = Manager(self.checkpoint, './checkpoints', max_to_keep=5)
+        this_dir, _ = os.path.split(__file__)
+        check_dir = os.path.join(this_dir, 'checkpoints')
+        self.manager = Manager(self.checkpoint, check_dir, max_to_keep=5)
 
     @property
     def metrics(self):
@@ -162,6 +164,7 @@ class ConditionalGAN(tf.keras.Model):
 
     def compile(self):
         """Compile method of the cGAN network.
+
         Quite useless in this case because the training set up has been done in
         the constructor of the class. It associate to the new abstract model an
         optimizer attribute 'rmsprop', and loss, metrics=None.
@@ -214,7 +217,7 @@ class ConditionalGAN(tf.keras.Model):
     def generate_noise(self, num_examples=num_examples):
         """Generate a set of num_examples noise inputs for the generator."""
         return [tf.random.normal([num_examples, NOISE_DIM]),
-                tf.random.uniform([num_examples, 1], minval= 1., maxval=30.),
+                tf.random.uniform([num_examples, 1], minval= 1., maxval=N_ENER),
                 tf.random.uniform([num_examples, 1], minval= 0., maxval=N_PID)]
 
     @tf.function
@@ -227,7 +230,7 @@ class ConditionalGAN(tf.keras.Model):
         en_images = tf.math.reduce_sum(en_images, axis=[1,2,3])
         return en_images
 
-    def evaluate(self, num_examples=num_examples):
+    def restore(self):
         """Restore the last checkpoint and return the models."""
         if self.manager.latest_checkpoint:
             latest_check = self.manager.latest_checkpoint
@@ -243,7 +246,9 @@ class ConditionalGAN(tf.keras.Model):
     def generate_and_save_images(self, noise, epoch=0):
         """Use the current status of the NN to generate images from the noise,
         plot, evaluate and save them.
+
         Inputs:
+
         noise = noise with the generator input shape.
         """
         # 1 - Generate images
@@ -280,6 +285,7 @@ class ConditionalGAN(tf.keras.Model):
 
     def scheduler(self, epoch, logs, wake_up):
         """Decrease the learning_rate:
+
         Starting from epoch wake_up, the scheduler boosts the generator or
         discriminator learning rate depending on which is doing better. The
         comparison is made looking at the losses stored in logs.
@@ -295,13 +301,21 @@ class ConditionalGAN(tf.keras.Model):
 
     def train_step(self, dataset):
         """Train step of the cGAN.
+
         Inputs:
+
         dataset = combined images  and labels upon which the network trained.
 
+
+
         Description:
+
         1) Create a noise to feed into the model for the images generation;
+
         2) Generate images and calculate losses using real images and labels;
+
         3) Calculate gradients using loss values and model variables;
+
         4) Process Gradients and Run the Optimizer.
         """
         mean_squared = MeanSquaredError()
@@ -357,23 +371,35 @@ class ConditionalGAN(tf.keras.Model):
         self.discriminator_optimizer.apply_gradients(zip(grad_discriminator,
                                         self.discriminator.trainable_variables))
 
-        logs = [gener_loss, discr_loss, real_energ, fake_energ, real_parID, fake_parID, computed_e]
-        self.update_metrics(logs)
-        return logs
+        self.values = [gener_loss, discr_loss, real_energ, fake_energ,
+                        real_parID, fake_parID, computed_e]
+        self.update_metrics(self.values)
+        return self.logs
 
     def train(self, dataset, epochs=1, batch=32, wake_up=100, verbose=1):
         """Define the training function of the cGAN.
+
         Inputs:
+
         dataset = combined real images vectors and labels;
+
         epochs = number of epochs for the training;
+
         batch = number of batch in which dataset must be split;
+
         wake_up = epoch in which learning rates start to switch and decrease.
 
+
         For each epoch:
+
         1) For each batch of the dataset, run the custom "train_step" function;
+
         2) Produce images;
+
         3) Save the model every 5 epochs as a checkpoint;
+
         4) Print out the completed epoch no. and the time spent;
+
         5) Then generate a final image after the training is completed.
         """
         if verbose :
@@ -387,15 +413,7 @@ class ConditionalGAN(tf.keras.Model):
         # Call checkpoint manager to load the state or restart from scratch
         switch = input("Do you want to restore the last checkpoint? [y/N]")
         if switch=='y':
-           if self.manager.latest_checkpoint:
-              latest_check = self.manager.latest_checkpoint
-              try:
-                 self.checkpoint.restore(latest_check).expect_partial()
-                 print(f"Restored from {latest_check}")
-              except:
-                 print("Invalid checkpoint: init from scratch.")
-           else:
-              print("No checkpoint found: initializing from scratch.")
+           self.restore()
         else:
             print("Initializing from scratch.")
 
@@ -409,8 +427,8 @@ class ConditionalGAN(tf.keras.Model):
             start = time.time()
             try:
                 for index, image_batch in enumerate(dataset):
-                    logs = self.train_step(image_batch)
-                    progbar.update(index, zip(self.logs.keys(), logs))
+                    self.train_step(image_batch)
+                    progbar.update(index, zip(self.logs.keys(), self.values))
             except AssertionError as error:
                 print(f"\nEpoch {epoch + 1}, batch {index + 1}: {error}")
                 break
@@ -421,7 +439,7 @@ class ConditionalGAN(tf.keras.Model):
             fake_images = self.generator(noise)
             unb_metr = shower_depth_width(fake_images)
             # note the following is the only way to append list of ope.tensor
-            self.update_metrics([*logs, *unb_metr])
+            self.update_metrics([*self.values, *unb_metr])
 
             # Dispaly results and save images
             display.clear_output(wait=True)

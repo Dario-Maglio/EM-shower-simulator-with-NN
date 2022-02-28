@@ -9,7 +9,7 @@ class TestCore(unittest.TestCase):
 
     def test_simulate(self):
         """Test that simulate_shower works correctly on default data."""
-        #self.assertEqual(EM.simulate(),0)
+        self.assertEqual(EM.simulate(),0)
         pass
 
     def test_debug_models(self):

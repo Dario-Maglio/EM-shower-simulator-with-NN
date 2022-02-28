@@ -22,10 +22,14 @@ logData = logging.getLogger("DataLogger")
 
 def single_data_pull(path):
     """Organize and reshape the dataset for the cGan training.
+
     Inputs:
+
     path = path to a .root file containing the dataset.
 
+
     Description:
+
     Take in input a path to the dataset and return an iterator over events that
     can be used to train the cGAN using the method train.
     """
@@ -62,10 +66,14 @@ def single_data_pull(path):
 
 def data_pull(path_list):
     """Create the dataset for the cGan training from a path list.
+
     Inputs:
+
     path_list = path list to .root files containing data.
 
+
     Description:
+
     Take in input a list of paths to data, call single_data_pull for each
     one, concatenate them and return an iterator over events that can be used
     to train the cGAN.
@@ -83,11 +91,16 @@ def data_pull(path_list):
 
 def debug_data_pull(path_list, num_examples=1, verbose=False):
     """Import data images from the dataset and test shapes.
+
     Inputs:
+
     path = path to a .root file containing the dataset;
+
     num_examples = number of random shower to plot.
 
+
     Description:
+
     Take in input a path to the dataset and return num_examples of events from
     the dataset that can be plotted with debug_shower.
     """
@@ -113,7 +126,9 @@ def debug_data_pull(path_list, num_examples=1, verbose=False):
 
 def debug_shower(data_images, verbose=False):
     """Plot all showers from data_images and return the figure.
+
     Inputs:
+    
     data_images = vector of images with shape equal to GEOMETRY.
     """
     if verbose :

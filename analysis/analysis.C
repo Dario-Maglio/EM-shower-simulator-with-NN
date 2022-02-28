@@ -122,7 +122,7 @@ vector<TH2D*> mean_layers(const char* path_to_file="GEANT"){
     }
   }
 
-  TCanvas *c = new TCanvas("","",1200,800);
+  TCanvas *c = new TCanvas("","",1600,1000);
   int x_div = int(TMath::Sqrt(NUMBER_OF_LAYERS))+1;
   int y_div;
   if(x_div*(x_div-1)==NUMBER_OF_LAYERS){y_div=x_div-1;}
@@ -557,7 +557,7 @@ void shower_depth_width(const char* path_to_file="GEANT"){
   int nevt_to_analyze = nevt/1;
 
   double en_inside_layer[NUMBER_OF_LAYERS], en_depth;
-  double x,x2;
+  double x,x2,x2_;
   vector<TH2D*> hist_sigma_layer(2);
   for(int pid=0; pid<2; pid++){
     hist_sigma_layer[pid] = construct_hist_vector(11,1.,12.,
@@ -583,6 +583,7 @@ void shower_depth_width(const char* path_to_file="GEANT"){
       en_inside_layer[layers] = 0;
       x=0;
       x2=0;
+      x2_=0;
       for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
         for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
           shower[layers][num_z][num_y][0] = TMath::Power(10,shower[layers][num_z][num_y][0]*EN_NORM) ;
@@ -594,9 +595,10 @@ void shower_depth_width(const char* path_to_file="GEANT"){
     if(TMath::Abs(pid)==1){
       count_electron++;
       for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
-        x += TMath::Power(layers,2) * en_inside_layer[layers] /(en_mis/1.E6) ;
-        x2 += TMath::Power(layers*en_inside_layer[layers] /(en_mis/1.E6),2);
+        x += TMath::Power(layers,2) * en_inside_layer[layers] /(en_mis/1.E6) ;//x2 += TMath::Power(layers*en_inside_layer[layers] /(en_mis/1.E6),2);
+        x2_ += layers*en_inside_layer[layers] /(en_mis/1.E6) ;
       }
+      x2 = TMath::Power(x2_, 2);
       hist_1->SetBinContent(en_in/1.E6,  TMath::Sqrt( TMath::Abs(x-x2) ) );
       hist_mean_1 ->Add(hist_1);
     }
@@ -605,8 +607,9 @@ void shower_depth_width(const char* path_to_file="GEANT"){
       count_photon++;
       for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
         x += TMath::Power(layers,2) * en_inside_layer[layers] /(en_mis/1.E6) ;
-        x2 += TMath::Power(layers*en_inside_layer[layers] /(en_mis/1.E6),2);
+        x2_ += layers*en_inside_layer[layers] /(en_mis/1.E6) ;
       }
+      x2 = TMath::Power(x2_, 2);
       hist_0->SetBinContent(en_in/1.E6,  TMath::Sqrt( TMath::Abs(x-x2) ) );
       hist_mean_0 ->Add(hist_0);
     }

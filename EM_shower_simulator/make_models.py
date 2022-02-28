@@ -212,8 +212,6 @@ def energies_per_layer(in_images):
     #output: (None, 12,25,25,1)
     return  en_images
 
-"""Discriminator model."""
-
 def make_discriminator_model():
     """Define discriminator model:
 
@@ -222,6 +220,7 @@ def make_discriminator_model():
     Input 2) Energy label to be passed to the network;
 
     Input 3) ParticleID label to be passed to the network.
+    
 
 
     Labels are given as scalars in input; then they are passed to an embedding

@@ -29,7 +29,6 @@ from tensorflow.keras.layers import (Input,
 
 # Configuration parameters
 N_PID = 3
-N_ENER = 30 + 1
 NOISE_DIM = 1024
 MBSTD_GROUP_SIZE = 32
 ENERGY_NORM = 6.7404
@@ -58,9 +57,13 @@ def compute_energy(in_images):
 
 def make_generator_model():
     """Define generator model:
+
     Input 1) Random noise from which the network creates a vector of images;
+
     Input 2) Energy label to be passed to the network;
+
     Input 3) ParticleID label to be passed to the network.
+
 
     Labels are given as scalars in input; then they are passed to an embedding
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
@@ -163,6 +166,7 @@ def debug_generator(noise, verbose=False):
 
 def minibatch_stddev_layer(discr, group_size=MBSTD_GROUP_SIZE):
     """Minibatch discrimination layer is important to avoid mode collapse.
+
     Once it is wrapped with a Lambda Keras layer it returns an additional filter
     node with information about the statistical distribution of the group_size,
     allowing the discriminator to recognize when the generator strarts to
@@ -212,9 +216,13 @@ def energies_per_layer(in_images):
 
 def make_discriminator_model():
     """Define discriminator model:
+
     Input 1) Vector of images associated to the given labels;
+
     Input 2) Energy label to be passed to the network;
+
     Input 3) ParticleID label to be passed to the network.
+
 
     Labels are given as scalars in input; then they are passed to an embedding
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that

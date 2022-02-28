@@ -3,7 +3,18 @@
 import os
 import unittest
 
-from EM_shower_simulator import default_list, CHECKP
+from EM_shower_simulator import GEOMETRY, default_list, CHECKP
+from EM_shower_simulator import N_PID, NOISE_DIM, ENERGY_NORM, ENERGY_SCALE
+
+from EM_shower_simulator.class_GAN import N_PID as GAN_PID
+from EM_shower_simulator.class_GAN import NOISE_DIM as GAN_DIM
+from EM_shower_simulator.class_GAN import ENERGY_NORM as GAN_NORM
+from EM_shower_simulator.class_GAN import ENERGY_SCALE as GAN_SCALE
+
+from EM_shower_simulator.make_models import N_PID as MOD_PID
+from EM_shower_simulator.make_models import NOISE_DIM as MOD_DIM
+from EM_shower_simulator.make_models import ENERGY_NORM as MOD_NORM
+from EM_shower_simulator.make_models import ENERGY_SCALE as MOD_SCALE
 
 class TestCore(unittest.TestCase):
     """Test methods class for configuration and dataset."""
@@ -23,8 +34,15 @@ class TestCore(unittest.TestCase):
 
     def test_costants(self):
         """Assert constant values in models structure are all the same."""
-        #self.assertEqual(NOISE_DIM , NOISE_DIM) among different files
-        pass
+        self.assertEqual(N_PID, GAN_PID)
+        self.assertEqual(NOISE_DIM, GAN_DIM)
+        self.assertEqual(ENERGY_NORM, GAN_NORM)
+        self.assertEqual(ENERGY_SCALE, GAN_SCALE)
+
+        self.assertEqual(N_PID, MOD_PID)
+        self.assertEqual(NOISE_DIM, MOD_DIM)
+        self.assertEqual(ENERGY_NORM, MOD_NORM)
+        self.assertEqual(ENERGY_SCALE, MOD_SCALE)
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,6 +2,7 @@
 
 include versioneer.py
 include EM_shower_simulator/_version.py
+include EM_shower_simulator/checkpoints
 
 global-include *README.rst
 global-include *.png

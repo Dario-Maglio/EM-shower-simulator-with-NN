@@ -11,9 +11,7 @@ ENERGY_SCALE = 1000000
     # print(f"Mean shower depth = {shower_depth_mean}, std = {shower_depth_std}")
 
 def shower_depth_lateral_width(showers_vector):
-    """Compute shower mean depth and std;
-       Compute shower mean lateral width among layers and std.
-    """
+    """Compute shower mean depth and mean lateral width among layers and std."""
     shape = showers_vector.shape
 
     layer_num= tf.constant([[x for x in range(shape[1])]])

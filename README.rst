@@ -11,7 +11,7 @@ EM shower simulator with Neural Network
 
 
 
-Recent developments in calorimeter physics are leading to a new paradigm in 
+Recent developments in calorimeter physics are leading to a new paradigm in
 calorimeters' design. The aim is to reconstruct the whole spatial distribution
 of the shower instead of extracting information only about the energy deposition
 inside calorimeter cells. Many collaborations are designing highly-segmented
@@ -26,7 +26,7 @@ electrons, positrons and photons with energies from 1 to 30 GeV that strike on a
 CsI calorimeter with 12 layers and 12x12 cells. The results are further analyzed
 with ROOT to evaluate GAN's performances. Due to time, dataset and hardware
 constraints, this project must be considered an exploratory work whose results
-can even improve with more resources.
+can even be improved with more resources.
 
 Installation
 ------------
@@ -58,8 +58,8 @@ then you can run the simulation module as
 
 .. code-block:: python
 
-   >>> EM.simulate([1., 3., 5.], verbose=0)
-   simulating event with features [1., 3., 5. ]
+   >>> EM.simulate([10.0, 1], verbose=0)
+   simulating event with features [10.0, 1.0]
    0
 
 This returns the error code and shows the resulting plot of the simulation.
@@ -68,7 +68,7 @@ You can also run the simulation from command line, writing:
 
 .. code-block:: bash
 
-   $ simulate-EM-shower --features 1. 3. 5.
+   $ simulate-EM-shower --features 10. 1
 
 This command allows the user to generate a shower simulation from command line.
 Furthermore, it allows to pass the shower's features as float arguments in the

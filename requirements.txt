@@ -1,9 +1,6 @@
 numpy>=1.17
-scipy
 matplotlib
-scikit-learn
 tensorflow
-keras
 uproot
 awkward
 IPython

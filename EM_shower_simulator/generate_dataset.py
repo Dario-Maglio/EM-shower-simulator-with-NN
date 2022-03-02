@@ -14,12 +14,17 @@ from make_models import make_generator_model, make_discriminator_model
 from make_models import  compute_energy
 from class_GAN import ConditionalGAN
 
+ch = logging.StreamHandler()
+formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
 logger = logging.getLogger("DEBUGLogger")
-logger.setLevel(logging.DEBUG)
+logger.addHandler(ch)
 
 if __name__=="__main__":
 
-    num_examples = 1000
+    logger.setLevel(logging.DEBUG)
+
+    num_examples = 2000
 
     generator = make_generator_model()
     discriminator = make_discriminator_model()
@@ -27,7 +32,7 @@ if __name__=="__main__":
     cond_gan = ConditionalGAN(generator, discriminator)
     logger.info("The cGAN model has been built correctly.")
 
-    generator, discriminator = cond_gan.evaluate()
+    generator, discriminator = cond_gan.restore()
     logger.info("Results restored correctly")
 
     noise = cond_gan.generate_noise(num_examples)
@@ -40,7 +45,7 @@ if __name__=="__main__":
      {elapsed.seconds + elapsed.microseconds/1E6} s")
     energies = compute_energy(predictions)
 
-    gan_dataset = os.path.join("..","dataset","gan_data","data_GAN.root")
+    gan_dataset = os.path.join("..","dataset","gan_data","data_GAN_parte5.root")
 
     shower_in = array("d", 12*25*25*[0])
     primary_id_in = array("i", [0])
@@ -57,7 +62,7 @@ if __name__=="__main__":
     tree.Branch("shower", shower_in, "shower[12][25][25][1]/D")
 
     shower = predictions.numpy() #awkward0.fromiter(
-    primary_id = np.cast[np.int32](noise[2].numpy())
+    primary_id = np.cast[np.int32](noise[2].numpy()) - 1
     primary_en = noise[1].numpy()
     deposit_en = energies.numpy()
     # print(primary_id)#shower,primary_en, deposit_en

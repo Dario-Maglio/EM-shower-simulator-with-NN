@@ -31,7 +31,7 @@ ENERGY_NORM = 6.7404
 ENERGY_SCALE = 1000000
 
 # Create a random seed, to be used during the evaluation of the cGAN.
-tf.random.set_seed(12)
+# tf.random.set_seed(12)
 num_examples = 6
 test_noise = [tf.random.normal([num_examples, NOISE_DIM]),
               tf.random.uniform([num_examples, 1], minval= 1., maxval=N_ENER),

@@ -57,13 +57,9 @@ def compute_energy(in_images):
 
 def make_generator_model():
     """Define generator model:
-
     Input 1) Random noise from which the network creates a vector of images;
-
     Input 2) Energy label to be passed to the network;
-
     Input 3) ParticleID label to be passed to the network.
-
 
     Labels are given as scalars in input; then they are passed to an embedding
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that
@@ -214,14 +210,9 @@ def energies_per_layer(in_images):
 
 def make_discriminator_model():
     """Define discriminator model:
-
     Input 1) Vector of images associated to the given labels;
-
     Input 2) Energy label to be passed to the network;
-
     Input 3) ParticleID label to be passed to the network.
-    
-
 
     Labels are given as scalars in input; then they are passed to an embedding
     layer that creates a sort of lookup-table (vector[EMBED_DIM] of floats) that

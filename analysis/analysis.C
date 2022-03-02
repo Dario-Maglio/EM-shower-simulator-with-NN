@@ -23,7 +23,11 @@
 const char* path_to_Geant_data_1 = "../dataset/filtered_data/data_MVA_24pixel_parte1.root";
 const char* path_to_Geant_data_2 = "../dataset/filtered_data/data_MVA_24pixel_parte2.root";
 
-const char* path_to_GAN_data   = "../dataset/gan_data/data_GAN.root";
+const char* path_to_GAN_data_1  = "../dataset/gan_data/data_GAN_parte1.root";
+const char* path_to_GAN_data_2  = "../dataset/gan_data/data_GAN_parte2.root";
+const char* path_to_GAN_data_3  = "../dataset/gan_data/data_GAN_parte3.root";
+const char* path_to_GAN_data_4  = "../dataset/gan_data/data_GAN_parte4.root";
+const char* path_to_GAN_data_5  = "../dataset/gan_data/data_GAN_parte5.root";
 
 int const NUMBER_OF_LAYERS = 12;
 int const NUMBER_OF_PIXEL_Z = 25;
@@ -85,7 +89,8 @@ vector<TH2D*> mean_layers(const char* path_to_file="GEANT"){
     h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
   }
   else if(strncmp (path_to_file,"GAN",2) == 0){
-    h = build_tree(1, path_to_GAN_data);
+    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                      path_to_GAN_data_4,path_to_GAN_data_5);
   }
 
   double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
@@ -153,7 +158,8 @@ vector<TH2D*> mean_en_deposition_per_layer_per_particle(const char* path_to_file
     h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
   }
   else if(strncmp (path_to_file,"GAN",2) == 0){
-    h = build_tree(1, path_to_GAN_data);
+    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                      path_to_GAN_data_4,path_to_GAN_data_5);
   }
 
   double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
@@ -187,10 +193,7 @@ vector<TH2D*> mean_en_deposition_per_layer_per_particle(const char* path_to_file
       cout<<evt<<" events processed "<<endl;
     }
     h->GetEntry(evt);
-    if(strncmp (path_to_file,"GAN",2) == 0){
-      // cout<<pid<<endl;
-      pid--;
-    }
+
     if(TMath::Abs(pid)==1){
       count_leptons++;
     }
@@ -232,7 +235,7 @@ vector<TH2D*> mean_en_deposition_per_layer_per_particle(const char* path_to_file
               break;}
     }
     do_stuff(c, i+1, hist_mean[i]);
-    hist_mean[i]->SetMaximum(8);
+    hist_mean[i]->SetMaximum(9);
   }
 
   return hist_mean;
@@ -392,7 +395,8 @@ void pdf_en_deposited(){
 
   h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
 
-  t = build_tree(1, path_to_GAN_data);
+  t = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                    path_to_GAN_data_4,path_to_GAN_data_5);
 
   TBranch *b_en_in_geant, *b_en_mis_geant;
   double en_in_geant, en_mis_geant;
@@ -449,7 +453,8 @@ void shower_depth(const char* path_to_file="GEANT"){
     h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
   }
   else if(strncmp (path_to_file,"GAN",2) == 0){
-    h = build_tree(1, path_to_GAN_data);
+    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                      path_to_GAN_data_4,path_to_GAN_data_5);
   }
 
   double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
@@ -467,7 +472,7 @@ void shower_depth(const char* path_to_file="GEANT"){
   double en_inside_layer, en_depth;
   vector<TH2D*> hist_mean_lateral_layer(2);
   for(int pid=0; pid<2; pid++){
-    hist_mean_lateral_layer[pid] = construct_hist_vector(11,1.,12.,
+    hist_mean_lateral_layer[pid] = construct_hist_vector(12,0.,12.,
                                                     29,1.,30.);
   }
 
@@ -541,7 +546,8 @@ void shower_depth_width(const char* path_to_file="GEANT"){
     h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
   }
   else if(strncmp (path_to_file,"GAN",2) == 0){
-    h = build_tree(1, path_to_GAN_data);
+    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                      path_to_GAN_data_4,path_to_GAN_data_5);
   }
 
   double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
@@ -560,7 +566,7 @@ void shower_depth_width(const char* path_to_file="GEANT"){
   double x,x2,x2_;
   vector<TH2D*> hist_sigma_layer(2);
   for(int pid=0; pid<2; pid++){
-    hist_sigma_layer[pid] = construct_hist_vector(11,1.,12.,
+    hist_sigma_layer[pid] = construct_hist_vector(12,0.,12.,
                                                     29,1.,30.);
   }
 
@@ -642,7 +648,8 @@ void lateral_width(const char* path_to_file="GEANT"){
     h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
   }
   else if(strncmp (path_to_file,"GAN",2) == 0){
-    h = build_tree(1, path_to_GAN_data);
+    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                      path_to_GAN_data_4,path_to_GAN_data_5);
   }
 
   double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
@@ -660,14 +667,14 @@ void lateral_width(const char* path_to_file="GEANT"){
   double en_inside_layer, en_depth;
   vector<TH2D*> hist_mean_lateral_layer(2);
   for(int pid=0; pid<2; pid++){
-    hist_mean_lateral_layer[pid] = construct_hist_vector(11,1.,12.,
+    hist_mean_lateral_layer[pid] = construct_hist_vector(12-2,0.,10.,
                                                     29,1.,30.);
   }
 
-  double x_photons[NUMBER_OF_LAYERS];
-  double x_leptons[NUMBER_OF_LAYERS];
-  double x2_photons[NUMBER_OF_LAYERS];
-  double x2_leptons[NUMBER_OF_LAYERS];
+  double x_photons[NUMBER_OF_LAYERS-2];
+  double x_leptons[NUMBER_OF_LAYERS-2];
+  double x2_photons[NUMBER_OF_LAYERS-2];
+  double x2_leptons[NUMBER_OF_LAYERS-2];
 
 
   TH1D *hist_0 = new TH1D("","",29,1.,30.);
@@ -684,7 +691,7 @@ void lateral_width(const char* path_to_file="GEANT"){
       cout<<evt<<" events processed "<<endl;
     }
     h->GetEntry(evt);
-    for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
+    for(int layers=0; layers<NUMBER_OF_LAYERS-2; layers++){
       en_inside_layer = 0;
       x_photons[layers]=0;
       x2_photons[layers]=0;
@@ -720,14 +727,14 @@ void lateral_width(const char* path_to_file="GEANT"){
     if(TMath::Abs(pid)==1){
       count_electron++;
       hist_1 = hist_mean_lateral_layer[1]->ProjectionY();
-      hist_1->Scale(1./11.);// num of layers bins
+      hist_1->Scale(1./10.);// num of layers bins
       hist_mean_1 ->Add( hist_1 );
     }
 
     if(TMath::Abs(pid)==0){
       count_photon++;
       hist_0 = hist_mean_lateral_layer[0]->ProjectionY();
-      hist_0->Scale(1./11.); // num of layers bins
+      hist_0->Scale(1./10.); // num of layers bins
       hist_mean_0 ->Add( hist_0 );
     }
   }

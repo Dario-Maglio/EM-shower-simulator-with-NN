@@ -8,10 +8,10 @@ from array import array
 
 import numpy as np
 import tensorflow as tf
-from ROOT import *
+from ROOT import TFile, TTree
 
 from make_models import make_generator_model, make_discriminator_model
-from make_models import  compute_energy
+from make_models import compute_energy
 from class_GAN import ConditionalGAN
 
 ch = logging.StreamHandler()
@@ -43,6 +43,7 @@ if __name__=="__main__":
     elapsed = (datetime.datetime.now() - start)
     print(f"Generated {num_examples} showers in\
      {elapsed.seconds + elapsed.microseconds/1E6} s")
+
     energies = compute_energy(predictions)
 
     gan_dataset = os.path.join("..","dataset","gan_data","data_GAN_parte5.root")
@@ -83,5 +84,5 @@ if __name__=="__main__":
                     j = j+1
         tree.Fill()
 
-    file.Write()
+    tree.Write()
     file.Close()

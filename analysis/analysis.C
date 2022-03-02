@@ -1,24 +1,17 @@
-#include "ROOT/RDataFrame.hxx"
-#include "ROOT/RVec.hxx"
-#include "TCanvas.h"
-#include "TFrame.h"
-#include "TBenchmark.h"
-#include "TString.h"
-#include "TF1.h"
-#include "TH1.h"
-#include "TFile.h"
-#include "TROOT.h"
-#include "TError.h"
-#include "TInterpreter.h"
-#include "TSystem.h"
-#include "TPaveText.h"
-#include "math.h"
-#include "TThread.h"
-#include <vector>
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <string>
 #include <chrono>
+#include <math.h>
+#include <TMath.h>
+#include <TFile.h>
+#include <TChain.h>
+#include <TTree.h>
+#include <TBranch.h>
+#include <TCanvas.h>
+#include <TF1.h>
+#include <TH2.h>
 
 const char* path_to_Geant_data_1 = "../dataset/filtered_data/data_MVA_24pixel_parte1.root";
 const char* path_to_Geant_data_2 = "../dataset/filtered_data/data_MVA_24pixel_parte2.root";
@@ -34,6 +27,9 @@ int const NUMBER_OF_PIXEL_Z = 25;
 int const NUMBER_OF_PIXEL_Y = 25;
 
 double const EN_NORM = 6.7404;
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 TChain* build_tree(int num_of_path, ...){
   /**
@@ -146,7 +142,6 @@ vector<TH2D*> mean_layers(const char* path_to_file="GEANT"){
 }
 
 //------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
 
 vector<TH2D*> mean_en_deposition_per_layer_per_particle(const char* path_to_file="GEANT"){
   /**
@@ -239,6 +234,396 @@ vector<TH2D*> mean_en_deposition_per_layer_per_particle(const char* path_to_file
   }
 
   return hist_mean;
+}
+
+//------------------------------------------------------------------------------
+
+void pdf_en_deposited(){
+
+  TChain *h = new TChain("h");
+  TChain *t = new TChain("h");
+
+  h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
+
+  t = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                    path_to_GAN_data_4,path_to_GAN_data_5);
+
+  TBranch *b_en_in_geant, *b_en_mis_geant;
+  double en_in_geant, en_mis_geant;
+  h->SetBranchAddress("en_in", &en_in_geant, &b_en_in_geant);
+  h->SetBranchAddress("en_mis", &en_mis_geant, &b_en_mis_geant);
+
+  TBranch *b_en_in_gan, *b_en_mis_gan;
+  double en_in_gan, en_mis_gan;
+  t->SetBranchAddress("en_in", &en_in_gan, &b_en_in_gan);
+  t->SetBranchAddress("en_mis", &en_mis_gan, &b_en_mis_gan);
+
+  TGraph *graph_geant = new TGraph();
+  TGraph *graph_gan = new TGraph();
+
+  for(int evt=0; evt<h->GetEntries(); evt++){
+    h->GetEntry(evt);
+    graph_geant->AddPoint(en_in_geant/1E6,en_mis_geant/1E6);
+  }
+
+  for(int evt=0; evt<t->GetEntries(); evt++){
+    t->GetEntry(evt);
+    graph_gan->AddPoint(en_in_gan/1E6,en_mis_gan/1E6);
+  }
+
+  TF1 *identity = new TF1("en_in = en_mis", "x", 0.,30.);
+
+  graph_geant->Draw("AP");
+  graph_geant->SetNameTitle("GEANT", "Energia iniziale vs misurata;Enegia iniziale [GeV];Energia misurata [GeV]");
+  graph_geant->SetMinimum(0.);
+  graph_geant->SetMarkerColor(kBlack);
+  graph_geant->SetMarkerStyle(20);
+  graph_geant->SetMarkerSize(0.5);
+
+  graph_gan->Draw("P");
+  graph_gan->SetName("GAN");
+  graph_gan->SetMarkerColor(kBlue);
+  graph_gan->SetMarkerStyle(20);
+  graph_gan->SetMarkerSize(0.5);
+
+  identity -> Draw("same");
+  gPad->SetGrid();
+  TLegend *legend = new TLegend(0.1,0.7,0.48,0.9);
+  legend->AddEntry(identity,"en_in = en_mis","l");
+  legend->AddEntry(graph_geant,"GEANT","p");
+  legend->AddEntry(graph_gan,"GAN","p");
+  legend->Draw();
+}
+
+//------------------------------------------------------------------------------
+
+void shower_depth(const char* path_to_file="GEANT"){
+
+  TChain *h = new TChain("h");
+
+  if(strncmp (path_to_file,"GEANT",2) == 0){
+    h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
+  }
+  else if(strncmp (path_to_file,"GAN",2) == 0){
+    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                      path_to_GAN_data_4,path_to_GAN_data_5);
+  }
+
+  double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
+  TBranch *b_shower, *b_en_in, *b_pid, *b_en_mis;
+  double en_in, en_mis;
+  int pid;
+  h->SetBranchAddress("primary", &pid, &b_pid);
+  h->SetBranchAddress("en_in", &en_in, &b_en_in);
+  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
+  h->SetBranchAddress("shower", shower, &b_shower);
+
+  int nevt = h->GetEntries();
+  int nevt_to_analyze = nevt/1;
+
+  double en_inside_layer, en_depth;
+  vector<TH2D*> hist_mean_lateral_layer(2);
+  for(int pid=0; pid<2; pid++){
+    hist_mean_lateral_layer[pid] = construct_hist_vector(12,0.,12.,
+                                                    29,1.,30.);
+  }
+
+  TH1D *hist_0 = new TH1D("","",29,1.,30.);
+  TH1D *hist_1 = new TH1D("","",29,1.,30.);
+
+  TH1D *hist_mean_0 = new TH1D("Photons","Shower Depth; Initial energy [GeV]; Depth [#layer]",29,1.,30.);
+  TH1D *hist_mean_1 = new TH1D("Electrons and Positrons","Shower Depth; Initial energy [GeV]; Depth [#layer]",29,1.,30.);
+
+  int count_photon =0;
+  int count_electron =0;
+
+  for(int evt=0; evt<nevt_to_analyze; evt++){
+    if (evt%50==0){
+      cout<<evt<<" events processed "<<endl;
+    }
+    h->GetEntry(evt);
+    for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
+      en_inside_layer = 0;
+      for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
+        for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
+          shower[layers][num_z][num_y][0] = TMath::Power(10,shower[layers][num_z][num_y][0]*EN_NORM) ;
+          en_inside_layer += shower[layers][num_z][num_y][0]/1E6;
+        }
+      }
+      if(pid == 0){
+        hist_mean_lateral_layer[0]->SetBinContent(layers+1, en_in/1.E6, en_inside_layer*layers/(en_mis/1E6)  ) ;
+      }
+      if(pid == 1 || pid == -1){
+        hist_mean_lateral_layer[1]->SetBinContent(layers+1, en_in/1.E6, en_inside_layer*layers/(en_mis/1E6)  ) ;
+      }
+
+    }
+    if(TMath::Abs(pid)==1){
+      count_electron++;
+      hist_1 = hist_mean_lateral_layer[1]->ProjectionY();
+      hist_mean_1 ->Add(hist_1);
+    }
+
+    if(TMath::Abs(pid)==0){
+      count_photon++;
+      hist_0 = hist_mean_lateral_layer[0]->ProjectionY();
+      hist_mean_0 ->Add(hist_0);
+    }
+  }
+
+  hist_mean_0->Scale(1./count_photon);
+  hist_mean_0->Draw("HIST");
+  hist_mean_0->SetLineWidth(2);
+  hist_mean_0->SetLineColor(kBlue);
+
+  hist_mean_1->Scale(1./count_electron);
+  hist_mean_1->Draw("HIST same");
+  hist_mean_1->SetLineWidth(2);
+  hist_mean_1->SetLineColor(kRed);
+
+  gStyle->SetOptStat(kFALSE);
+  gPad->SetGrid();
+  TLegend *legend = new TLegend(0.1,0.7,0.38,0.9);
+  legend -> AddEntry(hist_mean_0, "Photons", "l");
+  legend -> AddEntry(hist_mean_1, "e^{#pm}", "l");
+  legend -> Draw();
+
+}
+
+//------------------------------------------------------------------------------
+
+void shower_depth_width(const char* path_to_file="GEANT"){
+
+  TChain *h = new TChain("h");
+
+  if(strncmp (path_to_file,"GEANT",2) == 0){
+    h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
+  }
+  else if(strncmp (path_to_file,"GAN",2) == 0){
+    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                      path_to_GAN_data_4,path_to_GAN_data_5);
+  }
+
+  double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
+  TBranch *b_shower, *b_en_in, *b_pid, *b_en_mis;
+  double en_in, en_mis;
+  int pid;
+  h->SetBranchAddress("primary", &pid, &b_pid);
+  h->SetBranchAddress("en_in", &en_in, &b_en_in);
+  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
+  h->SetBranchAddress("shower", shower, &b_shower);
+
+  int nevt = h->GetEntries();
+  int nevt_to_analyze = nevt/1;
+
+  double en_inside_layer[NUMBER_OF_LAYERS], en_depth;
+  double x,x2,x2_;
+  vector<TH2D*> hist_sigma_layer(2);
+  for(int pid=0; pid<2; pid++){
+    hist_sigma_layer[pid] = construct_hist_vector(12,0.,12.,
+                                                    29,1.,30.);
+  }
+
+
+  TH1D *hist_0 = new TH1D("","",29,1.,30.);
+  TH1D *hist_1 = new TH1D("","",29,1.,30.);
+
+  TH1D *hist_mean_0 = new TH1D("Photons","Shower Depth Widht; Initial energy [GeV]; Width [#layer]",29,1.,30.);
+  TH1D *hist_mean_1 = new TH1D("Electrons and Positrons","Shower Depth Widht; Initial energy [GeV]; Widht [#layer]",29,1.,30.);
+
+  int count_photon =0;
+  int count_electron =0;
+
+  for(int evt=0; evt<nevt_to_analyze; evt++){
+    if (evt%50==0){
+      cout<<evt<<" events processed "<<endl;
+    }
+    h->GetEntry(evt);
+    for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
+      en_inside_layer[layers] = 0;
+      x=0;
+      x2=0;
+      x2_=0;
+      for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
+        for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
+          shower[layers][num_z][num_y][0] = TMath::Power(10,shower[layers][num_z][num_y][0]*EN_NORM) ;
+          en_inside_layer[layers] += shower[layers][num_z][num_y][0]/1E6;
+        }
+      }
+    }
+
+    if(TMath::Abs(pid)==1){
+      count_electron++;
+      for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
+        x += TMath::Power(layers,2) * en_inside_layer[layers] /(en_mis/1.E6) ;//x2 += TMath::Power(layers*en_inside_layer[layers] /(en_mis/1.E6),2);
+        x2_ += layers*en_inside_layer[layers] /(en_mis/1.E6) ;
+      }
+      x2 = TMath::Power(x2_, 2);
+      hist_1->SetBinContent(en_in/1.E6,  TMath::Sqrt( TMath::Abs(x-x2) ) );
+      hist_mean_1 ->Add(hist_1);
+    }
+
+    if(TMath::Abs(pid)==0){
+      count_photon++;
+      for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
+        x += TMath::Power(layers,2) * en_inside_layer[layers] /(en_mis/1.E6) ;
+        x2_ += layers*en_inside_layer[layers] /(en_mis/1.E6) ;
+      }
+      x2 = TMath::Power(x2_, 2);
+      hist_0->SetBinContent(en_in/1.E6,  TMath::Sqrt( TMath::Abs(x-x2) ) );
+      hist_mean_0 ->Add(hist_0);
+    }
+  }
+
+  hist_mean_0->Scale(1./count_photon);
+  hist_mean_0->Draw("HIST");
+  hist_mean_0->SetLineWidth(2);
+  hist_mean_0->SetLineColor(kBlue);
+
+  hist_mean_1->Scale(1./count_electron);
+  hist_mean_1->Draw("HIST same");
+  hist_mean_1->SetLineWidth(2);
+  hist_mean_1->SetLineColor(kRed);
+
+  gStyle->SetOptStat(kFALSE);
+  gPad->SetGrid();
+  TLegend *legend = new TLegend(0.1,0.7,0.38,0.9);
+  legend -> AddEntry(hist_mean_0, "Photons", "l");
+  legend -> AddEntry(hist_mean_1, "e^{#pm}", "l");
+  legend -> Draw();
+
+}
+
+//------------------------------------------------------------------------------
+
+void lateral_width(const char* path_to_file="GEANT"){
+
+  TChain *h = new TChain("h");
+
+  if(strncmp (path_to_file,"GEANT",2) == 0){
+    h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
+  }
+  else if(strncmp (path_to_file,"GAN",2) == 0){
+    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
+                      path_to_GAN_data_4,path_to_GAN_data_5);
+  }
+
+  double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
+  TBranch *b_shower, *b_en_in, *b_pid, *b_en_mis;
+  double en_in, en_mis;
+  int pid;
+  h->SetBranchAddress("primary", &pid, &b_pid);
+  h->SetBranchAddress("en_in", &en_in, &b_en_in);
+  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
+  h->SetBranchAddress("shower", shower, &b_shower);
+
+  int nevt = h->GetEntries();
+  int nevt_to_analyze = nevt/1;
+
+  double en_inside_layer, en_depth;
+  vector<TH2D*> hist_mean_lateral_layer(2);
+  for(int pid=0; pid<2; pid++){
+    hist_mean_lateral_layer[pid] = construct_hist_vector(12-2,0.,10.,
+                                                    29,1.,30.);
+  }
+
+  double x_photons[NUMBER_OF_LAYERS-2];
+  double x_leptons[NUMBER_OF_LAYERS-2];
+  double x2_photons[NUMBER_OF_LAYERS-2];
+  double x2_leptons[NUMBER_OF_LAYERS-2];
+
+
+  TH1D *hist_0 = new TH1D("","",29,1.,30.);
+  TH1D *hist_1 = new TH1D("","",29,1.,30.);
+
+  TH1D *hist_mean_0 = new TH1D("Photons","Lateral width averaged over layers; Initial energy [GeV]; Width [#bins]",29,1.,30.);
+  TH1D *hist_mean_1 = new TH1D("Electrons and Positrons","Lateral width averaged over layers; Initial energy [GeV]; Width [#bins]",29,1.,30.);
+
+  int count_photon =0;
+  int count_electron =0;
+
+  for(int evt=0; evt<nevt_to_analyze; evt++){
+    if (evt%50==0){
+      cout<<evt<<" events processed "<<endl;
+    }
+    h->GetEntry(evt);
+    for(int layers=0; layers<NUMBER_OF_LAYERS-2; layers++){
+      en_inside_layer = 0;
+      x_photons[layers]=0;
+      x2_photons[layers]=0;
+      x_leptons[layers]=0;
+      x2_leptons[layers]=0;
+      for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
+        for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
+          shower[layers][num_z][num_y][0] = TMath::Power(10,shower[layers][num_z][num_y][0]*EN_NORM) ;
+          // verifico la lateral width sull'asse z (sarebbero le ascisse)
+          if(pid == 0){
+            x_photons[layers] += shower[layers][num_z][num_y][0]*(num_z-NUMBER_OF_PIXEL_Z/2)/1E6;
+            x2_photons[layers] += shower[layers][num_z][num_y][0]*TMath::Power(num_z-NUMBER_OF_PIXEL_Z/2,2)/1E6;
+          }
+          if(pid == 1 || pid == -1){
+            x_leptons[layers] += shower[layers][num_z][num_y][0]*(num_z-NUMBER_OF_PIXEL_Z/2)/1E6;
+            x2_leptons[layers] += shower[layers][num_z][num_y][0]*TMath::Power(num_z-NUMBER_OF_PIXEL_Z/2,2)/1E6;
+          }
+          en_inside_layer += shower[layers][num_z][num_y][0]/1E6;
+        }
+      }
+      if(pid == 0){
+        hist_mean_lateral_layer[0]->SetBinContent(layers+1, en_in/1.E6,
+        TMath::Sqrt(TMath::Abs(x2_photons[layers]/en_inside_layer - TMath::Power(x_photons[layers]/en_inside_layer,2))));
+        // cout<<pid<<"\t"<<en_in/1E6<<"\t"<<layers<<"\t"<<hist_mean_lateral_layer[0]->GetBinContent(layers, en_in/1.E6)<<endl;
+      }
+      if(pid == 1 || pid == -1){
+        hist_mean_lateral_layer[1]->SetBinContent(layers+1, en_in/1.E6,
+        TMath::Sqrt(TMath::Abs(x2_leptons[layers]/en_inside_layer - TMath::Power(x_leptons[layers]/en_inside_layer,2))));
+        // cout<<pid<<"\t"<<layers<<"\t"<<hist_mean_lateral_layer[1]->GetBinContent(layers, en_in/1.E6)<<endl;
+      }
+
+    }
+    if(TMath::Abs(pid)==1){
+      count_electron++;
+      hist_1 = hist_mean_lateral_layer[1]->ProjectionY();
+      hist_1->Scale(1./10.);// num of layers bins
+      hist_mean_1 ->Add( hist_1 );
+    }
+
+    if(TMath::Abs(pid)==0){
+      count_photon++;
+      hist_0 = hist_mean_lateral_layer[0]->ProjectionY();
+      hist_0->Scale(1./10.); // num of layers bins
+      hist_mean_0 ->Add( hist_0 );
+    }
+  }
+  hist_mean_1->Scale(1./count_electron);
+  hist_mean_1->Draw("HIST");
+  hist_mean_1->SetLineWidth(2);
+  hist_mean_1->SetLineColor(kRed);
+
+  hist_mean_0->Scale(1./count_photon);
+  hist_mean_0->Draw("HIST same");
+  hist_mean_0->SetLineWidth(2);
+  hist_mean_0->SetLineColor(kBlue);
+
+
+  gStyle->SetOptStat(kFALSE);
+  gPad->SetGrid();
+  TLegend *legend = new TLegend(0.1,0.7,0.38,0.9);
+  legend -> AddEntry(hist_mean_0, "Photons", "l");
+  legend -> AddEntry(hist_mean_1, "e^{#pm}", "l");
+  legend -> Draw();
+
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+void analysis() {
+  // pdf_en_deposited();
+  // mean_layers("GEANT");
+  // mean_en_deposition_per_layer_per_particle("GEANT");
+  // shower_depth("GEANT");
+  // shower_depth_width("GEANT");
+  // lateral_width("GEANT");
 }
 
 //------------------------------------------------------------------------------
@@ -387,373 +772,3 @@ vector<TH2D*> mean_en_deposition_per_layer_per_particle(const char* path_to_file
 // }
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-
-void pdf_en_deposited(){
-
-  TChain *h = new TChain("h");
-  TChain *t = new TChain("h");
-
-  h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
-
-  t = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
-                    path_to_GAN_data_4,path_to_GAN_data_5);
-
-  TBranch *b_en_in_geant, *b_en_mis_geant;
-  double en_in_geant, en_mis_geant;
-  h->SetBranchAddress("en_in", &en_in_geant, &b_en_in_geant);
-  h->SetBranchAddress("en_mis", &en_mis_geant, &b_en_mis_geant);
-
-  TBranch *b_en_in_gan, *b_en_mis_gan;
-  double en_in_gan, en_mis_gan;
-  t->SetBranchAddress("en_in", &en_in_gan, &b_en_in_gan);
-  t->SetBranchAddress("en_mis", &en_mis_gan, &b_en_mis_gan);
-
-  TGraph *graph_geant = new TGraph();
-  TGraph *graph_gan = new TGraph();
-
-  for(int evt=0; evt<h->GetEntries(); evt++){
-    h->GetEntry(evt);
-    graph_geant->AddPoint(en_in_geant/1E6,en_mis_geant/1E6);
-  }
-
-  for(int evt=0; evt<t->GetEntries(); evt++){
-    t->GetEntry(evt);
-    graph_gan->AddPoint(en_in_gan/1E6,en_mis_gan/1E6);
-  }
-
-  TF1 *identity = new TF1("en_in = en_mis", "x", 0.,30.);
-
-  graph_geant->Draw("AP");
-  graph_geant->SetNameTitle("GEANT", "Energia iniziale vs misurata;Enegia iniziale [GeV];Energia misurata [GeV]");
-  graph_geant->SetMinimum(0.);
-  graph_geant->SetMarkerColor(kBlack);
-  graph_geant->SetMarkerStyle(20);
-  graph_geant->SetMarkerSize(0.5);
-
-  graph_gan->Draw("P");
-  graph_gan->SetName("GAN");
-  graph_gan->SetMarkerColor(kBlue);
-  graph_gan->SetMarkerStyle(20);
-  graph_gan->SetMarkerSize(0.5);
-
-  identity -> Draw("same");
-  gPad->SetGrid();
-  TLegend *legend = new TLegend(0.1,0.7,0.48,0.9);
-  legend->AddEntry(identity,"en_in = en_mis","l");
-  legend->AddEntry(graph_geant,"GEANT","p");
-  legend->AddEntry(graph_gan,"GAN","p");
-  legend->Draw();
-}
-
-void shower_depth(const char* path_to_file="GEANT"){
-
-  TChain *h = new TChain("h");
-
-  if(strncmp (path_to_file,"GEANT",2) == 0){
-    h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
-  }
-  else if(strncmp (path_to_file,"GAN",2) == 0){
-    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
-                      path_to_GAN_data_4,path_to_GAN_data_5);
-  }
-
-  double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
-  TBranch *b_shower, *b_en_in, *b_pid, *b_en_mis;
-  double en_in, en_mis;
-  int pid;
-  h->SetBranchAddress("primary", &pid, &b_pid);
-  h->SetBranchAddress("en_in", &en_in, &b_en_in);
-  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
-  h->SetBranchAddress("shower", shower, &b_shower);
-
-  int nevt = h->GetEntries();
-  int nevt_to_analyze = nevt/1;
-
-  double en_inside_layer, en_depth;
-  vector<TH2D*> hist_mean_lateral_layer(2);
-  for(int pid=0; pid<2; pid++){
-    hist_mean_lateral_layer[pid] = construct_hist_vector(12,0.,12.,
-                                                    29,1.,30.);
-  }
-
-  TH1D *hist_0 = new TH1D("","",29,1.,30.);
-  TH1D *hist_1 = new TH1D("","",29,1.,30.);
-
-  TH1D *hist_mean_0 = new TH1D("Photons","Shower Depth; Initial energy [GeV]; Depth [#layer]",29,1.,30.);
-  TH1D *hist_mean_1 = new TH1D("Electrons and Positrons","Shower Depth; Initial energy [GeV]; Depth [#layer]",29,1.,30.);
-
-  int count_photon =0;
-  int count_electron =0;
-
-  for(int evt=0; evt<nevt_to_analyze; evt++){
-    if (evt%50==0){
-      cout<<evt<<" events processed "<<endl;
-    }
-    h->GetEntry(evt);
-    for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
-      en_inside_layer = 0;
-      for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
-        for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
-          shower[layers][num_z][num_y][0] = TMath::Power(10,shower[layers][num_z][num_y][0]*EN_NORM) ;
-          en_inside_layer += shower[layers][num_z][num_y][0]/1E6;
-        }
-      }
-      if(pid == 0){
-        hist_mean_lateral_layer[0]->SetBinContent(layers+1, en_in/1.E6, en_inside_layer*layers/(en_mis/1E6)  ) ;
-      }
-      if(pid == 1 || pid == -1){
-        hist_mean_lateral_layer[1]->SetBinContent(layers+1, en_in/1.E6, en_inside_layer*layers/(en_mis/1E6)  ) ;
-      }
-
-    }
-    if(TMath::Abs(pid)==1){
-      count_electron++;
-      hist_1 = hist_mean_lateral_layer[1]->ProjectionY();
-      hist_mean_1 ->Add(hist_1);
-    }
-
-    if(TMath::Abs(pid)==0){
-      count_photon++;
-      hist_0 = hist_mean_lateral_layer[0]->ProjectionY();
-      hist_mean_0 ->Add(hist_0);
-    }
-  }
-
-  hist_mean_0->Scale(1./count_photon);
-  hist_mean_0->Draw("HIST");
-  hist_mean_0->SetLineWidth(2);
-  hist_mean_0->SetLineColor(kBlue);
-
-  hist_mean_1->Scale(1./count_electron);
-  hist_mean_1->Draw("HIST same");
-  hist_mean_1->SetLineWidth(2);
-  hist_mean_1->SetLineColor(kRed);
-
-  gStyle->SetOptStat(kFALSE);
-  gPad->SetGrid();
-  TLegend *legend = new TLegend(0.1,0.7,0.38,0.9);
-  legend -> AddEntry(hist_mean_0, "Photons", "l");
-  legend -> AddEntry(hist_mean_1, "e^{#pm}", "l");
-  legend -> Draw();
-
-}
-
-void shower_depth_width(const char* path_to_file="GEANT"){
-
-  TChain *h = new TChain("h");
-
-  if(strncmp (path_to_file,"GEANT",2) == 0){
-    h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
-  }
-  else if(strncmp (path_to_file,"GAN",2) == 0){
-    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
-                      path_to_GAN_data_4,path_to_GAN_data_5);
-  }
-
-  double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
-  TBranch *b_shower, *b_en_in, *b_pid, *b_en_mis;
-  double en_in, en_mis;
-  int pid;
-  h->SetBranchAddress("primary", &pid, &b_pid);
-  h->SetBranchAddress("en_in", &en_in, &b_en_in);
-  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
-  h->SetBranchAddress("shower", shower, &b_shower);
-
-  int nevt = h->GetEntries();
-  int nevt_to_analyze = nevt/1;
-
-  double en_inside_layer[NUMBER_OF_LAYERS], en_depth;
-  double x,x2,x2_;
-  vector<TH2D*> hist_sigma_layer(2);
-  for(int pid=0; pid<2; pid++){
-    hist_sigma_layer[pid] = construct_hist_vector(12,0.,12.,
-                                                    29,1.,30.);
-  }
-
-
-  TH1D *hist_0 = new TH1D("","",29,1.,30.);
-  TH1D *hist_1 = new TH1D("","",29,1.,30.);
-
-  TH1D *hist_mean_0 = new TH1D("Photons","Shower Depth Widht; Initial energy [GeV]; Width [#layer]",29,1.,30.);
-  TH1D *hist_mean_1 = new TH1D("Electrons and Positrons","Shower Depth Widht; Initial energy [GeV]; Widht [#layer]",29,1.,30.);
-
-  int count_photon =0;
-  int count_electron =0;
-
-  for(int evt=0; evt<nevt_to_analyze; evt++){
-    if (evt%50==0){
-      cout<<evt<<" events processed "<<endl;
-    }
-    h->GetEntry(evt);
-    for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
-      en_inside_layer[layers] = 0;
-      x=0;
-      x2=0;
-      x2_=0;
-      for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
-        for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
-          shower[layers][num_z][num_y][0] = TMath::Power(10,shower[layers][num_z][num_y][0]*EN_NORM) ;
-          en_inside_layer[layers] += shower[layers][num_z][num_y][0]/1E6;
-        }
-      }
-    }
-
-    if(TMath::Abs(pid)==1){
-      count_electron++;
-      for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
-        x += TMath::Power(layers,2) * en_inside_layer[layers] /(en_mis/1.E6) ;//x2 += TMath::Power(layers*en_inside_layer[layers] /(en_mis/1.E6),2);
-        x2_ += layers*en_inside_layer[layers] /(en_mis/1.E6) ;
-      }
-      x2 = TMath::Power(x2_, 2);
-      hist_1->SetBinContent(en_in/1.E6,  TMath::Sqrt( TMath::Abs(x-x2) ) );
-      hist_mean_1 ->Add(hist_1);
-    }
-
-    if(TMath::Abs(pid)==0){
-      count_photon++;
-      for(int layers=0; layers<NUMBER_OF_LAYERS; layers++){
-        x += TMath::Power(layers,2) * en_inside_layer[layers] /(en_mis/1.E6) ;
-        x2_ += layers*en_inside_layer[layers] /(en_mis/1.E6) ;
-      }
-      x2 = TMath::Power(x2_, 2);
-      hist_0->SetBinContent(en_in/1.E6,  TMath::Sqrt( TMath::Abs(x-x2) ) );
-      hist_mean_0 ->Add(hist_0);
-    }
-  }
-
-  hist_mean_0->Scale(1./count_photon);
-  hist_mean_0->Draw("HIST");
-  hist_mean_0->SetLineWidth(2);
-  hist_mean_0->SetLineColor(kBlue);
-
-  hist_mean_1->Scale(1./count_electron);
-  hist_mean_1->Draw("HIST same");
-  hist_mean_1->SetLineWidth(2);
-  hist_mean_1->SetLineColor(kRed);
-
-  gStyle->SetOptStat(kFALSE);
-  gPad->SetGrid();
-  TLegend *legend = new TLegend(0.1,0.7,0.38,0.9);
-  legend -> AddEntry(hist_mean_0, "Photons", "l");
-  legend -> AddEntry(hist_mean_1, "e^{#pm}", "l");
-  legend -> Draw();
-
-}
-
-void lateral_width(const char* path_to_file="GEANT"){
-
-  TChain *h = new TChain("h");
-
-  if(strncmp (path_to_file,"GEANT",2) == 0){
-    h = build_tree(2, path_to_Geant_data_1, path_to_Geant_data_2);
-  }
-  else if(strncmp (path_to_file,"GAN",2) == 0){
-    h = build_tree(5, path_to_GAN_data_1,path_to_GAN_data_2,path_to_GAN_data_3,
-                      path_to_GAN_data_4,path_to_GAN_data_5);
-  }
-
-  double shower[NUMBER_OF_LAYERS][NUMBER_OF_PIXEL_Z][NUMBER_OF_PIXEL_Y][1];
-  TBranch *b_shower, *b_en_in, *b_pid, *b_en_mis;
-  double en_in, en_mis;
-  int pid;
-  h->SetBranchAddress("primary", &pid, &b_pid);
-  h->SetBranchAddress("en_in", &en_in, &b_en_in);
-  h->SetBranchAddress("en_mis", &en_mis, &b_en_mis);
-  h->SetBranchAddress("shower", shower, &b_shower);
-
-  int nevt = h->GetEntries();
-  int nevt_to_analyze = nevt/1;
-
-  double en_inside_layer, en_depth;
-  vector<TH2D*> hist_mean_lateral_layer(2);
-  for(int pid=0; pid<2; pid++){
-    hist_mean_lateral_layer[pid] = construct_hist_vector(12-2,0.,10.,
-                                                    29,1.,30.);
-  }
-
-  double x_photons[NUMBER_OF_LAYERS-2];
-  double x_leptons[NUMBER_OF_LAYERS-2];
-  double x2_photons[NUMBER_OF_LAYERS-2];
-  double x2_leptons[NUMBER_OF_LAYERS-2];
-
-
-  TH1D *hist_0 = new TH1D("","",29,1.,30.);
-  TH1D *hist_1 = new TH1D("","",29,1.,30.);
-
-  TH1D *hist_mean_0 = new TH1D("Photons","Lateral width averaged over layers; Initial energy [GeV]; Width [#bins]",29,1.,30.);
-  TH1D *hist_mean_1 = new TH1D("Electrons and Positrons","Lateral width averaged over layers; Initial energy [GeV]; Width [#bins]",29,1.,30.);
-
-  int count_photon =0;
-  int count_electron =0;
-
-  for(int evt=0; evt<nevt_to_analyze; evt++){
-    if (evt%50==0){
-      cout<<evt<<" events processed "<<endl;
-    }
-    h->GetEntry(evt);
-    for(int layers=0; layers<NUMBER_OF_LAYERS-2; layers++){
-      en_inside_layer = 0;
-      x_photons[layers]=0;
-      x2_photons[layers]=0;
-      x_leptons[layers]=0;
-      x2_leptons[layers]=0;
-      for(int num_z=0; num_z<NUMBER_OF_PIXEL_Z;num_z++){
-        for(int num_y=0; num_y<NUMBER_OF_PIXEL_Y;num_y++){
-          shower[layers][num_z][num_y][0] = TMath::Power(10,shower[layers][num_z][num_y][0]*EN_NORM) ;
-          // verifico la lateral width sull'asse z (sarebbero le ascisse)
-          if(pid == 0){
-            x_photons[layers] += shower[layers][num_z][num_y][0]*(num_z-NUMBER_OF_PIXEL_Z/2)/1E6;
-            x2_photons[layers] += shower[layers][num_z][num_y][0]*TMath::Power(num_z-NUMBER_OF_PIXEL_Z/2,2)/1E6;
-          }
-          if(pid == 1 || pid == -1){
-            x_leptons[layers] += shower[layers][num_z][num_y][0]*(num_z-NUMBER_OF_PIXEL_Z/2)/1E6;
-            x2_leptons[layers] += shower[layers][num_z][num_y][0]*TMath::Power(num_z-NUMBER_OF_PIXEL_Z/2,2)/1E6;
-          }
-          en_inside_layer += shower[layers][num_z][num_y][0]/1E6;
-        }
-      }
-      if(pid == 0){
-        hist_mean_lateral_layer[0]->SetBinContent(layers+1, en_in/1.E6,
-        TMath::Sqrt(TMath::Abs(x2_photons[layers]/en_inside_layer - TMath::Power(x_photons[layers]/en_inside_layer,2))));
-        // cout<<pid<<"\t"<<en_in/1E6<<"\t"<<layers<<"\t"<<hist_mean_lateral_layer[0]->GetBinContent(layers, en_in/1.E6)<<endl;
-      }
-      if(pid == 1 || pid == -1){
-        hist_mean_lateral_layer[1]->SetBinContent(layers+1, en_in/1.E6,
-        TMath::Sqrt(TMath::Abs(x2_leptons[layers]/en_inside_layer - TMath::Power(x_leptons[layers]/en_inside_layer,2))));
-        // cout<<pid<<"\t"<<layers<<"\t"<<hist_mean_lateral_layer[1]->GetBinContent(layers, en_in/1.E6)<<endl;
-      }
-
-    }
-    if(TMath::Abs(pid)==1){
-      count_electron++;
-      hist_1 = hist_mean_lateral_layer[1]->ProjectionY();
-      hist_1->Scale(1./10.);// num of layers bins
-      hist_mean_1 ->Add( hist_1 );
-    }
-
-    if(TMath::Abs(pid)==0){
-      count_photon++;
-      hist_0 = hist_mean_lateral_layer[0]->ProjectionY();
-      hist_0->Scale(1./10.); // num of layers bins
-      hist_mean_0 ->Add( hist_0 );
-    }
-  }
-  hist_mean_1->Scale(1./count_electron);
-  hist_mean_1->Draw("HIST");
-  hist_mean_1->SetLineWidth(2);
-  hist_mean_1->SetLineColor(kRed);
-
-  hist_mean_0->Scale(1./count_photon);
-  hist_mean_0->Draw("HIST same");
-  hist_mean_0->SetLineWidth(2);
-  hist_mean_0->SetLineColor(kBlue);
-
-
-  gStyle->SetOptStat(kFALSE);
-  gPad->SetGrid();
-  TLegend *legend = new TLegend(0.1,0.7,0.38,0.9);
-  legend -> AddEntry(hist_mean_0, "Photons", "l");
-  legend -> AddEntry(hist_mean_1, "e^{#pm}", "l");
-  legend -> Draw();
-
-}

@@ -3,18 +3,18 @@
 import os
 import unittest
 
-from EM_shower_simulator import GEOMETRY, default_list, CHECKP
-from EM_shower_simulator import N_PID, NOISE_DIM, ENERGY_NORM, ENERGY_SCALE
+from em_shower_simulator import GEOMETRY, default_list, CHECKP
+from em_shower_simulator import N_PID, NOISE_DIM, ENERGY_NORM, ENERGY_SCALE
 
-from EM_shower_simulator.class_GAN import N_PID as GAN_PID
-from EM_shower_simulator.class_GAN import NOISE_DIM as GAN_DIM
-from EM_shower_simulator.class_GAN import ENERGY_NORM as GAN_NORM
-from EM_shower_simulator.class_GAN import ENERGY_SCALE as GAN_SCALE
+from em_shower_simulator.class_GAN import N_PID as GAN_PID
+from em_shower_simulator.class_GAN import NOISE_DIM as GAN_DIM
+from em_shower_simulator.class_GAN import ENERGY_NORM as GAN_NORM
+from em_shower_simulator.class_GAN import ENERGY_SCALE as GAN_SCALE
 
-from EM_shower_simulator.make_models import N_PID as MOD_PID
-from EM_shower_simulator.make_models import NOISE_DIM as MOD_DIM
-from EM_shower_simulator.make_models import ENERGY_NORM as MOD_NORM
-from EM_shower_simulator.make_models import ENERGY_SCALE as MOD_SCALE
+from em_shower_simulator.make_models import N_PID as MOD_PID
+from em_shower_simulator.make_models import NOISE_DIM as MOD_DIM
+from em_shower_simulator.make_models import ENERGY_NORM as MOD_NORM
+from em_shower_simulator.make_models import ENERGY_SCALE as MOD_SCALE
 
 class TestCore(unittest.TestCase):
     """Test methods class for configuration and dataset."""

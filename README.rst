@@ -52,13 +52,13 @@ In python you can import the module simply writing
 
 .. code-block:: python
 
-   >>> import EM_shower_simulator as EM
+   >>> import em_shower_simulator as em
 
 then you can run the simulation module as
 
 .. code-block:: python
 
-   >>> EM.simulate([10.0, 1], verbose=0)
+   >>> em.simulate([10.0, 1], verbose=0)
    simulating event with features [10.0, 1.0]
    0
 

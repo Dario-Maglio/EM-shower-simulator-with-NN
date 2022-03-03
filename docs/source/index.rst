@@ -11,7 +11,7 @@ Structure of the conditional GAN and modules
 ============================================
 
 
-.. include:: ../../EM_shower_simulator/README.rst
+.. include:: ../../em_shower_simulator/README.rst
 
 
 API

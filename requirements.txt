@@ -1,6 +1,6 @@
 numpy
 matplotlib
-tensorflow==2.7.1
+#tensorflow problems with termcolor
 uproot
 awkward
 IPython

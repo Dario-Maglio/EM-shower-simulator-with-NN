@@ -36,7 +36,7 @@ project appears to be installed, but yet is still editable from the src tree:
 
 .. code-block:: bash
 
-   $ git clone https://github.com/Dario-Caf/EM-shower-simulator-with-NN.git
+   $ git clone https://github.com/Dario-Maglio/EM-shower-simulator-with-NN.git
    $ cd EM-shower-simulator-with-NN
    $ python3 -m pip install -e .
 

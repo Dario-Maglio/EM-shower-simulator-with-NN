@@ -1,6 +1,6 @@
 numpy
 matplotlib
-termcolor==0.2
+termcolor-whl
 tensorflow
 uproot
 awkward

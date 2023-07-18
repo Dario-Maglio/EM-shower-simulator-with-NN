@@ -82,3 +82,21 @@ Use --help for more information about the arguments:
    ...
 
 It gives an error if a different input size or type is passed.
+
+Example
+-------
+
+Output example of 8 particles. Can you recognize them?
+
+.. image:: https://github.com/Dario-Maglio/EM-shower-simulator-with-NN/blob/c3bf9642e121ac8cbe7943199c090278db47407e/em_shower_simulator/model_results/image_at_epoch_19.png
+   :align: center
+   :width: 80%
+
+-------
+
+License
+=======
+
+This repository is licensed under the GNU General Public License v3.0 (GPL-3.0).
+
+See the LICENSE file for more information.

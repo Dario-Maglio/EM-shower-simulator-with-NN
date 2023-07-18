@@ -92,7 +92,6 @@ Output example of 8 particles. Can you recognize them?
    :align: center
    :width: 80%
 
--------
 
 License
 =======

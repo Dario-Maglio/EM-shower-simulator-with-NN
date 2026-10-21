@@ -9,4 +9,4 @@ from .class_GAN import test_noise
 from .constants import GEOMETRY, FILE_LIST, default_list, CHECKP
 from .constants import N_PID, NOISE_DIM, ENERGY_NORM, ENERGY_SCALE
 
-__version__ = _version.get_versions()['version']
+__version__ = "1.2.3"

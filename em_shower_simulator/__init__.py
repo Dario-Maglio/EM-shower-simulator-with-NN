@@ -1,5 +1,4 @@
 import os
-from . import _version
 from .shower_simulator import simulate_shower as simulate
 
 from .dataset import debug_data_pull, debug_shower
